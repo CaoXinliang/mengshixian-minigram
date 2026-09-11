@@ -519,8 +519,9 @@
 <text class="price-pending is-locked">登录后查看拼团价</text>
 <text>{{item.ends}}</text>
 </view>
-<button catchtap="joinGroup" data-product-id="{{item.productId}}">{{item.joined >= item.size ? '查看成团结果' : '参与拼团'}}</button>
+<button disabled="{{item.joined >= item.size}}" catchtap="joinGroup" data-product-id="{{item.productId}}">{{item.joined >= item.size ? '已成团' : '参与拼团'}}</button>
 </view>
+<view wx:if="{{!groupDeals.length}}" class="order-empty"><text>暂时没有拼团活动</text><text>活动开始后会在这里显示</text><button bindtap="switchTab" data-tab="home">去逛商品</button></view>
 </view>
 </block>
       <block wx:elif="{{utilityType == 'orders'}}">
@@ -782,7 +783,7 @@
           <text>{{quantityPickerProduct.name}}</text>
           <text class="quantity-picker-price price-pending {{quantityPickerProduct.priceTemporary ? 'is-temporary' : 'is-locked'}}">{{quantityPickerProduct.priceText || priceFallback}}</text>
         </view>
-        <button bindtap="closeQuantityPicker">×</button>
+        <button aria-label="关闭选数量窗口" bindtap="closeQuantityPicker">×</button>
       </view>
       <view wx:if="{{quantityPickerProduct.specs && quantityPickerProduct.specs.length > 1}}" class="quantity-picker-spec-row">
         <text>规格</text>
@@ -791,8 +792,8 @@
         </scroll-view>
       </view>
       <view class="quantity-picker-row">
-        <text>数量</text>
-        <quantity-stepper quantity="{{quantityPickerQty || 1}}" bind:change="changeQuantityPicker" />
+        <view class="quantity-picker-quantity-copy"><text>数量</text><text>按需要调整</text></view>
+        <view class="quantity-picker-stepper"><quantity-stepper quantity="{{quantityPickerQty || 1}}" bind:change="changeQuantityPicker" /></view>
       </view>
       <view class="quantity-picker-actions">
         <button class="quantity-picker-detail" bindtap="openDetailFromQuantityPicker">查看详情</button>

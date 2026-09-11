@@ -764,7 +764,10 @@ Page({
     const jumpTarget = String(item.jumpTarget || '').trim();
     if (jumpType === 'product' && jumpTarget) {
       const product = this.findProduct(jumpTarget);
-      if (!product) return false;
+      if (!product) {
+        wx.showToast({ title: '该商品暂时不可查看', icon: 'none' });
+        return true;
+      }
       this.openProductById(product.id);
       return true;
     }
@@ -773,7 +776,9 @@ Page({
       return true;
     }
     if (jumpType === 'url' && /^https?:\/\//i.test(jumpTarget)) {
-      if (typeof wx !== 'undefined' && typeof wx.setClipboardData === 'function') wx.setClipboardData({ data: jumpTarget });
+      if (typeof wx !== 'undefined' && typeof wx.setClipboardData === 'function') {
+        wx.setClipboardData({ data: jumpTarget, success: () => wx.showToast({ title: '链接已复制，请在浏览器打开', icon: 'none' }) });
+      } else wx.showToast({ title: '该链接暂时无法打开', icon: 'none' });
       return true;
     }
     return false;
@@ -1170,11 +1175,17 @@ Page({
       await this.loadRemoteCatalogPrices();
     }
     await this.loadRemoteAddress();
-    await this.loadRemoteAddress();
     await this.loadRemoteCart();
     await this.loadRemoteOrders();
   },
+  confirmAction(options, onConfirm) {
+    if (typeof wx === 'undefined' || typeof wx.showModal !== 'function') return onConfirm();
+    wx.showModal({ ...options, success: (result) => { if (result.confirm) onConfirm(); } });
+  },
   logout() {
+    this.confirmAction({ title: '退出登录', content: '退出后需要重新登录才能查看购物车和订单。', confirmText: '退出', confirmColor: '#e65353' }, () => this.performLogout());
+  },
+  performLogout() {
     const patch = { loggedIn: false, page: 'mine', activeTab: 'mine' };
     if (IS_CLOUD_MODE) {
       patch.cartItems = [];
@@ -1302,27 +1313,30 @@ Page({
 
   confirmRemoteOrder(event) {
     const id = event.currentTarget.dataset.id;
-    return this.runRemoteOrderAction(id, async () => {
+    return this.confirmAction({ title: '确认收货', content: '确认后订单将完成，请确认商品已经收到。', confirmText: '确认收货' }, () => this.runRemoteOrderAction(id, async () => {
       const result = await ordersApi.confirm({ id });
       if (!result || !result.ok) return wx.showToast({ title: result && result.error && result.error.message || '确认收货失败，请稍后重试', icon: 'none' });
       await this.loadRemoteOrders();
       wx.showToast({ title: '已确认收货', icon: 'success' });
-    });
+    }));
   },
 
   cancelRemoteOrder(event) {
     const id = event.currentTarget.dataset.id;
-    return this.runRemoteOrderAction(id, async () => {
+    return this.confirmAction({ title: '取消订单', content: '取消后本次订单将不能恢复，确定取消吗？', confirmText: '取消订单', confirmColor: '#e65353' }, () => this.runRemoteOrderAction(id, async () => {
       const result = await ordersApi.cancel({ id });
       if (!result || !result.ok) return wx.showToast({ title: result && result.error && result.error.message || '订单取消失败，请稍后重试', icon: 'none' });
       await this.loadRemoteOrders();
       wx.showToast({ title: '订单已取消', icon: 'success' });
-    });
+    }));
   },
 
-  async requestRemoteRefund(event) {
+  requestRemoteRefund(event) {
     const item = (this.data.orderRows || []).find((row) => row.id === event.currentTarget.dataset.id);
     if (!item) return;
+    return this.confirmAction({ title: '申请售后', content: '将提交售后申请，确认商品确实需要售后吗？', confirmText: '提交申请' }, () => this.submitRemoteRefund(item));
+  },
+  async submitRemoteRefund(item) {
     if (this._refundSubmitting && this._refundSubmitting[item.id]) return;
     this._refundSubmitting = this._refundSubmitting || {};
     if (this.data.orderActionBusyId) return;
@@ -1520,7 +1534,11 @@ Page({
     this.setData({ address: { id: address._id, name: address.name, phone: '', masked: address.phoneMasked || '', detail: address.detail || '', regionCode: address.regionCode || regionCode }, showAddressForm: false });
         wx.showToast({ title: '收货地址已保存', icon: 'success' });
       },
-      fail: () => {}
+      fail: (error) => {
+        const message = String(error && error.errMsg || '');
+        if (/cancel/i.test(message)) return;
+        wx.showToast({ title: '无法打开地址簿，请稍后重试', icon: 'none' });
+      }
     });
   },
   async saveAddress(event) {

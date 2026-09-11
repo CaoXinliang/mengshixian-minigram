@@ -88,7 +88,11 @@ Page({
       await this.loadAddress();
       await this.loadQuote();
       },
-      fail: () => {}
+      fail: (error) => {
+        const message = String(error && error.errMsg || '');
+        if (/cancel/i.test(message)) return;
+        wx.showToast({ title: '无法打开地址簿，请稍后重试', icon: 'none' });
+      }
     });
   },
   selectWarehouse(event) {
