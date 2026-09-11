@@ -1,0 +1,14 @@
+/* 梦食鲜品牌浅蓝主题：放在旧演示样式之后，统一覆盖深蓝色块。 */
+:root { --blue: #287ff1; --deep: #1257bc; --ice: #eef5ff; --bg: #f7faff; }
+html, body { background: #eaf5fa; }
+.app-header { background: radial-gradient(circle at 85% 0, rgba(255,255,255,.32), transparent 32%), linear-gradient(135deg, #2b86ff, #1257bc); }
+.banner { background: #7cc8e9; }
+.banner-slide .banner-overlay { background: linear-gradient(90deg, rgba(54,151,199,.91), rgba(84,183,230,.75) 56%, rgba(185,232,250,.22)); }
+.banner-slide .banner-copy small { border-left-color: #e6f8ff; color: #f1fbff; }
+.catalog-side button.is-active { color: #1257bc; }
+.catalog-side button.is-active::before { background: var(--blue); }
+.major-category-strip button.is-active span { color: #1257bc; }
+.login-card, .phone-login, .new-member-banner, .invoice-hero, .points-hero { background: linear-gradient(135deg, #77c9eb, #4faedc); }
+.consumer-profile { background: linear-gradient(115deg, #effaff, #dff3fc); }
+.member-stats button { border-color: rgba(88,183,230,.24); }
+.detail-page { background: #f4fbfe; }

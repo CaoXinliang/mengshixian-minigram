@@ -1,0 +1,152 @@
+/* 微信小程序网页预览的固定操作区与安全区修复。 */
+.phone {
+  --tabbar-height: calc(64px + env(safe-area-inset-bottom, 0px));
+  --quick-checkout-height: 52px;
+  --fixed-bottom-offset: 0px;
+}
+
+.tabbar {
+  bottom: var(--fixed-bottom-offset);
+  height: var(--tabbar-height);
+  padding: 5px 4px calc(7px + env(safe-area-inset-bottom, 0px));
+}
+
+.quick-checkout {
+  bottom: calc(var(--fixed-bottom-offset) + var(--tabbar-height));
+  height: var(--quick-checkout-height);
+}
+
+.page-spacer {
+  height: calc(var(--tabbar-height) + 18px);
+}
+
+.phone.has-quick-checkout .page-spacer {
+  height: calc(var(--tabbar-height) + var(--quick-checkout-height) + 24px);
+}
+
+.content-page {
+  padding-bottom: calc(var(--tabbar-height) + 22px);
+}
+
+.phone.has-quick-checkout .content-page.is-active:not(.utility-page):not(.detail-page) {
+  padding-bottom: calc(var(--tabbar-height) + var(--quick-checkout-height) + 24px);
+}
+
+.phone.has-quick-checkout .catalog-results {
+  padding-bottom: calc(var(--tabbar-height) + var(--quick-checkout-height) + 28px);
+}
+
+.utility-page {
+  padding-bottom: calc(var(--tabbar-height) + 22px);
+}
+
+.detail-page {
+  padding-bottom: calc(64px + env(safe-area-inset-bottom, 0px) + 18px);
+}
+
+.detail-actions {
+  bottom: var(--fixed-bottom-offset);
+  height: calc(64px + env(safe-area-inset-bottom, 0px));
+  padding: 10px 14px calc(10px + env(safe-area-inset-bottom, 0px));
+}
+
+.utility-page .place-order {
+  position: fixed;
+  left: 50%;
+  bottom: var(--fixed-bottom-offset);
+  z-index: 20;
+  width: min(calc(100% - 28px), 402px);
+  margin: 0;
+  transform: translateX(-50%);
+}
+
+.toast {
+  bottom: calc(var(--fixed-bottom-offset) + var(--tabbar-height) + 12px);
+}
+
+.phone.has-quick-checkout .toast {
+  bottom: calc(var(--fixed-bottom-offset) + var(--tabbar-height) + var(--quick-checkout-height) + 12px);
+}
+
+.chat-message.is-user {
+  align-self: flex-end;
+  border-radius: 10px 4px 10px 10px;
+  color: #fff;
+  background: var(--blue);
+}
+
+.order-empty {
+  min-height: 260px;
+}
+
+.order-empty > img {
+  width: 42px;
+  height: 42px;
+  margin-bottom: 10px;
+  opacity: .38;
+}
+
+.order-empty button {
+  margin-top: 14px;
+  padding: 9px 18px;
+  border-radius: 5px;
+  color: #fff;
+  background: var(--blue);
+  font-size: 12px;
+}
+
+.points-hero button:disabled {
+  color: #7391b1;
+  background: #edf3f8;
+}
+
+button:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+summary:focus-visible {
+  outline: 2px solid var(--blue);
+  outline-offset: 2px;
+}
+
+button:not(:disabled):active {
+  transform: scale(.98);
+}
+
+@media (min-width: 431px) {
+  .phone {
+    --fixed-bottom-offset: 18px;
+  }
+
+  .detail-actions {
+    border-radius: 0 0 24px 24px;
+  }
+}
+
+@media (max-width: 360px) {
+  .quick-checkout > button:first-child {
+    padding: 0 9px;
+  }
+
+  .quick-checkout > button:last-child {
+    width: 92px;
+  }
+
+  .quick-checkout b {
+    font-size: 16px;
+  }
+
+  .quick-checkout small {
+    font-size: 9px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    transition-duration: .01ms !important;
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}

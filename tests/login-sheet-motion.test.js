@@ -1,0 +1,46 @@
+const assert = require('assert');
+const fs = require('fs');
+const path = require('path');
+
+const root = path.resolve(__dirname, '..');
+const js = fs.readFileSync(path.join(root, 'miniapp/pages/index/index.js'), 'utf8');
+const wxml = fs.readFileSync(path.join(root, 'miniapp/pages/index/index.wxml'), 'utf8');
+const wxss = fs.readFileSync(path.join(root, 'miniapp/pages/index/index.wxss'), 'utf8');
+const stepperWxml = fs.readFileSync(path.join(root, 'miniapp/components/quantity-stepper/index.wxml'), 'utf8');
+const stepperWxss = fs.readFileSync(path.join(root, 'miniapp/components/quantity-stepper/index.wxss'), 'utf8');
+const config = fs.readFileSync(path.join(root, 'miniapp/services/config.js'), 'utf8');
+
+assert(js.includes('loginMounted: false') && js.includes('loginVisible: false'), 'login sheet needs separate mount and visibility state');
+assert(js.includes('this.dismissLogin();') && js.includes('loginMounted: false'), 'login sheet close path must defer teardown');
+assert(js.includes('setTimeout(() => {') && js.includes('}, 220);'), 'login sheet close path must wait for the exit transition');
+assert(wxml.includes('wx:if="{{loginMounted}}"'), 'login mask must stay mounted during exit animation');
+assert(wxml.includes("{{loginVisible ? 'is-visible' : ''}}"), 'login mask and card must receive visibility state');
+assert(wxss.includes('transform:translate3d(0,100%,0)') && wxss.includes('.login-card.is-visible'), 'login card must enter from the bottom');
+assert(wxss.includes('opacity 220ms ease') && wxss.includes('visibility 0s linear 220ms'), 'login mask must fade and defer visibility teardown');
+assert(wxss.includes('.login-close{') && wxss.includes('min-width:56rpx;max-width:56rpx') && wxss.includes('box-sizing:border-box'), 'login close control must remain circular instead of stretching to the native button width');
+assert(wxss.includes('@keyframes catalog-status-breathe') && wxss.includes('.catalog-empty.is-loading text:first-child{animation:catalog-status-breathe'), 'catalog loading state must provide restrained progress feedback');
+assert(wxss.includes('.catalog-empty.is-loading text:first-child{animation:none}'), 'catalog loading feedback must respect reduced-motion preferences');
+assert(js.includes('cartFeedbackId:') && js.includes('cartPulse:'), 'cart feedback state must be explicit');
+assert(js.includes('pulseCartBadge()') && js.includes('cartFeedbackSeq'), 'cart feedback must reconcile after the queued write');
+assert(stepperWxml.includes('disabled="{{quantity <= 0}}"') && stepperWxml.includes('class="quantity-value"') && !stepperWxml.includes('wx:if="{{quantity <= 0}}"'), 'shared quantity control must render a complete minus-count-plus stepper even when quantity is zero');
+assert(stepperWxml.includes('hover-class="is-pressed"'), 'shared add controls must expose press feedback');
+assert(wxml.includes("cartPulse ? 'is-pulsing' : ''"), 'cart tab must expose success feedback state');
+assert(stepperWxss.includes('transition:transform 160ms ease,opacity 160ms ease') && wxss.includes('@keyframes cart-badge-pulse'), 'cart feedback must use restrained transform motion');
+assert(stepperWxss.includes('@media (prefers-reduced-motion: reduce)') && wxss.includes('.login-mask,.login-card{transition:none}'), 'add controls and login sheet must disable transitions for reduced-motion users');
+assert(config.includes('motionEnabled: true') && js.includes('motionReduced: serviceConfig.motionEnabled === false'), 'miniapp must expose an explicit motion-off fallback when the platform preference is unavailable');
+assert(wxml.includes("motionReduced ? 'is-motion-reduced' : ''") && wxss.includes('.app-shell.is-motion-reduced .page-scroll.is-page-entering'), 'explicit motion-off mode must disable page animations and transitions at the root');
+assert(js.includes('pageMotion: false') && js.includes('triggerPageMotion'), 'page transitions must have explicit state and helper');
+assert(js.includes("if (tab === this.data.page && !this.data.showAddressForm) return;"), 'same-tab taps must not replay page motion');
+assert(wxml.includes("pageMotion ? 'is-page-entering' : ''"), 'page content must receive transition state');
+assert(wxss.includes('@keyframes page-content-enter') && wxss.includes('prefers-reduced-motion'), 'page transition must be restrained and motion-aware');
+assert(wxss.includes('.login-mask,.login-card{transition:none}'), 'login sheet must also respect reduced-motion preference');
+assert(js.includes('detailImageLoading: false') && js.includes('detailImageError: false'), 'detail image loading and error states must be explicit');
+assert(wxml.includes('data-src="{{detailImageSrc}}"') && js.includes('isCurrentDetailImageEvent(event)') && js.includes('eventSrc === this.data.detailImageSrc'), 'late image events must not overwrite the currently selected product image state');
+assert(js.includes('previewDetailImage()') && js.includes('retryDetailImage()'), 'detail image must support preview and retry');
+assert(wxml.includes('catchtap="previewDetailImage"') && wxml.includes('图片暂时无法加载'), 'detail image must expose preview and error feedback');
+assert(js.includes('detailVideoSrc: \'\'') && js.includes('detailVideoError: false') && js.includes("item.mediaType === 'video'") && js.includes('handleDetailVideoError') && wxml.includes('<view class="detail-panel detail-video-panel">') && wxml.includes('<video wx:if="{{detailVideoSrc && !detailVideoError}}"') && wxml.includes('binderror="handleDetailVideoError"') && wxml.includes('class="detail-video"') && wxml.includes('商品视频暂时无法播放') && wxml.includes('该商品暂未上传视频'), 'detail video must resolve controlled product media and distinguish missing media from playback failure');
+assert(wxml.includes("catalogStatus == 'loading'") && wxml.includes("catalogStatus == 'error'"), 'catalog must distinguish loading and error from empty');
+assert(wxss.includes('.detail-image-state') && wxss.includes('.catalog-empty button'), 'image and catalog states must have dedicated layout styles');
+assert(wxss.includes('.detail-image>text{position:absolute;') && !wxss.includes('.detail-image text{position:absolute;'), 'detail tag styling must not capture image error-state copy');
+
+console.log('login sheet motion contract test: passed');

@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <title>梦食鲜 · 小程序网页预览</title>
+  <link rel="stylesheet" href="styles.css?v=20260906-brand-lightblue-v1">
+  <link rel="stylesheet" href="interaction-fixes.css?v=20260905-caiyi-bc1">
+  <link rel="stylesheet" href="brand-theme.css?v=20260906-brand-lightblue-v1">
+  <script src="../miniapp/services/collection.js?v=20260908-shared"></script>
+  <script src="services/api.js?v=20260908-media-url"></script>
+</head>
+<body>
+  <main class="phone" id="app">
+    <section class="page is-active" data-page="home">
+      <header class="app-header">
+        <div class="status-row"><span data-clock>17:36</span><span class="status-icons"><svg width="47" height="12" viewBox="0 0 47 12" fill="#fff" aria-hidden="true"><rect x="0" y="7" width="2.5" height="4" rx="0.6"/><rect x="3.8" y="5" width="2.5" height="6" rx="0.6"/><rect x="7.6" y="3" width="2.5" height="8" rx="0.6"/><rect x="11.4" y="1" width="2.5" height="10" rx="0.6"/><path d="M22.5 2.6a8.2 8.2 0 0 0-5.8 2.4l1.3 1.3a6.4 6.4 0 0 1 9 0l1.3-1.3a8.2 8.2 0 0 0-5.8-2.4z"/><path d="M19.6 7.1a4.1 4.1 0 0 1 5.8 0l-1.3 1.3a2.3 2.3 0 0 0-3.2 0z"/><circle cx="22.5" cy="9.6" r="1.5"/><rect x="32" y="2.2" width="12.5" height="7.6" rx="2" fill="none" stroke="#fff" stroke-width="1"/><rect x="33.5" y="3.7" width="8" height="4.6" rx="1"/><rect x="45.4" y="4.6" width="1.6" height="2.8" rx="0.8"/></svg></span></div>
+        <div class="title-row">
+          <button class="location-button" type="button" data-utility="warehouse">
+            <img src="../assets/icons/location-white.svg" alt="">
+            <span>赣州仓</span>
+            <b>⌄</b>
+          </button>
+          <strong class="brand"><img src="../assets/brand/mengshixian-logo.png" alt="梦食鲜标志"><span>梦食鲜</span></strong>
+          <div class="capsule"><i></i><i></i><i></i><span></span><b></b></div>
+        </div>
+        <label class="search-row">
+          <img src="../assets/icons/search.svg" alt="">
+          <input type="search" placeholder="搜索商品">
+          <button type="button" data-action="start-search">搜索</button>
+        </label>
+      </header>
+
+      <section class="banner" aria-label="促销轮播">
+        <article class="banner-slide is-active"><img src="../assets/products/frozen-hero-v2.png" alt="冷链柜中的速冻食品包装"><div class="banner-overlay"></div><div class="banner-copy"><small>中秋家庭囤货季</small><h1>鲜冻好物<br>悦享团圆</h1><p>全场满 99 元免基础配送费</p></div></article>
+        <article class="banner-slide"><img src="../assets/products/frozen-shrimp-pack-v2.png" alt="冷冻虾仁包装"><div class="banner-overlay"></div><div class="banner-copy"><small>冷链海鲜专场</small><h1>海鲜囤货<br>鲜享到家</h1><p>虾仁、鱼段等冷冻海鲜低至 8 折</p></div></article>
+        <article class="banner-slide"><img src="../assets/products/frozen-beef-pack-v2.png" alt="冷冻肥牛卷包装"><div class="banner-overlay"></div><div class="banner-copy"><small>家庭火锅季</small><h1>火锅肉卷<br>一站备齐</h1><p>精选牛羊肉卷，冷链直达餐桌</p></div></article>
+        <div class="banner-dots" aria-label="轮播页码"><button class="is-active" data-banner-slide="0" aria-label="第 1 张"></button><button data-banner-slide="1" aria-label="第 2 张"></button><button data-banner-slide="2" aria-label="第 3 张"></button></div>
+      </section>
+
+      <section class="category-grid" aria-label="商品分类">
+        <button type="button" data-category="海鲜水产"><img src="../assets/categories/seafood.png" alt=""><span>海鲜水产</span></button>
+        <button type="button" data-category="牛肉类"><img src="../assets/categories/beef.png" alt=""><span>牛肉类</span></button>
+        <button type="button" data-category="猪肉类"><img src="../assets/categories/pork-ai-v1.jpg" alt=""><span>猪肉类</span></button>
+        <button type="button" data-category="羊肉类"><img src="../assets/categories/lamb-ai-v1.jpg" alt=""><span>羊肉类</span></button>
+        <button type="button" data-category="禽肉类"><img src="../assets/categories/chicken.png" alt=""><span>禽肉类</span></button>
+        <button type="button" data-category="丸滑类"><img src="../assets/categories/balls.png" alt=""><span>丸滑类</span></button>
+        <button type="button" data-category="面点类"><img src="../assets/categories/dumpling.png" alt=""><span>面点类</span></button>
+        <button type="button" data-category="预制菜熟食"><img src="../assets/categories/prepared-food-ai-v1.jpg" alt=""><span>预制菜熟食</span></button>
+        <button type="button" data-category="烧烤炸品"><img src="../assets/categories/barbecue-fried-ai-v1.jpg" alt=""><span>烧烤炸品</span></button>
+        <button type="button" data-category="蔬菜类"><img src="../assets/categories/vegetables.png" alt=""><span>蔬菜类</span></button>
+      </section>
+
+      <button class="news-strip" type="button" data-utility="activity">
+        <span class="news-icon"><i></i><i></i></span>
+        <b>活动头条</b>
+        <em>速冻面点、火锅食材、海鲜水产陆续上新</em>
+        <small>更多</small>
+      </button>
+
+      <section class="deal-section">
+        <div class="section-title">
+          <div><h2>特价专区</h2><span>家庭囤货更省心</span></div>
+          <button type="button" data-utility="special">更多 ›</button>
+        </div>
+        <div id="dealList"></div>
+      </section>
+      <div class="page-spacer"></div>
+    </section>
+
+    <section class="page content-page" data-page="category">
+      <div class="subpage-head"><button class="back-home" data-tab="home">‹</button><div><h2>商品分类</h2><small>按需挑选，冷链送到家</small></div><button class="head-search" data-action="focus-search">⌕</button></div>
+      <div id="categoryView"></div>
+    </section>
+    <section class="page content-page" data-page="frequent">
+      <div class="subpage-head"><div><h2>常用清单</h2><small>把常买的好物一键加入购物车</small></div></div><div id="frequentView"></div>
+    </section>
+    <section class="page content-page" data-page="cart">
+      <div class="subpage-head"><div><h2>购物车</h2><small><b data-cart-count>3</b> 件商品 · <span data-warehouse-name>赣州仓</span>配送</small></div><button class="head-link" data-action="clear-cart">清空</button></div><div id="cartView"></div>
+    </section>
+    <section class="page content-page" data-page="mine">
+      <div class="subpage-head"><div><h2>我的</h2><small>欢迎回来，今天也要好好吃饭</small></div></div><div id="mineView"></div>
+    </section>
+    <section class="page content-page utility-page" data-page="utility"><div id="utilityView"></div></section>
+    <section class="page content-page detail-page" data-page="detail"><div id="detailView"></div></section>
+
+    <div class="product-sheet login-sheet" id="loginSheet" aria-hidden="true"><div class="sheet-backdrop" data-action="close-login"></div><div class="sheet-card"><button class="sheet-close" data-action="close-login">×</button><div id="loginView"></div></div></div>
+
+    <div class="quick-checkout" id="quickCheckout" aria-label="快捷结算"></div>
+
+    <nav class="tabbar" aria-label="底部导航">
+      <button class="is-active" type="button" data-tab="home"><img src="../assets/icons/home.svg" alt=""><span>首页</span></button>
+      <button type="button" data-tab="category"><img src="../assets/icons/grid.svg" alt=""><span>分类</span></button>
+      <button type="button" data-tab="frequent"><img src="../assets/icons/list.svg" alt=""><span>常用清单</span></button>
+      <button type="button" data-tab="cart"><span class="icon-wrap"><img src="../assets/icons/cart.svg" alt=""><i data-cart-count>3</i></span><span>购物车</span></button>
+      <button type="button" data-tab="mine"><img src="../assets/icons/user.svg" alt=""><span>我的</span></button>
+    </nav>
+    <div class="toast" role="status">已加入购物车</div>
+  </main>
+  <script src="app.js?v=20260905-caiyi-bc1"></script>
+</body>
+</html>
