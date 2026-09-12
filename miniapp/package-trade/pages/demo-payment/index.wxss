@@ -1,1 +1,44 @@
-.page{min-height:100vh;background:#f3f7fc;color:#203a53}.topbar{display:flex;gap:20rpx;align-items:center;padding:56rpx 28rpx 24rpx;background:#0a69e9;color:#fff}.topbar>text{font-size:52rpx;line-height:1}.topbar view{display:flex;flex-direction:column}.topbar view text:first-child{font-size:32rpx;font-weight:700}.topbar view text:last-child{margin-top:6rpx;color:#dcecff;font-size:20rpx}.hero{display:flex;margin:28rpx 18rpx;padding:34rpx;border-radius:14rpx;color:#fff;background:linear-gradient(135deg,#2b86ff,#1257bc);flex-direction:column;gap:14rpx}.hero text:first-child{align-self:flex-start;padding:5rpx 12rpx;border-radius:999rpx;color:#1665bd;background:#fff;font-size:20rpx;font-weight:700}.hero text:nth-child(2){font-size:34rpx;font-weight:700}.hero text:nth-child(3){color:#dcecff;font-size:22rpx}.hero text:last-child{margin-top:10rpx;color:#fff;font-size:38rpx;font-weight:700}.note{display:flex;margin:18rpx;padding:25rpx;border-radius:12rpx;background:#fff;flex-direction:column;gap:10rpx}.note text:first-child{font-size:25rpx;font-weight:700}.note text:last-child{color:#60768c;font-size:22rpx;line-height:1.6}.state{display:flex;padding:120rpx 36rpx;color:#60768c;text-align:center;align-items:center;flex-direction:column;gap:18rpx}.state button{min-width:240rpx;margin:0;color:#0a69e9;background:#fff;border:1rpx solid #b7d4f1}.bottom{position:fixed;right:0;bottom:0;left:0;padding:16rpx 18rpx calc(16rpx + env(safe-area-inset-bottom));background:#fff;box-shadow:0 -4rpx 14rpx rgba(18,55,89,.1)}.bottom button{color:#fff;background:#0a69e9}
+.page{min-height:100vh;background:#f3f7fc;color:#203a53}.topbar{display:flex;gap:20rpx;align-items:center;padding:56rpx 28rpx 24rpx;background:#0a69e9;color:#fff}.topbar>text{font-size:52rpx;line-height:1}.topbar view{display:flex;flex-direction:column}.topbar view text:first-child{font-size:18px;font-weight:700}.topbar view text:last-child{margin-top:6rpx;color:#dcecff;font-size:13px}.hero{display:flex;margin:28rpx 18rpx;padding:34rpx;border-radius:14rpx;color:#fff;background:linear-gradient(135deg,#2b86ff,#1257bc);flex-direction:column;gap:14rpx}.hero text:first-child{align-self:flex-start;padding:5rpx 12rpx;border-radius:999rpx;color:#1665bd;background:#fff;font-size:13px;font-weight:700}.hero text:nth-child(2){font-size:34rpx;font-weight:700}.hero text:nth-child(3){color:#dcecff;font-size:14px}.hero text:last-child{margin-top:10rpx;color:#fff;font-size:38rpx;font-weight:700}.note{display:flex;margin:18rpx;padding:25rpx;border-radius:12rpx;background:#fff;flex-direction:column;gap:10rpx}.note text:first-child{font-size:16px;font-weight:700}.note text:last-child{color:#60768c;font-size:14px;line-height:1.6}.state{display:flex;padding:120rpx 36rpx;color:#60768c;text-align:center;align-items:center;flex-direction:column;gap:18rpx}.state button{min-width:240rpx;margin:0;color:#0a69e9;background:#fff;border:1rpx solid #b7d4f1}.bottom{position:fixed;right:0;bottom:0;left:0;padding:16rpx 18rpx calc(16rpx + env(safe-area-inset-bottom));background:#fff;box-shadow:0 -4rpx 14rpx rgba(18,55,89,.1)}.bottom button{color:#fff;background:#0a69e9}
+
+
+/* 交付态控件层级：触控尺寸使用 px，避免窄屏被 rpx 继续缩小。 */
+button {
+  min-height: 44px;
+  box-sizing: border-box;
+  white-space: nowrap;
+  line-height: 1.25;
+}
+
+.control-pressed {
+  opacity: .72;
+}
+
+.state {
+  min-height: 0;
+  padding-top: 44rpx;
+  padding-bottom: 44rpx;
+}
+
+.state-loading {
+  min-height: 320rpx;
+}
+
+
+input,
+textarea,
+picker {
+  min-height: 44px;
+  box-sizing: border-box;
+  font-size: 14px;
+}
+
+/* 支付演示页也需要为底部操作栏和设备安全区预留完整高度。 */
+.page {
+  padding-bottom: calc(44px + 32rpx + constant(safe-area-inset-bottom));
+  padding-bottom: calc(44px + 32rpx + env(safe-area-inset-bottom));
+}
+
+.bottom {
+  padding: 16rpx 18rpx calc(16rpx + constant(safe-area-inset-bottom));
+  padding: 16rpx 18rpx calc(16rpx + env(safe-area-inset-bottom));
+}

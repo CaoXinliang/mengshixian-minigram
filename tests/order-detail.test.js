@@ -7,8 +7,10 @@ const originalLoad = Module._load;
 const holder = {};
 const calls = { cancel: [], confirm: [], pay: [] };
 let getMode = 'error';
+let currentUser = null;
 const order = { _id: 'order-1', orderNo: 'M001', status: 'delivered', paymentStatus: 'paid', paymentMethod: 'wechat', fulfillmentType: 'delivery', addressSnapshot: { name: '张三', phoneMasked: '138****0000', detail: '科技园 1 号' }, deliverySlotSnapshot: { name: '明日上午' }, pricingSnapshot: { goodsAmountCent: 3200 }, freightSnapshot: { amountCent: 500 }, totalAmountCent: 3700, createdAt: '2026-09-12T08:00:00.000Z', updatedAt: '2026-09-12T10:00:00.000Z' };
 const services = {
+  auth: { getMe: async () => currentUser ? { ok: true, data: { user: currentUser } } : { ok: false, error: { code: 'AUTH_REQUIRED' } } },
   orders: {
     get: async () => getMode === 'error' ? { ok: false, error: { code: 'REQUEST_FAILED', message: '订单网络错误' } } : getMode === 'empty' ? { ok: false, error: { code: 'ORDER_NOT_FOUND', message: '订单不存在' } } : { ok: true, data: { order, items: [{ _id: 'item-1', skuId: 'sku-1', productNameSnapshot: '鱼丸', specSnapshot: '500g', quantity: 2, unitPriceCent: 1600, subtotalCent: 3200 }] } },
     cancel: async payload => { calls.cancel.push(payload); return { ok: true }; },
@@ -43,7 +45,18 @@ async function run() {
   assert.equal(page.data.order.items[0].subtotal, '32.00');
   assert.equal(page.data.order.total, '37.00');
   assert.equal(page.data.order.address.phoneMasked, '138****0000');
+  assert.equal(page.data.order.address.name, '张三', '正常客户地址不应被改写');
   assert.equal(page.data.order.canConfirm, true);
+  assert.equal(page.data.order.canRepurchase, false);
+
+  const realAddressSnapshot = order.addressSnapshot;
+  order.addressSnapshot = { name: '演示用户', phoneMasked: '138****0000', detail: '梦食鲜演示收货点（非客户地址）' };
+  await page.retry();
+  assert.equal(page.data.order.address.name, '收货人');
+  assert.equal(page.data.order.address.detail, '已保存的收货地址');
+  assert.equal(order.addressSnapshot.name, '演示用户', '历史订单快照不得被展示层修改');
+  order.addressSnapshot = realAddressSnapshot;
+  await page.retry();
   await page.confirmReceipt();
   await new Promise(resolve => setImmediate(resolve));
   assert.deepEqual(calls.confirm, [{ id: 'order-1' }]);
@@ -55,8 +68,31 @@ async function run() {
   assert.deepEqual(calls.pay, [{ orderId: 'order-1' }]);
   assert.equal(toasts.at(-1).title, '微信支付预下单尚未配置。');
 
+  const deniedUsers = [
+    null,
+    { userType: 'c', businessStatus: '', organizationId: '', status: 'active' },
+    { userType: 'b', businessStatus: 'pending', organizationId: 'org-1', status: 'active' },
+    { userType: 'b', businessStatus: 'rejected', organizationId: 'org-1', status: 'active' },
+    { userType: 'b', businessStatus: 'approved', organizationId: '', status: 'active' },
+    { userType: 'b', businessStatus: 'approved', organizationId: 'org-1', status: 'disabled' }
+  ];
+  for (const user of deniedUsers) {
+    currentUser = user;
+    await page.retry();
+    assert.equal(page.data.order.canRepurchase, false, '非法企业身份不得显示再次购买');
+    const navigationCount = navs.length;
+    await page.repurchase();
+    assert.equal(navs.length, navigationCount, '非法企业身份不得进入再次购买页面');
+  }
+  currentUser = { userType: 'b', businessStatus: 'approved', organizationId: 'org-1', status: 'active' };
+  await page.retry();
+  assert.equal(page.data.order.canRepurchase, true);
+  await page.repurchase();
+  assert(navs.at(-1).url.includes('/package-business/pages/repurchase/index?orderId=order-1'));
+
   const wxml = fs.readFileSync(path.resolve(__dirname, '../miniapp/package-trade/pages/order-detail/index.wxml'), 'utf8');
   assert(wxml.includes('商品清单') && wxml.includes('订单进度') && wxml.includes('配送信息'));
+  assert(wxml.includes('wx:if="{{order.canRepurchase}}"'), '再次购买入口必须仅向完整合法 B 身份显示');
   console.log('order detail test: passed');
 }
 run().catch(error => { console.error(error); process.exit(1); });

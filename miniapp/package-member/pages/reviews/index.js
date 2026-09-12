@@ -1,21 +1,27 @@
 const { auth, reviews } = require('../../../services/index');
+const { authorizeMemberPage, isCurrentMemberLoad } = require('../../member-auth');
 const MAX_MEDIA = 6;
 const fileName = path => String(path || '').split('/').pop() || `review-${Date.now()}.jpg`;
 const readBase64 = path => new Promise((resolve, reject) => wx.getFileSystemManager().readFile({ filePath: path, encoding: 'base64', success: result => resolve(result.data), fail: reject }));
+const orderLabel = (orderNo, orderId) => {
+  const raw = String(orderNo || orderId || '').trim();
+  return raw ? `订单尾号 ${raw.slice(-4)}` : '订单';
+};
 
 Page({
   data: { status: 'loading', errorText: '', orders: [], mine: [], current: null, rating: 5, content: '', media: [], busy: false },
-  onLoad(query = {}) { this._initialOrderId = query.orderId ? decodeURIComponent(query.orderId) : ''; return this.load(); },
+  onLoad(query = {}) { this._initialOrderId = query.orderId ? decodeURIComponent(query.orderId) : ''; },
+  onShow() { return this.load(); },
   async load() {
-    this.setData({ status: 'loading', errorText: '' });
-    const me = await auth.getMe();
-    if (!me || !me.ok || !me.data || !me.data.user) return this.setData({ status: 'forbidden', errorText: '请先登录后评价订单' });
+    const access = await authorizeMemberPage(this, auth, { forbiddenText: '请先登录后评价订单', clear: { orders: [], mine: [], current: null, rating: 5, content: '', media: [], busy: false }, reset: () => { this._eligibleItems = []; this._reviewKeys = {}; } });
+    if (!access) return;
     const [eligibleResult, mineResult] = await Promise.all([reviews.eligible({ page: 1, pageSize: 100 }), reviews.mine({ page: 1, pageSize: 100 })]);
+    if (!isCurrentMemberLoad(this, access)) return;
     const failed = [eligibleResult, mineResult].find(item => !item || !item.ok);
     if (failed) return this.setData({ status: 'error', errorText: failed && failed.error && failed.error.message || '评价数据加载失败，请重试' });
     const mine = mineResult.data && mineResult.data.rows || []; const eligible = eligibleResult.data && eligibleResult.data.rows || [];
     this._eligibleItems = eligible;
-    const orderMap = new Map(); eligible.forEach(item => { if (!orderMap.has(item.orderId)) orderMap.set(item.orderId, { id: item.orderId, orderNo: item.orderNo || item.orderId, createdAt: String(item.completedAt || '').slice(0, 10) }); });
+    const orderMap = new Map(); eligible.forEach(item => { if (!orderMap.has(item.orderId)) orderMap.set(item.orderId, { id: item.orderId, orderLabel: orderLabel(item.orderNo, item.orderId), createdAt: String(item.completedAt || '').slice(0, 10) }); });
     const rows = [...orderMap.values()];
     this.setData({ status: 'ready', orders: rows, mine });
     const target = this._initialOrderId || rows[0] && rows[0].id; this._initialOrderId = '';
@@ -23,7 +29,7 @@ Page({
   },
   retry() { return this.load(); },
   selectOrder(event) { return this.selectOrderById(event.currentTarget.dataset.id); },
-  async selectOrderById(id) { const items = (this._eligibleItems || []).filter(item => item.orderId === id); if (!items.length) return wx.showToast({ title: '该订单暂无可评价商品', icon: 'none' }); this.setData({ current: { id, orderNo: items[0].orderNo || id, items: items.map(item => ({ id: item.orderItemId, skuId: item.skuId, name: item.productNameSnapshot || '订单商品', selected: true })) }, rating: 5, content: '', media: [] }); },
+  async selectOrderById(id) { const items = (this._eligibleItems || []).filter(item => item.orderId === id); if (!items.length) return wx.showToast({ title: '该订单暂无可评价商品', icon: 'none' }); this.setData({ current: { id, orderLabel: orderLabel(items[0].orderNo, id), items: items.map(item => ({ id: item.orderItemId, skuId: item.skuId, name: item.productNameSnapshot || '订单商品', selected: true })) }, rating: 5, content: '', media: [] }); },
   setRating(event) { this.setData({ rating: Number(event.currentTarget.dataset.rating) }); },
   inputContent(event) { this.setData({ content: String(event.detail.value || '').slice(0, 500) }); },
   toggleItem(event) { const id = event.currentTarget.dataset.id; this.setData({ 'current.items': this.data.current.items.map(item => item.id === id ? { ...item, selected: !item.selected } : item) }); },

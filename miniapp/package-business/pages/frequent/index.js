@@ -1,4 +1,6 @@
 const { auth, frequent, catalog } = require('../../../services/index');
+const { authorizeBusinessPage, isCurrentBusinessLoad } = require('../../business-auth');
+const { purchaseRuleText, purchaseFailureText } = require('../../purchase-display');
 
 const positive = (value, fallback = 1) => Number.isInteger(Number(value)) && Number(value) > 0 ? Number(value) : fallback;
 const firstQuantity = row => Math.ceil(positive(row.minOrderQuantity) / positive(row.orderMultiple)) * positive(row.orderMultiple);
@@ -8,21 +10,24 @@ const rowModel = raw => {
   const minOrderQuantity = positive(raw.minOrderQuantity || sku.minOrderQuantity);
   const orderMultiple = positive(raw.orderMultiple || sku.orderMultiple);
   const base = { minOrderQuantity, orderMultiple };
-  return { id: raw._id || raw.id || raw.skuId, skuId: raw.skuId || sku._id || sku.id || '', name: raw.productName || raw.productNameSnapshot || product.name || '常购商品', spec: raw.specName || raw.specSnapshot || sku.specName || sku.packageUnit || '默认规格', image: raw.image || raw.mediaUrl || product.image || '', minOrderQuantity, orderMultiple, quantity: positive(raw.quantity, firstQuantity(base)), selected: raw.selected !== false, unavailable: raw.available === false || raw.status === 'unavailable', unavailableReason: raw.invalidReason || raw.unavailableReason || '' };
+  const ruleText = purchaseRuleText(minOrderQuantity, orderMultiple, sku.packageUnit);
+  return { id: raw._id || raw.id || raw.skuId, skuId: raw.skuId || sku._id || sku.id || '', name: raw.productName || raw.productNameSnapshot || product.name || '常购商品', spec: raw.specName || raw.specSnapshot || sku.specName || sku.packageUnit || '暂无规格信息', image: raw.image || raw.mediaUrl || product.image || '', minOrderQuantity, orderMultiple, purchaseRuleText: ruleText, quantity: positive(raw.quantity, firstQuantity(base)), selected: raw.selected !== false, unavailable: raw.available === false || raw.status === 'unavailable', unavailableReason: raw.invalidReason || raw.unavailableReason || '' };
 };
 
 Page({
   data: { status: 'loading', errorText: '', rows: [], submitLocked: false, resultVisible: false, addedItems: [], invalidItems: [] },
-  onLoad() { return this.load(); },
+  onLoad() {},
+  onShow() { return this.load(); },
   async load() {
-    this.setData({ status: 'loading', errorText: '', resultVisible: false });
-    const me = await auth.getMe();
-    const user = me && me.ok && me.data && me.data.user;
-    if (!user || user.userType !== 'b' || user.businessStatus !== 'approved') return this.setData({ status: 'forbidden', errorText: '真实常购清单仅对已审核企业采购账户开放' });
+    const access = await authorizeBusinessPage(this, auth, { forbiddenText: '常购清单仅对已审核企业采购账户开放', clear: { rows: [], submitLocked: false, resultVisible: false, addedItems: [], invalidItems: [] }, reset: () => { this._batchKey = ''; } });
+    if (!access) return;
+    this.setData({ resultVisible: false });
     const result = typeof frequent.listAll === 'function' ? await frequent.listAll() : await frequent.list({ page: 1, pageSize: 100 });
+    if (!isCurrentBusinessLoad(this, access)) return;
     if (!result || !result.ok) return this.setData({ status: 'error', errorText: result && result.error && result.error.message || '常购清单加载失败，请重试' });
     const savedRows = result.data && result.data.rows || [];
     const [catalogResult, priceResult] = await Promise.all([catalog.listAllProducts(), catalog.listPrices(savedRows.map(item => item.skuId))]);
+    if (!isCurrentBusinessLoad(this, access)) return;
     if (!catalogResult || !catalogResult.ok || !priceResult || !priceResult.ok) { const failed = !catalogResult || !catalogResult.ok ? catalogResult : priceResult; return this.setData({ status: 'error', errorText: failed && failed.error && failed.error.message || '常购商品资料加载失败，请重试' }); }
     const products = catalogResult.data && catalogResult.data.rows || catalogResult.rows || [];
     const productBySku = new Map(); products.forEach(product => (product.skus || []).forEach(sku => productBySku.set(sku._id, { product, sku })));
@@ -48,10 +53,10 @@ Page({
     this.setData({ submitLocked: true });
     try {
       const result = await frequent.batchAddToCart({ ids: items.map(item => item.id), items, idempotencyKey });
-      if (!result || !result.ok) { if (result && result.error && result.error.code !== 'REQUEST_FAILED') this._batchKey = ''; return this.setData({ resultVisible: true, addedItems: [], invalidItems: [{ reason: result && result.error && result.error.message || '批量加购失败，请重试' }] }); }
+      if (!result || !result.ok) { if (result && result.error && result.error.code !== 'REQUEST_FAILED') this._batchKey = ''; return this.setData({ resultVisible: true, addedItems: [], invalidItems: [{ reason: purchaseFailureText(result && result.error, '批量加购失败，请重试') }] }); }
       this._batchKey = '';
       const data = result.data || {};
-      this.setData({ resultVisible: true, addedItems: data.addedItems || [], invalidItems: data.invalidItems || [] });
+      this.setData({ resultVisible: true, addedItems: data.addedItems || [], invalidItems: (data.invalidItems || []).map(item => ({ ...item, reason: purchaseFailureText(item) })) });
     } finally { this.setData({ submitLocked: false }); }
   },
   goCart() { wx.reLaunch({ url: '/pages/index/index?tab=cart' }); },

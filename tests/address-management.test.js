@@ -72,6 +72,39 @@ async function run() {
   assert.deepEqual(removeCalls, ['address-1']);
   assert.equal(page.data.rows.length, 0);
 
+  rows = [
+    { _id: 'saved-test-address', name: '演示用户', phoneMasked: '138****0000', regionCode: '440305', detail: '梦食鲜演示收货点（非客户地址）', tag: '演示', isDefault: false },
+    { _id: 'customer-address', name: '演示用户服务中心', phoneMasked: '139****0000', regionCode: '440305', detail: '演示路 8 号', tag: '公司', isDefault: false }
+  ];
+  const originalRows = JSON.parse(JSON.stringify(rows));
+  await page.retry();
+  const savedTestAddress = page.data.rows[0];
+  assert.equal(savedTestAddress.displayName, '收货人');
+  assert.equal(savedTestAddress.displayDetail, '已保存的收货地址');
+  assert.equal(savedTestAddress.displayTag, '', 'the exact demo tag must not leak into the delivery UI');
+  assert.equal(savedTestAddress.name, originalRows[0].name, 'display labels must not replace stored form values');
+  assert.equal(savedTestAddress.detail, originalRows[0].detail);
+  assert.equal(page.data.rows[1].displayName, originalRows[1].name, 'only the exact test recipient marker may be replaced');
+  assert.equal(page.data.rows[1].displayDetail, originalRows[1].detail, 'normal customer addresses containing 演示 must stay intact');
+  assert.equal(page.data.rows[1].displayTag, originalRows[1].tag, 'real customer address tags must stay visible');
+  assert.deepEqual(rows, originalRows, 'normalizing list labels must not mutate API data');
+
+  page.openEdit({ currentTarget: { dataset: { id: 'saved-test-address' } } });
+  assert.equal(page.data.form.name, originalRows[0].name);
+  assert.equal(page.data.form.detail, originalRows[0].detail);
+  page.data.form.phone = '13800138000';
+  await page.saveAddress();
+  assert.equal(saveCalls.at(-1).name, originalRows[0].name, 'saving an address must preserve the actual recipient');
+  assert.equal(saveCalls.at(-1).detail, originalRows[0].detail, 'saving an address must preserve the actual address');
+  assert(!Object.hasOwn(saveCalls.at(-1), 'displayName'), 'display-only fields must not be submitted');
+  assert(!Object.hasOwn(saveCalls.at(-1), 'displayDetail'));
+
+  const addressTemplate = fs.readFileSync(path.resolve(__dirname, '../miniapp/package-trade/pages/addresses/index.wxml'), 'utf8');
+  assert(addressTemplate.includes('aria-label="选择 {{item.displayName}} 的收货地址"'));
+  assert(addressTemplate.includes('<text>{{item.displayName}}</text>') && addressTemplate.includes('<text>{{item.displayDetail}}</text>'), 'address rows must use presentation labels');
+  assert(addressTemplate.includes('wx:if="{{item.displayTag}}"') && addressTemplate.includes('{{item.displayTag}}'), 'address rows must use the sanitized presentation tag');
+  assert(addressTemplate.includes('value="{{form.name}}"') && addressTemplate.includes('value="{{form.detail}}"'), 'editable values must remain the raw address fields');
+
   const serviceSource = fs.readFileSync(path.resolve(__dirname, '../miniapp/services/address.js'), 'utf8');
   const mainPageSource = fs.readFileSync(path.resolve(__dirname, '../miniapp/pages/index/index.js'), 'utf8');
   const appJson = JSON.parse(fs.readFileSync(path.resolve(__dirname, '../miniapp/app.json'), 'utf8'));

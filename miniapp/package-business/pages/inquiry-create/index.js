@@ -1,17 +1,20 @@
 const { auth, catalog, inquiries } = require('../../../services/index');
+const { authorizeBusinessPage, isCurrentBusinessLoad } = require('../../business-auth');
+const { purchaseRuleText } = require('../../purchase-display');
 const positive = (value, fallback = 1) => Number.isInteger(Number(value)) && Number(value) > 0 ? Number(value) : fallback;
 const firstQuantity = row => Math.ceil(positive(row.minOrderQuantity) / positive(row.orderMultiple)) * positive(row.orderMultiple);
 Page({
   data: { status: 'loading', errorText: '', rows: [], query: '', description: '', submitLocked: false, submitError: '' },
-  onLoad() { return this.load(); },
+  onLoad() {},
+  onShow() { return this.load(); },
   async load() {
-    this.setData({ status: 'loading', errorText: '' });
-    const me = await auth.getMe(); const user = me && me.ok && me.data && me.data.user;
-    if (!user || user.userType !== 'b' || user.businessStatus !== 'approved') return this.setData({ status: 'forbidden', errorText: '新建询价仅对已审核企业采购账户开放' });
+    const access = await authorizeBusinessPage(this, auth, { forbiddenText: '新建询价仅对已审核企业采购账户开放', clear: { rows: [], query: '', description: '', submitLocked: false, submitError: '' }, reset: () => { this._key = ''; } });
+    if (!access) return;
     const result = await catalog.listAllProducts();
+    if (!isCurrentBusinessLoad(this, access)) return;
     if (!result || !result.ok) return this.setData({ status: 'error', errorText: result && result.error && result.error.message || '询价商品加载失败，请重试' });
     const products = result.data && result.data.rows || result.rows || [];
-    const rows = products.flatMap(product => (product.skus || []).map(sku => { const minOrderQuantity = positive(sku.minOrderQuantity); const orderMultiple = positive(sku.orderMultiple); return { id: sku._id, skuId: sku._id, name: product.name || '采购商品', spec: sku.specName || sku.packageUnit || '默认规格', minOrderQuantity, orderMultiple, quantity: firstQuantity({ minOrderQuantity, orderMultiple }), selected: false, visible: true }; }));
+    const rows = products.flatMap(product => (product.skus || []).map(sku => { const minOrderQuantity = positive(sku.minOrderQuantity); const orderMultiple = positive(sku.orderMultiple); return { id: sku._id, skuId: sku._id, name: product.name || '采购商品', spec: sku.specName || sku.packageUnit || '暂无规格信息', minOrderQuantity, orderMultiple, purchaseRuleText: purchaseRuleText(minOrderQuantity, orderMultiple, sku.packageUnit), quantity: firstQuantity({ minOrderQuantity, orderMultiple }), selected: false, visible: true }; }));
     this.setData({ status: rows.length ? 'ready' : 'empty', rows });
   }, retry() { return this.load(); },
   inputSearch(event) { const query = String(event.detail.value || '').trim().toLowerCase(); this.setData({ query, rows: this.data.rows.map(row => ({ ...row, visible: !query || `${row.name} ${row.spec}`.toLowerCase().includes(query) })) }); },

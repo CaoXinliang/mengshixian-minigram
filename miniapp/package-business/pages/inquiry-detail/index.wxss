@@ -1,1 +1,52 @@
-.page{min-height:100vh;background:#f3f7fc;color:#203a53}.topbar{display:flex;align-items:center;gap:20rpx;padding:56rpx 28rpx 24rpx;background:#0a69e9;color:#fff}.topbar>text{font-size:52rpx}.topbar>view{display:flex;flex-direction:column}.topbar>view text:first-child{font-size:32rpx;font-weight:700}.topbar>view text:last-child{color:#dcecff;font-size:20rpx}.card{display:flex;margin:18rpx;padding:24rpx;border-radius:12rpx;background:#fff;flex-direction:column;gap:13rpx}.hero{color:#fff;background:linear-gradient(135deg,#123b61,#0a69e9)}.hero text:first-child{font-size:30rpx;font-weight:700}.hero text:not(:first-child){color:#dcecff;font-size:20rpx}.title,.quote-head text:first-child{font-size:25rpx;font-weight:700}.row,.quote-head{display:flex;align-items:center;justify-content:space-between;gap:14rpx;padding:11rpx 0;border-top:1rpx solid #edf1f4}.row>view{display:flex;min-width:0;flex:1;flex-direction:column;gap:4rpx}.row text{font-size:20rpx}.row>view text:last-child,.quote-head text:last-child{color:#60768c;font-size:18rpx}.quote button{margin:8rpx 0 0;color:#fff;background:#0a69e9}.draft,.warning{padding:13rpx;border-radius:8rpx;color:#a45a1f;background:#fff4de;font-size:20rpx}.error{display:block;margin:18rpx;padding:13rpx;color:#c95042;background:#fff1ef}.result>view{display:flex;gap:10rpx}.result button{flex:1;margin:0;color:#0a69e9;background:#edf5ff;font-size:20rpx}.state{display:flex;align-items:center;justify-content:center;min-height:350rpx;margin:18rpx;background:#fff;flex-direction:column;gap:12rpx;text-align:center}.state text:nth-child(2){color:#60768c;font-size:21rpx}
+.page{min-height:100vh;background:#f3f7fc;color:#203a53}.topbar{display:flex;align-items:center;gap:20rpx;padding:56rpx 28rpx 24rpx;background:#0a69e9;color:#fff}.topbar>text{font-size:52rpx}.topbar>view{display:flex;flex-direction:column}.topbar>view text:first-child{font-size:18px;font-weight:700}.topbar>view text:last-child{color:#dcecff;font-size:13px}.card{display:flex;margin:18rpx;padding:24rpx;border-radius:12rpx;background:#fff;flex-direction:column;gap:13rpx}.hero{color:#fff;background:linear-gradient(135deg,#123b61,#0a69e9)}.hero text:first-child{font-size:18px;font-weight:700}.hero text:not(:first-child){color:#dcecff;font-size:13px}.title,.quote-head text:first-child{font-size:16px;font-weight:700}.row,.quote-head{display:flex;align-items:center;justify-content:space-between;gap:14rpx;padding:11rpx 0;border-top:1rpx solid #edf1f4}.row>view{display:flex;min-width:0;flex:1;flex-direction:column;gap:4rpx}.row text{font-size:13px}.row>view text:last-child,.quote-head text:last-child{color:#60768c;font-size:13px}.quote button{margin:8rpx 0 0;color:#fff;background:#0a69e9}.draft,.warning{padding:13rpx;border-radius:8rpx;color:#a45a1f;background:#fff4de;font-size:13px}.error{display:block;margin:18rpx;padding:13rpx;color:#c95042;background:#fff1ef}.result>view{display:flex;gap:10rpx}.result button{flex:1;margin:0;color:#0a69e9;background:#edf5ff;font-size:13px}.state{display:flex;align-items:center;justify-content:center;min-height:350rpx;margin:18rpx;background:#fff;flex-direction:column;gap:12rpx;text-align:center}.state text:nth-child(2){color:#60768c;font-size:14px}
+
+
+/* 交付态控件层级：触控尺寸使用 px，避免窄屏被 rpx 继续缩小。 */
+button {
+  min-height: 44px;
+  box-sizing: border-box;
+  white-space: nowrap;
+  line-height: 1.25;
+}
+
+.control-pressed {
+  opacity: .72;
+}
+
+.state {
+  min-height: 0;
+  padding-top: 44rpx;
+  padding-bottom: 44rpx;
+}
+
+.state-loading {
+  min-height: 320rpx;
+}
+
+
+input,
+textarea,
+picker {
+  min-height: 44px;
+  box-sizing: border-box;
+  font-size: 14px;
+}
+
+/* 询价商品名、规格和数量均属于正文信息。 */
+.row text,
+.row > view text:last-child {
+  font-size: 14px;
+}
+
+.result > view {
+  min-width: 0;
+}
+
+.result button {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}

@@ -7,3 +7,12 @@
 .tabs button,.sheet-submit{display:flex;align-items:center;justify-content:center;width:100%;min-width:0;height:72rpx;margin-right:0;margin-left:0;padding:0 18rpx;box-sizing:border-box;font-size:23rpx;line-height:1.25}
 .sheet-submit{align-self:stretch;width:auto!important;max-width:none;height:80rpx;color:#fff;background:#0a69e9;font-size:25rpx;font-weight:700}
 .heading button,.row button{min-height:56rpx;line-height:1.25}
+.heading .compact-action{display:flex;align-items:center;justify-content:center;width:auto!important;min-width:44px;height:44px;min-height:44px;margin:0;padding:0 20rpx;box-sizing:border-box;white-space:nowrap}.invoice-email{width:100%;min-width:0;height:72rpx;padding:0 18rpx;box-sizing:border-box;line-height:72rpx}
+.page{font-size:14px}.title,.heading>text{font-size:16px}.row>view:first-child text:last-child,.empty{font-size:13px}.heading button,.row button,.tabs button,.sheet-submit,.state button{min-height:44px;font-size:14px;box-sizing:border-box}.invoice-email,.sheet input{height:44px;min-height:44px;font-size:14px;line-height:44px}
+
+/* 未开放类普通空态保持紧凑，不占据近半屏高度。 */
+.state {
+  min-height: 0;
+  padding-top: 44rpx;
+  padding-bottom: 44rpx;
+}

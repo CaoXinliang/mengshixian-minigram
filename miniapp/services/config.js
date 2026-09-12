@@ -6,5 +6,7 @@ module.exports = {
   cloudEnvId: 'cloud1-d8gp843lt5454ada7',
   timeoutMs: 15000,
   priceFieldsNeverFallback: true,
-  motionEnabled: true
+  motionEnabled: true,
+  // 临时产品开关：甲方若否决 C 端“吃什么”，改为 false 即恢复原“常用清单”入口。
+  customerMealIdeasEnabled: true
 };

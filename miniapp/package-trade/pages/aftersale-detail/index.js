@@ -12,16 +12,16 @@ function stages(status) {
   const processing = ['approved', 'awaiting_manual_refund', 'processing'].includes(status);
   const completed = ['succeeded', 'refunded', 'partially_refunded'].includes(status);
   return [
-    { key: 'submitted', label: '申请已提交', state: 'done', note: '服务端已受理售后申请' },
+    { key: 'submitted', label: '申请已提交', state: 'done', note: '售后申请已受理' },
     { key: 'review', label: rejected ? '审核未通过' : '平台审核', state: rejected ? 'error' : reviewDone ? 'done' : 'current', note: rejected ? '请查看审核说明或联系客服' : reviewDone ? '审核已处理' : '等待平台审核' },
-    { key: 'channel', label: '退款处理', state: failed ? 'error' : completed ? 'done' : processing ? 'current' : '', note: failed ? '退款通道处理失败' : completed ? '退款结果已由服务端确认' : processing ? '等待退款通道确认' : '审核通过后进入退款处理' }
+    { key: 'channel', label: '退款处理', state: failed ? 'error' : completed ? 'done' : processing ? 'current' : '', note: failed ? '退款处理失败，请联系客服' : completed ? '退款处理已完成' : processing ? '正在处理退款，请稍候' : '审核通过后进入退款处理' }
   ];
 }
 
 function viewModel(refund) {
   return {
     id: refund._id || '', refundNo: refund.refundNo || '', orderId: refund.orderId || '', status: refund.status || 'requested',
-    statusText: labels[refund.status] || refund.status || '处理中', amount: money(Number(refund.amountCent || 0) / 100),
+    statusText: labels[refund.status] || '处理中', amount: money(Number(refund.amountCent || 0) / 100),
     reason: refund.description || refund.reason || '', reasonCode: refund.reasonCode || '', reviewNote: refund.reviewNote || '',
     channelStatus: refund.channelStatus || '', manualRefundRequired: refund.manualRefundRequired === true,
     createdAt: timeText(refund.createdAt), updatedAt: timeText(refund.updatedAt), items: Array.isArray(refund.items) ? refund.items : [],

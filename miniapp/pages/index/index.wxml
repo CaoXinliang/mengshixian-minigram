@@ -3,11 +3,9 @@
     <view class="top-safe" style="height: {{navSafeHeight}};"></view>
     <view class="store-row">
       <button class="location-button" bindtap="openUtility" data-type="warehouse">
-        <image src="/assets/icons/location-white.svg" mode="aspectFit" />
         <view class="location-name">{{warehouse.name}}</view>
       </button>
       <view class="brand">
-        <image src="/assets/brand/mengshixian-logo.jpg" mode="aspectFit" />
         <text>梦食鲜</text>
       </view>
       <view class="nav-right-space"></view>
@@ -20,15 +18,14 @@
   </view>
 </template>
 
-<view class="app-shell {{motionReduced ? 'is-motion-reduced' : ''}}">
-  <scroll-view class="page-scroll {{pageMotion ? 'is-page-entering' : ''}}" scroll-y="true" scroll-top="{{pageScrollTop}}" enhanced="true" show-scrollbar="false">
-    <view wx:if="{{page != 'home'}}" class="sub-nav-safe" style="height: {{navContentTop}};"></view>
+<view class="app-shell {{page == 'home' ? 'is-home' : ''}} {{motionReduced ? 'is-motion-reduced' : ''}}" style="{{fixedLayerStyle}}">
+  <scroll-view class="page-scroll {{pageMotion ? 'is-page-entering' : ''}}" style="height: {{pageViewportHeight}}; margin-top: {{navContentTop}};" scroll-y="true" scroll-top="{{pageScrollTop}}" enhanced="true" show-scrollbar="false">
     <block wx:if="{{page == 'home'}}">
-      <swiper wx:if="{{bannerItems.length}}" class="home-hero-swiper" style="height: calc({{navSafeHeight}} + 452rpx);" autoplay="true" interval="4500" circular="true" indicator-dots="{{bannerItems.length > 1}}" indicator-color="rgba(255,255,255,.55)" indicator-active-color="#fff">
+      <swiper wx:if="{{bannerItems.length}}" class="home-hero-swiper" style="height: calc({{navSafeHeight}} + 100px + 310rpx);" autoplay="true" interval="4500" circular="true" indicator-dots="{{bannerItems.length > 1}}" indicator-color="rgba(255,255,255,.55)" indicator-active-color="#fff">
         <swiper-item wx:for="{{bannerItems}}" wx:key="headline">
           <view class="home-hero-slide">
             <template is="homeHeroHeader" data="{{warehouse: warehouse, navSafeHeight: navSafeHeight, query: query}}" />
-            <view class="banner-slide" role="button" bindtap="openBanner" data-index="{{index}}">
+            <view class="banner-slide" aria-role="button" aria-label="查看活动：{{item.headline}}" hover-class="control-pressed" bindtap="openBanner" data-index="{{index}}">
               <image src="{{item.image}}" mode="aspectFill" />
               <view class="banner-shade"></view>
               <view class="banner-copy">
@@ -40,70 +37,68 @@
           </view>
         </swiper-item>
       </swiper>
-      <swiper wx:else class="home-hero-swiper" style="height: calc({{navSafeHeight}} + 452rpx);" autoplay="{{false}}" circular="{{false}}" indicator-dots="{{false}}">
+      <swiper wx:else class="home-hero-swiper" style="height: calc({{navSafeHeight}} + 100px + 310rpx);" autoplay="{{false}}" circular="{{false}}" indicator-dots="{{false}}">
         <swiper-item>
           <view class="home-hero-slide">
             <template is="homeHeroHeader" data="{{warehouse: warehouse, navSafeHeight: navSafeHeight, query: query}}" />
-            <view class="banner-empty" role="button" bindtap="openHomeSection" data-section-type="special">
+            <view class="banner-empty" aria-role="button" aria-label="查看特价专区" hover-class="control-pressed" bindtap="openHomeSection" data-section-type="special">
               <image src="/assets/products/frozen-hero-v2.jpg" mode="aspectFill" />
               <view class="banner-shade"></view>
               <view class="banner-copy">
-                <text>中秋家庭囤货季 · 冷链严选</text>
+                <text>精选冻品 · 冷链严选</text>
                 <text>鲜冻好物\n悦享团圆</text>
-                <text>全场满 99 元免基础配送费</text>
+                <text>配送范围与费用在下单前确认</text>
               </view>
             </view>
           </view>
         </swiper-item>
       </swiper>
       <view class="home-categories">
-<view class="home-category" wx:for="{{homeCategories}}" wx:key="label" bindtap="openCategory" data-category="{{item.label}}">
+<block wx:if="{{homeCategories.length}}">
+<view class="home-category" wx:for="{{homeCategories}}" wx:key="label" aria-role="button" aria-label="查看{{item.label}}分类" hover-class="control-pressed" bindtap="openCategory" data-category="{{item.label}}">
 <image src="{{item.image}}" mode="aspectFill" />
 <text>{{item.label}}</text>
 </view>
-</view>
-<view class="news-strip" role="button" bindtap="openHomeSection" data-section-type="news">
-<text class="news-icon">••</text>
-<text class="news-title">{{activityTitle}}</text>
-<text class="news-copy">{{activityCopy}}</text>
-<text class="news-more">{{activityMoreText}}</text>
+</block>
+<block wx:elif="{{catalogStatus == 'loading'}}">
+<view class="home-category is-skeleton" wx:for="{{homeCategorySkeletons}}" wx:key="id" aria-hidden="true"><view class="home-category-skeleton-face"></view><view class="home-category-skeleton-label"></view></view>
+</block>
+<view wx:else class="home-category-state"><text>分类暂时无法显示</text></view>
 </view>
       <view class="section-heading">
 <view>
 <text>{{specialTitle}}</text>
 <text>{{specialSubtitle}}</text>
 </view>
-<button bindtap="openHomeSection" data-section-type="special">{{specialMoreText}} ›</button>
 </view>
       <view class="deal-list">
-<view class="deal-card" wx:for="{{specials}}" wx:key="id" bindtap="openProduct" data-id="{{item.id}}">
+<view class="deal-card" wx:for="{{specials}}" wx:key="id" aria-role="button" aria-label="查看商品：{{item.name}}" hover-class="control-pressed" bindtap="openProduct" data-id="{{item.id}}">
 <view class="deal-photo">
-<image src="{{item.img}}" mode="aspectFit" />
+<image src="{{item.img || '/assets/products/placeholder.svg'}}" mode="aspectFit" />
 <text wx:if="{{item.tag && item.tag != '待补充'}}">{{item.tag}}</text>
 </view>
 <view class="deal-copy">
 <text>{{item.name}}</text>
 <text>{{item.unit}}</text>
 <view>
-<text class="price-pending {{item.priceTemporary ? 'is-temporary' : 'is-locked'}}">{{item.priceText || priceFallback}}</text>
+<text class="price-pending {{item.priceTemporary ? 'is-temporary' : (!item.priceText ? 'is-locked' : '')}}">{{item.priceText || priceFallback}}</text>
 
-<text class="deal-benefit">{{item.benefit}}</text>
 </view>
 </view>
 <button wx:if="{{item.specs && item.specs.length > 1}}" disabled="{{loggedIn && item.priceUnavailable}}" class="choose-spec quantity-first-trigger" catchtap="openQuantityPicker" data-id="{{item.id}}">{{loggedIn && item.priceUnavailable ? '暂不可售' : '选数量'}}</button>
-<quantity-stepper wx:else quantity="{{item.cartQty || 0}}" disabled="{{loggedIn && item.priceUnavailable}}" compact bind:change="changeQuantity" data-id="{{item.id}}" data-spec="{{item.specLabel || item.unit}}" />
+<quantity-stepper wx:else quantity="{{item.cartQty || 0}}" max="{{item.maximumQuantity || 999}}" disabled="{{loggedIn && item.priceUnavailable}}" compact bind:change="changeQuantity" data-id="{{item.id}}" data-spec="{{item.specLabel || item.unit}}" />
 </view>
 </view>
-      <view class="bottom-space">
+      <view class="tabbar-bottom-space {{cartCount ? 'has-quick-checkout' : ''}}">
 </view>
     </block>
 
     <block wx:elif="{{page == 'category'}}">
       <view class="sub-head">
-<button bindtap="switchTab" data-tab="home">‹</button>
+<button class="back-control" aria-label="返回首页" bindtap="switchTab" data-tab="home">‹</button>
 <view>
 <text>商品分类</text>
-<text>按需挑选，冷链送到家</text>
+<text>冷链送到家</text>
 </view>
 <view class="sub-head-spacer"></view>
 </view>
@@ -114,7 +109,7 @@
 </view>
       <scroll-view class="major-scroll" scroll-x="true" show-scrollbar="false">
 <view class="major-track">
-<view class="major-item {{categoryGroup == item.id ? 'is-active' : ''}}" wx:for="{{categoryGroups}}" wx:key="id" bindtap="selectGroup" data-group="{{item.id}}">
+<view class="major-item {{categoryGroup == item.id ? 'is-active' : ''}}" wx:for="{{categoryGroups}}" wx:key="id" aria-role="button" aria-pressed="{{categoryGroup == item.id}}" aria-label="选择{{item.label}}" hover-class="control-pressed" bindtap="selectGroup" data-group="{{item.id}}">
 <image src="{{item.image}}" mode="aspectFill" />
 <text>{{item.label}}</text>
 </view>
@@ -122,7 +117,7 @@
 </scroll-view>
       <view class="catalog-layout" style="height: {{catalogHeight}};">
 <scroll-view class="catalog-side" scroll-y="true" show-scrollbar="false">
-<view class="side-item {{category == item ? 'is-active' : ''}}" wx:for="{{subCategories}}" wx:key="*this" bindtap="selectCategory" data-category="{{item}}">{{item}}</view>
+<view class="side-item {{category == item ? 'is-active' : ''}}" wx:for="{{subCategories}}" wx:key="*this" aria-role="button" aria-pressed="{{category == item}}" aria-label="选择{{item}}" hover-class="control-pressed" bindtap="selectCategory" data-category="{{item}}">{{item}}</view>
 </scroll-view>
 <scroll-view class="catalog-results" scroll-y="true" scroll-top="{{catalogResultsScrollTop}}" show-scrollbar="false">
 <view class="result-title">
@@ -131,7 +126,6 @@
 </view>
 <view wx:if="{{catalogStatus == 'loading'}}" class="catalog-empty is-loading">
 <text>正在加载商品</text>
-<text>正在同步冷链商品目录，请稍候</text>
 </view>
 <view wx:elif="{{catalogStatus == 'error'}}" class="catalog-empty is-error">
 <text>{{catalogErrorTitle}}</text>
@@ -143,52 +137,135 @@
 <text>换个关键词，或从上方分类继续挑选</text>
 </view>
 <block wx:elif="{{catalogStatus == 'ready'}}">
-<view class="catalog-row" wx:for="{{categoryProducts}}" wx:key="id" bindtap="openProduct" data-id="{{item.id}}">
-<image src="{{item.img}}" mode="aspectFit" />
+<view class="catalog-row" wx:for="{{categoryProducts}}" wx:key="id" aria-role="button" aria-label="查看商品：{{item.name}}" hover-class="control-pressed" bindtap="openProduct" data-id="{{item.id}}">
+<image src="{{item.img || '/assets/products/placeholder.svg'}}" mode="aspectFit" />
 <view>
 <text>{{item.name}}</text>
-<text>{{item.unit}}</text>
-<text wx:if="{{item.specLabel && item.specLabel != item.unit}}">规格：{{item.specLabel}}</text>
-<text class="price-pending {{item.priceTemporary ? 'is-temporary' : 'is-locked'}}">{{item.priceText || priceFallback}}</text>
+<text>{{item.specLabel || item.unit}}</text>
+<text class="price-pending {{item.priceTemporary ? 'is-temporary' : (!item.priceText ? 'is-locked' : '')}}">{{item.priceText || priceFallback}}</text>
 </view>
 <button wx:if="{{item.specs && item.specs.length > 1}}" disabled="{{loggedIn && item.priceUnavailable}}" class="choose-spec quantity-first-trigger" catchtap="openQuantityPicker" data-id="{{item.id}}">{{loggedIn && item.priceUnavailable ? '暂不可售' : '选数量'}}</button>
-<quantity-stepper wx:else quantity="{{item.cartQty || 0}}" disabled="{{loggedIn && item.priceUnavailable}}" compact bind:change="changeQuantity" data-id="{{item.id}}" data-spec="{{item.specLabel || item.unit}}" />
+<quantity-stepper wx:else quantity="{{item.cartQty || 0}}" max="{{item.maximumQuantity || 999}}" disabled="{{loggedIn && item.priceUnavailable}}" compact bind:change="changeQuantity" data-id="{{item.id}}" data-spec="{{item.specLabel || item.unit}}" />
 </view>
 </block>
-<view class="catalog-bottom-space">
+<view class="catalog-bottom-space {{cartCount ? 'has-quick-checkout' : ''}}">
 </view>
 </scroll-view>
 </view>
     </block>
 
+    <block wx:elif="{{page == 'mealIdeas'}}">
+<view class="sub-head meal-head">
+<view>
+<text>今天吃什么</text>
+<text>按场景挑菜，选好食材再加入购物车</text>
+</view>
+<button class="meal-shuffle" bindtap="shuffleMealIdeas">换一批</button>
+</view>
+<view class="meal-intro">
+<view>
+<text>一顿饭，从一道想吃的菜开始</text>
+</view>
+<image src="/assets/icons/meal.svg" mode="aspectFit" />
+</view>
+<view class="meal-scene-filter">
+<text class="meal-scene-label">按用餐场景筛选</text>
+<view class="meal-scene-track">
+<button class="{{mealScene == item ? 'is-active' : ''}}" wx:for="{{mealScenes}}" wx:key="*this" bindtap="selectMealScene" data-scene="{{item}}">{{item}}</button>
+</view>
+</view>
+<view class="meal-grid">
+<view class="meal-card" wx:for="{{mealIdeaRows}}" wx:key="id" aria-role="button" aria-label="查看菜品搭配：{{item.title}}" hover-class="control-pressed" bindtap="openMealIdea" data-id="{{item.id}}">
+<view class="meal-card-cover" style="background: {{item.accent}};">
+<image src="{{item.cover}}" mode="aspectFill" />
+<text>{{item.scene}}</text>
+</view>
+<view class="meal-card-copy">
+<text>{{item.title}}</text>
+<text>{{item.cookMinutes}} 分钟 · {{item.servings}}</text>
+<button catchtap="openMealIdea" data-id="{{item.id}}">查看搭配</button>
+</view>
+</view>
+</view>
+<view class="meal-bottom-space {{cartCount ? 'has-quick-checkout' : ''}}"></view>
+    </block>
+
+    <block wx:elif="{{page == 'mealIdea'}}">
+<view class="detail-head meal-detail-head">
+<button class="back-control" aria-label="返回吃什么" bindtap="backToMealIdeas">‹</button>
+<text>菜品搭配</text>
+<view></view>
+</view>
+<view class="meal-detail-hero">
+<image src="{{selectedMealIdea.cover}}" mode="aspectFill" />
+<view style="background: linear-gradient(90deg, {{selectedMealIdea.accent}}, transparent);"></view>
+<text>{{selectedMealIdea.scene}}</text>
+</view>
+<view class="meal-detail-copy">
+<text>{{selectedMealIdea.title}}</text>
+<text>{{selectedMealIdea.summary}}</text>
+<view>
+<text>约 {{selectedMealIdea.cookMinutes}} 分钟</text>
+<text>{{selectedMealIdea.servings}}</text>
+</view>
+</view>
+<view class="meal-section">
+<text class="meal-section-title">简单做法</text>
+<view class="meal-step" wx:for="{{selectedMealIdea.steps}}" wx:key="*this" wx:for-index="stepIndex">
+<text>{{stepIndex + 1}}</text>
+<text>{{item}}</text>
+</view>
+</view>
+<view class="meal-section">
+<view class="meal-section-heading">
+<text class="meal-section-title">搭配食材</text>
+</view>
+<view wx:if="{{selectedMealIdea.linkedProducts.length}}" class="meal-product-list">
+<view class="meal-product" wx:for="{{selectedMealIdea.linkedProducts}}" wx:key="id" bindtap="openProduct" data-id="{{item.id}}">
+<image src="{{item.img || '/assets/products/placeholder.svg'}}" mode="aspectFit" />
+<view>
+<text>{{item.name}}</text>
+<text>{{item.specLabel || item.unit}}</text>
+</view>
+<button catchtap="openProduct" data-id="{{item.id}}">查看商品</button>
+</view>
+</view>
+<view wx:else class="meal-product-empty">
+<text>相关食材正在补充</text>
+<text>你仍可从分类页按菜名关键词挑选商品</text>
+</view>
+</view>
+<view class="meal-disclaimer">本页为选菜灵感，不构成营养、健康或烹饪安全建议；请按商品包装说明充分加热。</view>
+<view class="meal-bottom-space {{cartCount ? 'has-quick-checkout' : ''}}"></view>
+    </block>
+
     <block wx:elif="{{page == 'frequent'}}">
 <view class="sub-head">
 <view>
-<text>常用清单</text>
-<text>{{frequentHasMultiSku ? '请逐个选择数量和规格，再加入购物车' : '把常买的好物一键加入购物车'}}</text>
+<text>常购清单</text>
+<text>快速补货</text>
 </view>
 </view>
 <view class="frequent-banner">
 <view>
-<text>常买好物</text>
-<text>{{frequentHasMultiSku ? '通过小面板选择数量和规格' : '一键补齐冰箱库存'}}</text>
+<text>高频采购</text>
 </view>
 <button wx:if="{{!frequentHasMultiSku}}" bindtap="addFrequent">全部加购</button>
 <text wx:else class="frequent-spec-hint">逐个选择</text>
 </view>
       <view class="simple-list">
-<view class="simple-row" wx:for="{{frequent}}" wx:key="id" bindtap="openProduct" data-id="{{item.id}}">
-<image src="{{item.img}}" mode="aspectFit" />
+<view class="simple-row" wx:for="{{frequent}}" wx:key="id" aria-role="button" aria-label="查看商品：{{item.name}}" hover-class="control-pressed" bindtap="openProduct" data-id="{{item.id}}">
+<image src="{{item.img || '/assets/products/placeholder.svg'}}" mode="aspectFit" />
 <view>
 <text>{{item.name}}</text>
-<text>{{item.unit}} · {{item.category}}</text>
-<text class="price-pending {{item.priceTemporary ? 'is-temporary' : 'is-locked'}}">{{item.priceText || priceFallback}}</text>
+<text>{{item.specLabel || item.unit}}</text>
+<text class="price-pending {{item.priceTemporary ? 'is-temporary' : (!item.priceText ? 'is-locked' : '')}}">{{item.priceText || priceFallback}}</text>
 </view>
 <button wx:if="{{item.specs && item.specs.length > 1}}" disabled="{{loggedIn && item.priceUnavailable}}" class="choose-spec quantity-first-trigger" catchtap="openQuantityPicker" data-id="{{item.id}}">{{loggedIn && item.priceUnavailable ? '暂不可售' : '选数量'}}</button>
-<quantity-stepper wx:else quantity="{{item.cartQty || 0}}" disabled="{{loggedIn && item.priceUnavailable}}" compact bind:change="changeQuantity" data-id="{{item.id}}" data-spec="{{item.specLabel || item.unit}}" />
+<quantity-stepper wx:else quantity="{{item.cartQty || 0}}" max="{{item.maximumQuantity || 999}}" disabled="{{loggedIn && item.priceUnavailable}}" compact bind:change="changeQuantity" data-id="{{item.id}}" data-spec="{{item.specLabel || item.unit}}" />
 </view>
 </view>
-<view class="bottom-space">
+<view class="tabbar-bottom-space {{cartCount ? 'has-quick-checkout' : ''}}">
 </view>
     </block>
 
@@ -210,19 +287,18 @@
 </view>
 <view class="cart-list">
 <view class="cart-row" wx:for="{{cartItems}}" wx:key="cartKey">
-<checkbox class="cart-check" value="{{item.cartKey}}" checked="{{item.selected !== false}}" bindchange="toggleCartSelection" data-sku-id="{{item.skuId}}" data-id="{{item.id}}" data-spec="{{item.selectedSpec}}" />
-<image src="{{item.img}}" mode="aspectFit" />
+<checkbox class="cart-check" aria-label="{{item.selected !== false ? '取消选择' : '选择'}} {{item.name}}" value="{{item.cartKey}}" checked="{{item.selected !== false}}" bindchange="toggleCartSelection" data-sku-id="{{item.skuId}}" data-id="{{item.id}}" data-spec="{{item.selectedSpec}}" />
+<image src="{{item.img || '/assets/products/placeholder.svg'}}" mode="aspectFit" />
 <view>
 <text>{{item.name}}</text>
 <text class="cart-spec">{{item.selectedSpec}}</text>
 <text wx:if="{{item.purchaseRuleText}}" class="cart-purchase-rule">{{item.purchaseRuleText}}</text>
-<text wx:if="{{item.activeTierText}}" class="cart-tier-status">{{item.activeTierText}}</text>
-<text class="cart-unit-price price-pending {{item.priceTemporary ? 'is-temporary' : 'is-locked'}}">{{item.priceText ? (item.priceText + ' / 件') : priceFallback}}</text>
+<text class="cart-unit-price price-pending {{item.priceTemporary ? 'is-temporary' : (!item.priceText ? 'is-locked' : '')}}">{{item.priceText ? (item.priceText + (item.priceUnitLabel ? ' / ' + item.priceUnitLabel : '')) : priceFallback}}</text>
 </view>
 <view class="stepper">
-<button bindtap="changeQuantity" data-id="{{item.id}}" data-spec="{{item.selectedSpec}}" data-delta="-1">−</button>
+<button aria-label="减少{{item.name}}数量" hover-class="control-pressed" bindtap="changeQuantity" data-id="{{item.id}}" data-spec="{{item.selectedSpec}}" data-delta="-1"><text class="step-face" aria-hidden="true">−</text></button>
 <text>{{item.qty}}</text>
-<button bindtap="changeQuantity" data-id="{{item.id}}" data-spec="{{item.selectedSpec}}" data-delta="1">+</button>
+<button aria-label="增加{{item.name}}数量" hover-class="control-pressed" bindtap="changeQuantity" data-id="{{item.id}}" data-spec="{{item.selectedSpec}}" data-delta="1"><text class="step-face" aria-hidden="true">+</text></button>
 </view>
 </view>
 </view>
@@ -251,7 +327,7 @@
 </view>
 </view>
       <view wx:if="{{!loggedIn}}">
-<view class="guest-card" role="button" bindtap="openLogin">
+<view class="guest-card" aria-role="button" aria-label="微信登录" hover-class="control-pressed" bindtap="openLogin">
 <image src="/assets/icons/user.svg" mode="aspectFit" />
 <view>
 <text>微信登录</text>
@@ -259,11 +335,7 @@
 </view>
 <text>›</text>
 </view>
-<view class="guest-hint">
-<text>登录后可同步账户服务</text>
-<text>订单、收货地址和优惠活动会在登录后展示</text>
-</view>
-<view class="contact-strip" role="button" bindtap="openUtility" data-type="service">
+<view class="contact-strip" aria-role="button" aria-label="联系客服" hover-class="control-pressed" bindtap="openUtility" data-type="service">
 <image src="/assets/icons/headset.svg" mode="aspectFit" />
 <text>联系客服</text>
 <text>咨询 ›</text>
@@ -277,7 +349,7 @@
 <text>{{profileTitle}}</text>
 <text>{{profileSub}}</text>
 </view>
-<button bindtap="openUtility" data-type="account">⚙</button>
+<button aria-label="打开账户设置" bindtap="openUtility" data-type="account">⚙</button>
 </view>
 <view class="profile-stats">
 <button bindtap="openUtility" data-type="coupon">
@@ -294,7 +366,7 @@
 </button>
 </view>
 </view>
-<view class="member-banner" role="button" bindtap="openUtility" data-type="coupon">
+<view class="member-banner" aria-role="button" aria-label="查看限时好价" hover-class="control-pressed" bindtap="openUtility" data-type="coupon">
 <text>限时好价</text>
 <text>家庭囤货更省心</text>
 <text>查看好价 ›</text>
@@ -312,7 +384,7 @@
 <button bindtap="openUtility" data-type="orders" data-filter="待收货">
 <image src="/assets/icons/box.svg" mode="aspectFit" />
 <text>待收货</text>
-<text wx:if="{{pendingReceiptCount}}" class="order-count">{{pendingReceiptCount}}</text>
+<text wx:if="{{pendingReceiptCount}}" class="order-count" aria-label="{{pendingReceiptCount}}笔订单待收货">{{pendingReceiptCount > 99 ? '99+' : pendingReceiptCount}}</text>
 </button>
 <button bindtap="openUtility" data-type="aftersale">
 <image src="/assets/icons/refresh.svg" mode="aspectFit" />
@@ -328,8 +400,8 @@
 <text class="tool-title">常用工具</text>
 <view class="tool-grid">
 <button bindtap="switchTab" data-tab="frequent">
-<image src="/assets/icons/list.svg" mode="aspectFit" />
-<text>常购清单</text>
+<image src="{{shortcutIcon}}" mode="aspectFit" />
+<text>{{shortcutToolLabel}}</text>
 </button>
 <button bindtap="openUtility" data-type="trace">
 <image src="/assets/icons/package.svg" mode="aspectFit" />
@@ -378,63 +450,62 @@
 <text>订单、配送与商品问题可通过微信客服咨询</text>
 <button bindtap="openUtility" data-type="service">进入微信客服 ›</button>
 <view class="mine-legal-links">
-<text data-document="terms" bindtap="openLegalDocument">用户服务协议</text>
-<text data-document="privacy" bindtap="openLegalDocument">隐私政策</text>
+<text data-document="terms" aria-role="link" aria-label="查看用户服务协议" bindtap="openLegalDocument">用户服务协议</text>
+<text data-document="privacy" aria-role="link" aria-label="查看隐私政策" bindtap="openLegalDocument">隐私政策</text>
 </view>
 </view>
 </view>
-<view class="bottom-space">
+<view class="tabbar-bottom-space">
 </view>
     </block>
 
     <block wx:elif="{{page == 'detail'}}">
       <view class="detail-head">
-<button bindtap="backFromDetail">‹</button>
+<button class="back-control" aria-label="返回上一页" bindtap="backFromDetail">‹</button>
 <text>商品详情</text>
-<button bindtap="openUtility" data-type="service">
+<button aria-label="联系客服" bindtap="openUtility" data-type="service">
 <image src="/assets/icons/headset.svg" mode="aspectFit" />
 </button>
 </view>
 <view class="detail-product">
 <view class="detail-image {{detailImageError ? 'is-error' : ''}}">
-<image wx:if="{{!detailImageError}}" src="{{detailImageSrc}}" data-src="{{detailImageSrc}}" mode="aspectFit" bindload="handleDetailImageLoad" binderror="handleDetailImageError" catchtap="previewDetailImage" />
+<image wx:if="{{!detailImageError && detailImagePreviewable}}" src="{{detailImageSrc}}" data-src="{{detailImageSrc}}" mode="aspectFit" aria-role="button" aria-label="预览商品图片" bindload="handleDetailImageLoad" binderror="handleDetailImageError" catchtap="previewDetailImage" />
+<image wx:elif="{{!detailImageError}}" src="{{detailImageSrc}}" mode="aspectFit" />
 <view wx:if="{{detailImageLoading && !detailImageError}}" class="detail-image-state is-loading"><text>图片加载中</text></view>
-<view wx:if="{{detailImageError}}" class="detail-image-state is-error" bindtap="retryDetailImage"><text>图片暂时无法加载</text><text>点击重试</text></view>
+<view wx:if="{{detailImageError}}" class="detail-image-state is-error" aria-role="button" aria-label="重新加载商品图片" hover-class="control-pressed" bindtap="retryDetailImage"><text>图片暂时无法加载</text><text>点击重试</text></view>
 <text wx:if="{{!detailImageError && selectedProduct.tag && selectedProduct.tag != '待补充'}}">{{selectedProduct.tag}}</text>
 </view>
 <text>{{selectedProduct.name}}</text>
 <text>{{selectedSpec}}</text>
 <view>
-<text class="detail-price price-pending {{selectedProduct.priceTemporary ? 'is-temporary' : 'is-locked'}}">{{selectedProduct.priceText || priceFallback}}</text>
+<text class="detail-price price-pending {{selectedProduct.priceTemporary ? 'is-temporary' : (!selectedProduct.priceText ? 'is-locked' : '')}}">{{selectedProduct.priceText || priceFallback}}</text>
 <text wx:if="{{selectedProduct.activeTierText}}" class="detail-tier-status">{{selectedProduct.activeTierText}}</text>
 </view>
 </view>
-<view wx:if="{{detailStatus == 'loading'}}" class="detail-load-state is-loading"><text>正在加载商品详情</text><text>正在核对规格与商品资料</text></view>
-<view wx:elif="{{detailStatus == 'error'}}" class="detail-load-state is-error"><text>商品详情加载失败</text><text>{{detailErrorText}}</text><button bindtap="retryRemoteProductDetail">重新加载</button></view>
+<view wx:if="{{detailStatus == 'error'}}" class="detail-load-state is-error"><text>商品暂时无法加载</text><button bindtap="retryRemoteProductDetail">重新加载</button></view>
 <block wx:if="{{detailStatus == 'ready'}}">
-<view wx:if="{{detailLimited}}" class="detail-load-state is-limited"><text>商品资料待完善</text><text>{{detailErrorText}}</text></view>
+<view wx:if="{{detailLimited}}" class="detail-load-state is-limited"><text>商品暂不可购买</text></view>
 <view wx:if="{{selectedProduct.specs && selectedProduct.specs.length > 1}}" class="detail-panel">
 <view class="detail-quantity detail-quantity-first">
 <text>购买数量</text>
-<quantity-stepper quantity="{{detailDraftQty}}" disabled="{{loggedIn && selectedProduct.priceUnavailable}}" bind:change="changeDetailQuantity" />
+<quantity-stepper quantity="{{detailDraftQty}}" min="{{selectedProduct.minimumQuantity || 1}}" max="{{selectedProduct.maximumQuantity || 999}}" disabled="{{loggedIn && selectedProduct.priceUnavailable}}" bind:change="changeDetailQuantity" />
 </view>
 <view class="detail-line detail-spec-heading">
 <text>选择规格</text>
 <text>{{selectedSpec}}</text>
 </view>
-<view class="spec-flow-hint">已选 {{detailDraftQty}} 件，当前规格：{{selectedSpec}}</view>
 <view class="spec-list">
 <button wx:for="{{selectedProduct.specs}}" wx:key="*this" class="{{selectedSpec == item ? 'is-active' : ''}}" bindtap="selectSpec" data-spec="{{item}}">{{item}}</button>
 </view>
 </view>
 <view wx:else class="detail-panel detail-quantity single-spec">
 <text>购买数量</text>
-<quantity-stepper quantity="{{detailDraftQty}}" disabled="{{loggedIn && selectedProduct.priceUnavailable}}" bind:change="changeDetailQuantity" />
+<quantity-stepper quantity="{{detailDraftQty}}" min="{{selectedProduct.minimumQuantity || 1}}" max="{{selectedProduct.maximumQuantity || 999}}" disabled="{{loggedIn && selectedProduct.priceUnavailable}}" bind:change="changeDetailQuantity" />
 </view>
 <view wx:if="{{selectedProduct.purchaseRuleText || selectedProduct.quantityTierRows.length}}" class="detail-panel purchase-rule-panel">
 <view wx:if="{{selectedProduct.purchaseRuleText}}" class="purchase-rule-heading"><text>购买规则</text><text>{{selectedProduct.purchaseRuleText}}</text></view>
 <view wx:if="{{selectedProduct.quantityTierRows.length}}" class="tier-price-list">
-<view wx:for="{{selectedProduct.quantityTierRows}}" wx:key="minQuantity" wx:for-item="tier" class="tier-price-row {{tier.active ? 'is-active' : ''}}"><text>{{tier.label}}</text><text>{{tier.priceText}} / 件</text></view>
+<view wx:for="{{selectedProduct.quantityTierRows}}" wx:key="minQuantity" wx:for-item="tier" class="tier-price-row {{tier.active ? 'is-active' : ''}}"><text>{{tier.label}}</text><text>{{tier.priceText}}{{selectedProduct.priceUnitLabel ? ' / ' + selectedProduct.priceUnitLabel : ''}}</text></view>
 </view>
 </view>
 <view wx:if="{{selectedGroup}}" class="detail-panel detail-group-panel">
@@ -449,7 +520,7 @@
 <view class="detail-panel">
 <view class="detail-line">
 <text>配送</text>
-<text>{{warehouse.name}} · 冷链配送 · 配送时间以确认订单为准</text>
+<text>{{warehouse.name}} · 配送时间在确认订单页显示</text>
 </view>
 <view class="detail-line">
 <text>服务</text>
@@ -468,27 +539,26 @@
 </view>
 <view class="detail-line">
 <text>温馨提示</text>
-<text>开封后请尽快食用；预计送达时间以订单页面展示为准。</text>
+<text>开封后请尽快食用，并按包装说明充分加热。</text>
 </view>
 </view>
-<view class="detail-panel detail-video-panel">
+<view wx:if="{{detailVideoSrc || detailVideoError}}" class="detail-panel detail-video-panel">
 <text class="detail-title">商品视频</text>
 <video wx:if="{{detailVideoSrc && !detailVideoError}}" class="detail-video" src="{{detailVideoSrc}}" poster="{{detailImageSrc}}" controls show-center-play-btn show-play-btn object-fit="contain" binderror="handleDetailVideoError"></video>
 <view wx:else class="detail-video-empty">
-<text>{{detailVideoError ? '商品视频暂时无法播放' : '该商品暂未上传视频'}}</text>
-<text>如需了解商品，可联系客服咨询</text>
+<text>商品视频暂时无法播放</text>
 </view>
 </view>
 <view wx:if="{{cloudModeEnabled}}" class="detail-panel">
 <text class="detail-title">商品评价</text>
-<text wx:if="{{productReviewsStatus == 'loading'}}" class="detail-note">正在加载已审核评价</text>
+<text wx:if="{{productReviewsStatus == 'loading'}}" class="detail-note">正在加载评价</text>
 <view wx:elif="{{productReviewsStatus == 'error'}}"><text class="detail-note">{{productReviewsError}}</text><button class="link-button" bindtap="retryProductReviews">重新加载</button></view>
-<text wx:elif="{{productReviewsStatus == 'empty'}}" class="detail-note">暂无已审核评价</text>
+<text wx:elif="{{productReviewsStatus == 'empty'}}" class="detail-note">暂无评价</text>
 <block wx:elif="{{productReviewsStatus == 'ready'}}"><view wx:for="{{productReviews}}" wx:key="id" class="detail-line"><text>{{item.rating}} 星 · {{item.createdAt}}</text><text>{{item.content}}{{item.mediaCount ? (' · ' + item.mediaCount + ' 张晒单') : ''}}</text></view></block>
 </view>
 <view class="detail-panel">
 <text class="detail-title">食材保障</text>
-<text class="detail-note">本商品由梦食鲜冷冻仓配发出，出库前完成包装与低温核验。</text>
+<text class="detail-note">本商品由梦食鲜冷冻仓配发出，出库前完成包装检查并保持低温存储。</text>
 <button class="link-button" bindtap="openUtility" data-type="trace">查看商品保障说明</button>
 <button class="link-button" bindtap="favoriteProduct">收藏此商品</button>
 </view>
@@ -499,7 +569,7 @@
 
     <block wx:elif="{{page == 'utility'}}">
       <view class="sub-head">
-<button bindtap="returnUtility">‹</button>
+<button class="back-control" aria-label="返回上一页" bindtap="returnUtility">‹</button>
 <view>
 <text>{{utilityTitle}}</text>
 <text>{{utilitySub}}</text>
@@ -527,29 +597,27 @@
 </view>
 <view class="info-list">
 <text>本周福利</text>
-<text>冷链商品专区 · 商品规格和价格以页面展示为准</text>
-<text>配送范围、时间与费用以确认订单为准</text>
-<text>优惠展示以商品页和确认订单为准</text>
+<text>速冻面点、肉类与海鲜好物</text>
+<text>优惠、配送费与送达时间将在结算前展示</text>
 </view>
 </block>
       <block wx:elif="{{utilityType == 'special'}}">
 <view class="deal-list utility-list">
-<view class="deal-card" wx:for="{{specials}}" wx:key="id" bindtap="openProduct" data-id="{{item.id}}">
+<view class="deal-card" wx:for="{{specials}}" wx:key="id" aria-role="button" aria-label="查看商品：{{item.name}}" hover-class="control-pressed" bindtap="openProduct" data-id="{{item.id}}">
 <view class="deal-photo">
-<image src="{{item.img}}" mode="aspectFit" />
+<image src="{{item.img || '/assets/products/placeholder.svg'}}" mode="aspectFit" />
 <text wx:if="{{item.tag && item.tag != '待补充'}}">{{item.tag}}</text>
 </view>
 <view class="deal-copy">
 <text>{{item.name}}</text>
 <text>{{item.unit}}</text>
 <view>
-<text class="price-pending {{item.priceTemporary ? 'is-temporary' : 'is-locked'}}">{{item.priceText || priceFallback}}</text>
+<text class="price-pending {{item.priceTemporary ? 'is-temporary' : (!item.priceText ? 'is-locked' : '')}}">{{item.priceText || priceFallback}}</text>
 
-<text class="deal-benefit">{{item.benefit}}</text>
 </view>
 </view>
 <button wx:if="{{item.specs && item.specs.length > 1}}" disabled="{{loggedIn && item.priceUnavailable}}" class="choose-spec quantity-first-trigger" catchtap="openQuantityPicker" data-id="{{item.id}}">{{loggedIn && item.priceUnavailable ? '暂不可售' : '选数量'}}</button>
-<quantity-stepper wx:else quantity="{{item.cartQty || 0}}" disabled="{{loggedIn && item.priceUnavailable}}" compact bind:change="changeQuantity" data-id="{{item.id}}" data-spec="{{item.specLabel || item.unit}}" />
+<quantity-stepper wx:else quantity="{{item.cartQty || 0}}" max="{{item.maximumQuantity || 999}}" disabled="{{loggedIn && item.priceUnavailable}}" compact bind:change="changeQuantity" data-id="{{item.id}}" data-spec="{{item.specLabel || item.unit}}" />
 </view>
 </view>
 </block>
@@ -576,7 +644,7 @@
 <button class="{{orderFilter == '售后/退款' ? 'is-active' : ''}}" bindtap="openUtility" data-type="orders" data-filter="售后/退款">售后/退款</button>
 </view>
 <view wx:if="{{orderFilter == '全部订单' && lastOrder}}" class="delivery-status">
-<text>{{lastOrder.status || '订单状态同步中'}}</text>
+<text>{{lastOrder.status || '处理中'}}</text>
 <text>{{lastOrder.deliveryTime}}</text>
 <text>{{lastOrder.trackingHint}}</text>
 <view>
@@ -586,7 +654,7 @@
 <view class="order-card-list" wx:if="{{orderRows.length}}" wx:for="{{orderRows}}" wx:key="id">
 <view>
 <text>梦食鲜 · {{warehouse.name}}</text>
-<text>{{item.status || '待系统确认'}}</text>
+<text>{{item.status || '处理中'}}</text>
 </view>
 <text>{{item.summary}}</text>
 <text>{{item.deliveryTime}}</text>
@@ -603,19 +671,19 @@
 </view>
 </block>
       <block wx:elif="{{utilityType == 'coupon'}}">
-<view class="coupon-card" role="button" bindtap="useCoupon">
+<view class="coupon-card" aria-role="button" aria-label="领取新客满减券" hover-class="control-pressed" bindtap="useCoupon">
 <text>好价</text>
 <view>
 <text>新客尝鲜专区</text>
-<text>商品优惠以商品页和确认订单为准</text>
+<text>结算前可查看本次优惠</text>
 </view>
 <text>去选购</text>
 </view>
-<view class="coupon-card soft" role="button" bindtap="useCoupon">
+<view class="coupon-card soft" aria-role="button" aria-label="领取冷链配送券" hover-class="control-pressed" bindtap="useCoupon">
 <text>冷链</text>
 <view>
 <text>家庭囤货专区</text>
-<text>商品优惠以商品页和确认订单为准</text>
+<text>结算前可查看本次优惠</text>
 </view>
 <text>去选购</text>
 </view>
@@ -631,7 +699,7 @@
 <text>暂未添加收货地址</text>
 <text>下单前请填写收货人、手机号码和详细地址</text>
 </view>
-<view class="wide-outline" role="button" bindtap="showAddressForm">{{address.name ? '编辑收货地址' : '添加收货地址'}}</view>
+<view class="wide-outline" aria-role="button" aria-label="{{address.name ? '编辑收货地址' : '添加收货地址'}}" hover-class="control-pressed" bindtap="showAddressForm">{{address.name ? '编辑收货地址' : '添加收货地址'}}</view>
 </block>
 <form wx:else class="address-form" bindsubmit="saveAddress">
 <label>收货人<input name="name" value="{{address.name}}" />
@@ -645,7 +713,7 @@
 </form>
 </block>
       <block wx:elif="{{utilityType == 'checkout'}}">
-<view class="checkout-address" role="button" bindtap="openUtility" data-type="address">
+<view class="checkout-address" aria-role="button" aria-label="选择收货地址" hover-class="control-pressed" bindtap="openUtility" data-type="address">
 <view>
 <text wx:if="{{address.name}}">{{address.name}} {{address.masked}}</text>
 <text wx:else>请先添加收货地址</text>
@@ -657,19 +725,18 @@
 <view class="checkout-delivery">
 <text>{{warehouse.name}} · 冷链配送</text>
 <text>{{address.name ? warehouse.eta : '填写地址后确认送达时间'}}</text>
-<text wx:if="{{checkoutQuoteState == 'ready'}}">本次配送费 ¥{{freightTotal}}，金额已由服务端核验</text>
-<text wx:else>正在按收货地址核验配送费</text>
+<text wx:if="{{checkoutQuoteState == 'ready'}}">配送费 ¥{{freightTotal}}</text>
+<text wx:else>正在计算配送费</text>
 <text>配送范围：{{warehouseAreaText}}</text>
-<text>具体送达时间以配送员实际配送为准</text>
 </view>
 <view class="checkout-items">
 <view wx:for="{{checkoutItems}}" wx:key="id">
-<image src="{{item.img}}" mode="aspectFit" />
+<image src="{{item.img || '/assets/products/placeholder.svg'}}" mode="aspectFit" />
 <view>
 <text>{{item.name}}</text>
 <text>{{item.selectedSpec}}</text>
 </view>
-<text class="price-pending {{item.priceTemporary ? 'is-temporary' : 'is-locked'}}">{{item.priceText || priceFallback}}</text>
+<text class="price-pending {{item.priceTemporary ? 'is-temporary' : (!item.priceText ? 'is-locked' : '')}}">{{item.priceText || priceFallback}}</text>
 </view>
 </view>
 <view class="checkout-total">
@@ -683,15 +750,14 @@
 </block>
       <block wx:elif="{{utilityType == 'demoPayment'}}">
 <view class="demo-payment-card">
-<text class="demo-payment-badge">支付确认（测试）</text>
-<text>订单已锁定</text>
+<text class="demo-payment-badge">在线支付暂未开放</text>
+<text>订单已创建</text>
 <text>{{demoPaymentOrder.summary}}</text>
 <text wx:if="{{demoPaymentOrder.orderNo}}">订单号 {{demoPaymentOrder.orderNo}}</text>
 <text>应付合计 ¥{{demoPaymentOrder.total}}</text>
 </view>
 <view class="info-card demo-payment-note">
-<text>当前为测试环境</text>
-<text>不会唤起微信支付，不会扣款，也不会产生真实支付凭证。</text>
+<text>请在订单中查看后续处理进度。</text>
 </view>
 </block>
       <block wx:elif="{{utilityType == 'service'}}">
@@ -743,7 +809,7 @@
 <text>在线开票服务将在订单服务接入后开放</text>
 </view>
 <view class="info-card">
-<text>当前版本暂未开放在线开票</text>
+<text>电子发票暂未开放</text>
 <text>后续接入订单服务后，可在已完成订单中申请电子发票。</text>
 </view>
 </block>
@@ -783,20 +849,19 @@
 <text>请在收货时核对包装与商品状态，如有异常及时联系客服。</text>
 </view>
 </block>
-      <block wx:elif="{{utilityType == 'policy'}}">
+<block wx:elif="{{utilityType == 'policy'}}">
 <view class="info-card">
 <text>隐私与协议</text>
-<text>当前通用初始版本已覆盖登录、手机号、地址、订单、企业采购、发票与售后场景。</text>
-<button data-document="terms" bindtap="openLegalDocument">查看用户服务协议</button>
-<button data-document="privacy" bindtap="openLegalDocument">查看隐私政策</button>
+<button data-document="terms" aria-label="查看用户服务协议" bindtap="openLegalDocument">查看用户服务协议</button>
+<button data-document="privacy" aria-label="查看隐私政策" bindtap="openLegalDocument">查看隐私政策</button>
 </view>
 </block>
       <block wx:elif="{{utilityType == 'account'}}">
 <view class="info-card">
 <text>{{profileTitle}}</text>
 <text>{{profileSub}} · {{points}} 积分</text>
-<button wx:if="{{cloudModeEnabled && userType == 'b' && businessStatus == 'approved'}}" bindtap="openProcurementCenter">进入企业采购中心</button>
-<button wx:if="{{cloudModeEnabled && userType != 'b' && businessStatus != 'pending'}}" bindtap="openBusinessApplication">申请商家采购</button>
+<button wx:if="{{cloudModeEnabled && isApprovedBusiness}}" bindtap="openProcurementCenter">进入企业采购中心</button>
+<button wx:if="{{cloudModeEnabled && canApplyBusiness}}" bindtap="openBusinessApplication">申请商家采购</button>
 <text wx:if="{{cloudModeEnabled && businessStatus == 'pending'}}" class="business-pending">企业采购申请审核中</text>
 <button bindtap="logout">退出登录</button>
 </view>
@@ -806,7 +871,7 @@
 <text class="business-title">{{businessStatus == 'rejected' ? '重新提交企业资料' : '商家采购申请'}}</text>
 <text class="business-copy">提交后由运营审核；审核通过后开放商家价格和采购下单。</text>
 <text wx:if="{{businessStatus == 'pending'}}" class="business-pending">企业资料已提交，等待运营审核。</text>
-<form wx:if="{{cloudModeEnabled && businessStatus != 'pending' && userType != 'b'}}" class="business-form" bindsubmit="submitBusinessApplication">
+<form wx:if="{{cloudModeEnabled && canApplyBusiness}}" class="business-form" bindsubmit="submitBusinessApplication">
 <label>企业名称<input name="companyName" maxlength="120" placeholder="营业执照主体名称" /></label>
 <label>统一社会信用代码<input name="unifiedCode" maxlength="30" placeholder="18 位统一社会信用代码" /></label>
 <label>联系人<input name="contactName" maxlength="40" placeholder="企业采购联系人" /></label>
@@ -816,103 +881,101 @@
 <button bindtap="returnUtility">返回</button>
 </view>
 </block>
-      <view class="bottom-space">
+      <view class="tabbar-bottom-space">
 </view>
     </block>
   </scroll-view>
 
-  <view wx:if="{{quantityPickerVisible}}" class="quantity-picker-mask" bindtap="closeQuantityPicker">
+  <view wx:if="{{quantityPickerVisible}}" class="quantity-picker-mask" style="--quantity-picker-safe-top: {{navContentTop}};" bindtap="closeQuantityPicker">
     <view class="quantity-picker" catchtap="preventClose">
       <view class="quantity-picker-head">
         <image src="{{quantityPickerProduct.img}}" mode="aspectFit" />
         <view class="quantity-picker-product-copy">
           <text>{{quantityPickerProduct.name}}</text>
-          <text class="quantity-picker-price price-pending {{quantityPickerProduct.priceTemporary ? 'is-temporary' : 'is-locked'}}">{{quantityPickerProduct.priceText || priceFallback}}</text>
+          <text class="quantity-picker-price price-pending {{quantityPickerProduct.priceTemporary ? 'is-temporary' : (!quantityPickerProduct.priceText ? 'is-locked' : '')}}">{{quantityPickerProduct.priceText || priceFallback}}</text>
         </view>
-        <button aria-label="关闭选数量窗口" bindtap="closeQuantityPicker">×</button>
+        <button class="quantity-picker-close" aria-label="关闭选数量窗口" hover-class="control-pressed" bindtap="closeQuantityPicker"><text class="quantity-picker-close-face" aria-hidden="true">×</text></button>
       </view>
       <view wx:if="{{quantityPickerProduct.specs && quantityPickerProduct.specs.length > 1}}" class="quantity-picker-spec-row">
         <text>规格</text>
-        <scroll-view class="quantity-picker-specs" scroll-x="true" show-scrollbar="false">
+        <view class="quantity-picker-specs">
           <button wx:for="{{quantityPickerProduct.specs}}" wx:key="*this" class="{{quantityPickerSpec == item ? 'is-active' : ''}}" bindtap="selectQuantityPickerSpec" data-spec="{{item}}">{{item}}</button>
-        </scroll-view>
+        </view>
       </view>
       <view class="quantity-picker-row">
         <view class="quantity-picker-quantity-copy"><text>数量</text><text>按需要调整</text></view>
-        <view class="quantity-picker-stepper"><quantity-stepper quantity="{{quantityPickerQty}}" disabled="{{loggedIn && quantityPickerProduct.priceUnavailable}}" bind:change="changeQuantityPicker" /></view>
+        <view class="quantity-picker-stepper"><quantity-stepper quantity="{{quantityPickerQty}}" min="{{quantityPickerProduct.minimumQuantity || 1}}" max="{{quantityPickerProduct.maximumQuantity || 999}}" disabled="{{loggedIn && quantityPickerProduct.priceUnavailable}}" bind:change="changeQuantityPicker" /></view>
       </view>
       <view wx:if="{{quantityPickerProduct.purchaseRuleText || quantityPickerProduct.quantityTierRows.length}}" class="quantity-picker-rules">
         <text wx:if="{{quantityPickerProduct.purchaseRuleText}}">{{quantityPickerProduct.purchaseRuleText}}</text>
         <text wx:if="{{quantityPickerProduct.activeTierText}}" class="quantity-picker-tier-status">{{quantityPickerProduct.activeTierText}}</text>
         <scroll-view wx:if="{{quantityPickerProduct.quantityTierRows.length}}" class="quantity-picker-tiers" scroll-x="true" show-scrollbar="false">
-          <view wx:for="{{quantityPickerProduct.quantityTierRows}}" wx:key="minQuantity" wx:for-item="tier" class="quantity-picker-tier {{tier.active ? 'is-active' : ''}}"><text>{{tier.label}}</text><text>{{tier.priceText}} / 件</text></view>
+          <view wx:for="{{quantityPickerProduct.quantityTierRows}}" wx:key="minQuantity" wx:for-item="tier" class="quantity-picker-tier {{tier.active ? 'is-active' : ''}}"><text>{{tier.label}}</text><text>{{tier.priceText}}{{quantityPickerProduct.priceUnitLabel ? ' / ' + quantityPickerProduct.priceUnitLabel : ''}}</text></view>
         </scroll-view>
       </view>
       <view class="quantity-picker-actions">
         <button class="quantity-picker-detail" bindtap="openDetailFromQuantityPicker">查看详情</button>
-        <button class="quantity-picker-confirm" disabled="{{quantityPickerProduct.purchaseRuleUnavailable || (loggedIn && quantityPickerProduct.priceUnavailable) || quantityPickerQty < 1}}" bindtap="addQuantityPicker">{{loggedIn && quantityPickerProduct.priceUnavailable ? '暂不可售' : (quantityPickerProduct.purchaseRuleUnavailable || quantityPickerQty < 1 ? '规则不可用' : '加入购物车')}}</button>
+        <button class="quantity-picker-confirm" disabled="{{quantityPickerProduct.purchaseRuleUnavailable || (loggedIn && quantityPickerProduct.priceUnavailable) || quantityPickerQty < 1}}" bindtap="addQuantityPicker">{{loggedIn && quantityPickerProduct.priceUnavailable ? '暂不可售' : (quantityPickerProduct.purchaseRuleUnavailable || quantityPickerQty < 1 ? '暂不可购买' : '加入购物车')}}</button>
       </view>
     </view>
   </view>
 
-  <view class="quick-checkout" wx:if="{{cartCount && (page == 'home' || page == 'category' || page == 'frequent')}}">
-<button bindtap="switchTab" data-tab="cart">
+  <view class="quick-checkout" wx:if="{{cartCount && (page == 'home' || page == 'category' || page == 'frequent' || page == 'mealIdeas' || page == 'mealIdea')}}">
+<button aria-label="查看购物车，已选{{selectedCartCount}}件，{{selectedCartPriceReady ? '合计' + selectedCartTotal + '元' : '价格待确认'}}" bindtap="switchTab" data-tab="cart">
 <image src="/assets/icons/cart.svg" mode="aspectFit" />
 <view class="quick-cart-copy">
-<view class="quick-money-line">
-<text>{{selectedCartTotal}}</text>
-<text>{{selectedCartCount}} 件</text>
+<view class="quick-summary-line {{selectedCartPriceReady ? '' : 'is-pending'}} {{selectedCartAmountCompact ? 'is-compact' : ''}}">
+<view class="quick-count-group"><text class="quick-count-label">数量</text><text class="quick-count">{{selectedCartCount > 99 ? '99+' : selectedCartCount}} 件</text></view>
+<text class="quick-total-label">合计</text>
+<text wx:if="{{selectedCartPriceReady}}" class="quick-currency">¥</text>
+<text class="quick-amount">{{selectedCartTotal}}</text>
 </view>
-<text>配送信息待确认</text>
 </view>
 </button>
-<button disabled="{{!selectedCartCount}}" bindtap="goCheckout">去结算</button>
+<button class="quick-checkout-action" disabled="{{!selectedCartCount || !selectedCartPriceReady}}" bindtap="goCheckout">{{selectedCartCount && !selectedCartPriceReady ? '待定价' : '去结算'}}</button>
 </view>
   <view class="detail-actions" wx:if="{{page == 'detail'}}">
-<button disabled="{{detailStatus != 'ready' || selectedProduct.purchaseRuleUnavailable || (loggedIn && selectedProduct.priceUnavailable) || detailDraftQty < 1}}" bindtap="addSelected">{{detailStatus == 'loading' ? '详情加载中' : (detailStatus == 'error' ? '请先重试' : (loggedIn && selectedProduct.priceUnavailable ? '暂不可售' : (selectedProduct.purchaseRuleUnavailable || detailDraftQty < 1 ? '规则不可用' : '加入购物车')))}}</button>
+<button disabled="{{detailStatus != 'ready' || selectedProduct.purchaseRuleUnavailable || (loggedIn && selectedProduct.priceUnavailable) || detailDraftQty < 1}}" bindtap="addSelected">{{detailStatus == 'loading' ? '详情加载中' : (detailStatus == 'error' ? '请先重试' : (loggedIn && selectedProduct.priceUnavailable ? '暂不可售' : (selectedProduct.purchaseRuleUnavailable || detailDraftQty < 1 ? '暂不可购买' : '加入购物车')))}}</button>
 <button disabled="{{detailStatus != 'ready' || selectedProduct.purchaseRuleUnavailable || (loggedIn && selectedProduct.priceUnavailable) || detailDraftQty < 1}}" bindtap="detailCheckout">{{detailStatus == 'ready' && !selectedProduct.purchaseRuleUnavailable && !(loggedIn && selectedProduct.priceUnavailable) && detailDraftQty > 0 ? '立即结算' : '暂不可结算'}}</button>
 </view>
   <view class="checkout-action-bar" wx:if="{{page == 'utility' && utilityType == 'checkout'}}">
-<view class="submit-order {{checkoutQuoteState == 'ready' ? '' : 'is-disabled'}}" role="button" bindtap="placeOrder">{{checkoutQuoteState == 'ready' ? '确认订单并进入支付确认' : '正在核验本次报价'}}</view>
-</view>
-  <view class="checkout-action-bar" wx:if="{{page == 'utility' && utilityType == 'demoPayment'}}">
-<view class="submit-order" role="button" bindtap="finishDemoPayment">完成支付确认</view>
+<view class="submit-order {{checkoutQuoteState == 'ready' ? '' : 'is-disabled'}}" aria-role="button" aria-label="{{checkoutQuoteState == 'ready' ? '提交订单' : '正在计算订单金额'}}" hover-class="control-pressed" bindtap="placeOrder">{{checkoutQuoteState == 'ready' ? '提交订单' : '正在计算订单金额'}}</view>
 </view>
   <view class="tabbar" wx:if="{{page != 'detail' && !(page == 'utility' && (utilityType == 'checkout' || utilityType == 'demoPayment'))}}">
-<button class="{{activeTab == 'home' ? 'is-active' : ''}}" bindtap="switchTab" data-tab="home">
+<button aria-label="首页" aria-pressed="{{activeTab == 'home'}}" hover-class="control-pressed" class="{{activeTab == 'home' ? 'is-active' : ''}}" bindtap="switchTab" data-tab="home">
 <image src="/assets/icons/home.svg" mode="aspectFit" />
 <text>首页</text>
 </button>
-<button class="{{activeTab == 'category' ? 'is-active' : ''}}" bindtap="switchTab" data-tab="category">
+<button aria-label="分类" aria-pressed="{{activeTab == 'category'}}" hover-class="control-pressed" class="{{activeTab == 'category' ? 'is-active' : ''}}" bindtap="switchTab" data-tab="category">
 <image src="/assets/icons/grid.svg" mode="aspectFit" />
 <text>分类</text>
 </button>
-<button class="{{activeTab == 'frequent' ? 'is-active' : ''}}" bindtap="switchTab" data-tab="frequent">
-<image src="/assets/icons/list.svg" mode="aspectFit" />
-<text>常用清单</text>
+<button aria-label="{{shortcutLabel}}" aria-pressed="{{activeTab == 'frequent'}}" hover-class="control-pressed" class="{{activeTab == 'frequent' ? 'is-active' : ''}}" bindtap="switchTab" data-tab="frequent">
+<image src="{{shortcutIcon}}" mode="aspectFit" />
+<text>{{shortcutLabel}}</text>
 </button>
-<button class="{{activeTab == 'cart' ? 'is-active' : ''}}" bindtap="switchTab" data-tab="cart">
+<button aria-label="购物车，共 {{cartCount}} 件商品" aria-pressed="{{activeTab == 'cart'}}" hover-class="control-pressed" class="{{activeTab == 'cart' ? 'is-active' : ''}}" bindtap="switchTab" data-tab="cart">
 <view class="cart-tab-icon {{cartPulse ? 'is-pulsing' : ''}}">
 <image src="/assets/icons/cart.svg" mode="aspectFit" />
-<text wx:if="{{cartCount}}">{{cartCount}}</text>
+<text wx:if="{{cartCount}}">{{cartCount > 99 ? '99+' : cartCount}}</text>
 </view>
 <text>购物车</text>
 </button>
-<button class="{{activeTab == 'mine' ? 'is-active' : ''}}" bindtap="switchTab" data-tab="mine">
+<button aria-label="我的" aria-pressed="{{activeTab == 'mine'}}" hover-class="control-pressed" class="{{activeTab == 'mine' ? 'is-active' : ''}}" bindtap="switchTab" data-tab="mine">
 <image src="/assets/icons/user.svg" mode="aspectFit" />
 <text>我的</text>
 </button>
 </view>
 <view id="login-mask" class="login-mask {{loginVisible ? 'is-visible' : ''}}" wx:if="{{loginMounted}}" bindtap="closeLogin">
 <view class="login-card {{loginVisible ? 'is-visible' : ''}}" catchtap="preventClose">
-<button class="login-close" data-close="true" bindtap="closeLogin">×</button>
+<button class="login-close" aria-label="关闭登录窗口" data-close="true" bindtap="closeLogin">×</button>
 <view class="wechat-mark">微信</view>
 <text>授权手机号登录</text>
 <text>登录后可查看订单、优惠活动和收货地址</text>
 <checkbox-group class="login-agreement" bindchange="changeAgreement">
-<label>
+<label aria-role="checkbox" aria-label="同意用户服务协议和隐私政策" aria-checked="{{agreed}}">
 <checkbox value="agree" checked="{{agreed}}" />
-<view>我已阅读并同意<text class="policy-link" data-document="terms" catchtap="openLegalDocument">《用户服务协议》</text>和<text class="policy-link" data-document="privacy" catchtap="openLegalDocument">《隐私政策》</text></view>
+<view>我已阅读并同意<text class="policy-link" data-document="terms" aria-role="link" aria-label="查看用户服务协议" catchtap="openLegalDocument">《用户服务协议》</text>和<text class="policy-link" data-document="privacy" aria-role="link" aria-label="查看隐私政策" catchtap="openLegalDocument">《隐私政策》</text></view>
 </label>
 </checkbox-group>
 <button open-type="getPhoneNumber" bindgetphonenumber="completeLogin" disabled="{{!agreed}}">微信一键登录</button>

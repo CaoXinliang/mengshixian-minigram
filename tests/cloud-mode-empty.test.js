@@ -47,7 +47,8 @@ assert.strictEqual(initial.groupDeals.length, 0, 'cloudbase mode must not seed d
 assert.strictEqual(initial.warehouses.length, 0, 'cloudbase mode must not seed demo warehouses');
 assert.strictEqual(initial.cartItems.length, 0, 'cloudbase mode must not seed demo cart items');
 assert.strictEqual(initial.cartCount, 0, 'cloudbase mode cart count must start at zero');
-assert.strictEqual(initial.homeCategories.length, 0, 'cloudbase mode must not seed demo home categories');
+  assert.strictEqual(initial.homeCategories.length, 0, 'cloudbase mode must not seed demo home categories');
+  assert.strictEqual(initial.homeCategorySkeletons.length, 10, 'cloudbase loading state must reserve exactly ten non-interactive category positions');
 assert.deepStrictEqual(initial.subCategories, ['全部'], 'cloudbase mode without data must only offer the all filter');
 assert.strictEqual(initial.couponCount, 0, 'cloudbase mode must not seed demo coupon count');
 assert.strictEqual(initial.points, 0, 'cloudbase mode must not seed demo points');
@@ -88,11 +89,14 @@ async function runEmptyLoaders() {
   servicesStub.catalog.listProducts = async () => okRows([{ _id: 'p1', categoryId: 'cat-0', categoryName: '旧分类名称', name: '商品', skus: [] }]);
   servicesStub.catalog.listCategories = async () => ({ ok: false });
   await page.loadRemoteCatalog();
-  assert.strictEqual(page.data.products.length, 55, 'failed category response must not partly replace the last successful complete catalog');
+  assert.strictEqual(page.data.products.length, 1, 'category failure must not hide a successfully returned product catalog');
+  assert.strictEqual(page.data.products[0].category, '旧分类名称', 'category failure must fall back to each product categoryName');
+  assert(page.data.categoryGroups.some(item => item.label === '旧分类名称'), 'derived fallback category must remain selectable');
   servicesStub.catalog.listCategories = okEmptyRows;
   servicesStub.catalog.listProducts = okEmptyRows;
   await page.loadRemoteCatalog();
   assert.strictEqual(page.data.homeCategories.length, 0);
+  assert.strictEqual(page.data.homeCategorySkeletons.length, 10, 'truthful empty data must retain the fixed two-row presentation height');
   assert.deepStrictEqual(page.data.subCategories, ['全部']);
   assert.strictEqual(page.data.products.length, 0);
   let release;

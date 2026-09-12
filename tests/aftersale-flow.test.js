@@ -59,6 +59,14 @@ async function run() {
   assert.equal(detail.data.detail.manualRefundRequired, true);
   assert.equal(detail.data.detail.timeline[2].state, 'current');
 
+  const applyTemplate = fs.readFileSync(path.resolve(__dirname, '../miniapp/package-trade/pages/aftersale-apply/index.wxml'), 'utf8');
+  const subtitleExpression = applyTemplate.match(/<responsive-topbar\b[^>]*subtitle="\{\{([^}]+)\}\}"/);
+  assert(subtitleExpression, 'aftersale subtitle must be conditional rather than leaving an empty order label');
+  const renderSubtitle = new Function('orderNo', `return (${subtitleExpression[1]});`);
+  assert.equal(renderSubtitle(''), '', 'no order number means no subtitle');
+  assert.equal(renderSubtitle(undefined), '', 'the loading or invalid-entry state must not show an orphan order label');
+  assert.equal(renderSubtitle('M001'), '订单 M001', 'a known order number remains visible');
+
   const serviceSource = fs.readFileSync(path.resolve(__dirname, '../miniapp/services/aftersales.js'), 'utf8');
   assert(serviceSource.includes("apiRequest('refunds.media.upload'"));
   assert(serviceSource.includes("apiRequest('refunds.get'"));

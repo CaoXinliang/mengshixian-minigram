@@ -1,7 +1,7 @@
 <view class="page">
-  <responsive-topbar title="隐私与协议" subtitle="阅读当前生效版本" bind:back="back" />
+  <responsive-topbar title="隐私与协议" subtitle="阅读当前版本" bind:back="back" />
 
-  <view class="document-tabs" role="tablist">
+  <view class="document-tabs" aria-role="tablist">
     <button class="{{activeType == 'privacy' ? 'is-active' : ''}}" data-type="privacy" bindtap="switchDocument">隐私政策</button>
     <button class="{{activeType == 'terms' ? 'is-active' : ''}}" data-type="terms" bindtap="switchDocument">用户服务协议</button>
   </view>
@@ -15,8 +15,6 @@
         <text>生效日期 {{document.effectiveDate}}</text>
       </view>
     </view>
-
-    <view class="draft-notice">{{document.notice}}</view>
 
     <view
       wx:for="{{document.sections}}"

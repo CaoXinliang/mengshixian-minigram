@@ -1,20 +1,23 @@
 const { auth, inquiries } = require('../../../services/index');
+const { authorizeBusinessPage, isCurrentBusinessLoad } = require('../../business-auth');
 const money = cents => (Number(cents || 0) / 100).toFixed(2);
 const statusText = { submitted: '等待报价', quoted: '已报价', accepted: '报价已接受', expired: '报价已过期', rejected: '未报价', cancelled: '已取消' };
 function model(data) {
   const inquiry = data.inquiry || data; const quote = data.quote || inquiry.quote || inquiry.latestQuote || (data.quotes || inquiry.quotes || [])[0] || null;
   const expired = Boolean(quote && quote.validUntil && new Date(quote.validUntil).getTime() <= Date.now());
   const draft = Boolean(quote && (quote.temporary === true || quote.source === 'ai_generated'));
-  return { id: inquiry._id, inquiryNo: inquiry.inquiryNo || inquiry._id, status: inquiry.status, statusLabel: expired ? '报价已过期' : statusText[inquiry.status] || inquiry.status, description: inquiry.description || '', items: data.items || inquiry.items || [], quote: quote && { ...quote, id: quote._id || quote.quoteId, version: Number(quote.version || 0), validUntilText: quote.validUntil ? String(quote.validUntil).replace('T', ' ').slice(0, 16) : '--', items: (quote.items || []).map(item => ({ ...item, unitPrice: money(item.unitPriceCent), subtotal: money(item.subtotalCent === undefined ? Number(item.unitPriceCent || 0) * Number(item.quantity || 0) : item.subtotalCent) })), temporary: draft, expired }, canAccept: Boolean(quote && !draft && !expired && inquiry.status === 'quoted') };
+  return { id: inquiry._id, inquiryNo: inquiry.inquiryNo || inquiry._id, status: inquiry.status, statusLabel: expired ? '报价已过期' : statusText[inquiry.status] || '处理中', description: inquiry.description || '', items: data.items || inquiry.items || [], quote: quote && { ...quote, id: quote._id || quote.quoteId, version: Number(quote.version || 0), validUntilText: quote.validUntil ? String(quote.validUntil).replace('T', ' ').slice(0, 16) : '--', items: (quote.items || []).map(item => ({ ...item, unitPrice: money(item.unitPriceCent), subtotal: money(item.subtotalCent === undefined ? Number(item.unitPriceCent || 0) * Number(item.quantity || 0) : item.subtotalCent) })), temporary: draft, expired }, canAccept: Boolean(quote && !draft && !expired && inquiry.status === 'quoted') };
 }
 Page({
   data: { inquiryId: '', status: 'loading', errorText: '', detail: null, acceptLocked: false, acceptError: '', acceptResult: null },
-  onLoad(query = {}) { let id = query.id || ''; try { id = decodeURIComponent(id); } catch (error) { id = ''; } this.setData({ inquiryId: id }); return this.load(); },
+  onLoad(query = {}) { let id = query.id || ''; try { id = decodeURIComponent(id); } catch (error) { id = ''; } this.setData({ inquiryId: id }); },
+  onShow() { return this.load(); },
   async load() {
-    if (!this.data.inquiryId) return this.setData({ status: 'empty', errorText: '询价编号无效' }); this.setData({ status: 'loading', errorText: '' });
-    const me = await auth.getMe(); const user = me && me.ok && me.data && me.data.user;
-    if (!user || user.userType !== 'b' || user.businessStatus !== 'approved') return this.setData({ status: 'forbidden', errorText: '询价详情仅对已审核企业采购账户开放' });
+    const access = await authorizeBusinessPage(this, auth, { forbiddenText: '询价详情仅对已审核企业采购账户开放', clear: { detail: null, acceptLocked: false, acceptError: '', acceptResult: null }, reset: () => { this._acceptKey = ''; } });
+    if (!access) return;
+    if (!this.data.inquiryId) return this.setData({ status: 'empty', errorText: '询价编号无效', detail: null, acceptResult: null });
     const result = await inquiries.get({ id: this.data.inquiryId });
+    if (!isCurrentBusinessLoad(this, access)) return;
     if (!result || !result.ok) return this.setData({ status: result && result.error && result.error.code === 'INQUIRY_NOT_FOUND' ? 'empty' : 'error', errorText: result && result.error && result.error.message || '询价详情加载失败，请重试' });
     this.setData({ status: 'ready', detail: model(result.data || {}), acceptError: '' });
   }, retry() { return this.load(); },

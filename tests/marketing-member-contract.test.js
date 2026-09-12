@@ -17,5 +17,6 @@ assert.match(read('package-trade/pages/aftersale-apply/index.js'), /refundableAm
 const review = read('package-member/pages/reviews/index.js');
 assert.match(review, /reviews\.eligible/); assert.match(review, /reviews\.uploadMedia/); assert.match(review, /orderItemId: item\.id/); assert.match(review, /idempotencyKey/);
 const stored = read('package-member/pages/stored-value/index.wxml');
-assert.match(stored, /不会扣款，也不会增加余额/);
+assert.match(stored, /储值与充值服务暂未开放/, 'stored-value page must state the real production capability status');
+assert.doesNotMatch(stored, /<\s*(?:input|form|button)\b|bind(?:tap|submit)\s*=|充值意向|不会扣款，也不会增加余额/, 'an unavailable stored-value capability must not expose demo copy or operation controls');
 console.log('marketing member contract test: passed');

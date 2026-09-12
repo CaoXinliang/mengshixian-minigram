@@ -5,6 +5,7 @@ const text = value => String(value || '').trim();
 const normalizeAddress = item => ({
   id: item._id,
   name: text(item.name) || '收货人',
+  displayName: text(item.name) === '演示用户' ? '收货人' : text(item.name) || '收货人',
   phoneMasked: text(item.phoneMasked),
   provinceCode: text(item.provinceCode),
   cityCode: text(item.cityCode),
@@ -12,7 +13,9 @@ const normalizeAddress = item => ({
   regionCode: text(item.regionCode),
   regionLabel: [item.provinceCode, item.cityCode, item.districtCode].map(text).filter(Boolean).join(' ') || text(item.regionCode),
   detail: text(item.detail),
+  displayDetail: text(item.detail) === '梦食鲜演示收货点（非客户地址）' ? '已保存的收货地址' : text(item.detail),
   tag: text(item.tag),
+  displayTag: text(item.tag) === '演示' ? '' : text(item.tag),
   isDefault: item.isDefault === true
 });
 

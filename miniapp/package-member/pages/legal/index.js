@@ -25,7 +25,7 @@ Page({
       return wx.showToast({ title: '当前微信版本不支持该功能', icon: 'none' });
     }
     wx.openPrivacyContract({
-      fail: () => wx.showToast({ title: '微信平台指引尚未配置，请以本页为准', icon: 'none' })
+      fail: () => wx.showToast({ title: '微信隐私指引暂时无法打开，请稍后重试', icon: 'none' })
     });
   },
 

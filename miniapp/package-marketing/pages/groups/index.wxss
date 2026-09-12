@@ -1,1 +1,44 @@
-.page{min-height:100vh;background:#f3f7fc;color:#203a53}.topbar{display:flex;align-items:center;gap:20rpx;padding:56rpx 28rpx 24rpx;background:#0a69e9;color:#fff}.topbar>text{font-size:52rpx}.topbar>view{display:flex;flex-direction:column}.topbar>view text:first-child{font-size:32rpx;font-weight:700}.topbar>view text:last-child{color:#dcecff;font-size:20rpx}.tabs{display:grid;margin:18rpx;grid-template-columns:1fr 1fr;gap:8rpx}.tabs button{margin:0;color:#0a69e9;background:#fff}.tabs .active{color:#fff;background:#0a69e9}.list{padding:0 18rpx}.card{display:flex;margin-bottom:14rpx;padding:22rpx;border-radius:12rpx;background:#fff;flex-direction:column;gap:8rpx}.card text:first-child{font-size:25rpx;font-weight:700}.card text:not(:first-child){color:#60768c;font-size:21rpx}.card .warn{color:#b55245}.state{display:flex;align-items:center;justify-content:center;min-height:320rpx;padding:30rpx;border-radius:12rpx;background:#fff;flex-direction:column;gap:12rpx;text-align:center}.state.error{margin:18rpx;background:#fff7f5}
+.page{min-height:100vh;background:#f3f7fc;color:#203a53}.topbar{display:flex;align-items:center;gap:20rpx;padding:56rpx 28rpx 24rpx;background:#0a69e9;color:#fff}.topbar>text{font-size:52rpx}.topbar>view{display:flex;flex-direction:column}.topbar>view text:first-child{font-size:18px;font-weight:700}.topbar>view text:last-child{color:#dcecff;font-size:13px}.tabs{display:grid;margin:18rpx;grid-template-columns:1fr 1fr;gap:8rpx}.tabs button{margin:0;color:#0a69e9;background:#fff}.tabs .active{color:#fff;background:#0a69e9}.list{padding:0 18rpx}.card{display:flex;margin-bottom:14rpx;padding:22rpx;border-radius:12rpx;background:#fff;flex-direction:column;gap:8rpx}.card text:first-child{font-size:16px;font-weight:700}.card text:not(:first-child){color:#60768c;font-size:14px}.card .warn{color:#b55245}.state{display:flex;align-items:center;justify-content:center;min-height:320rpx;padding:30rpx;border-radius:12rpx;background:#fff;flex-direction:column;gap:12rpx;text-align:center}.state.error{margin:18rpx;background:#fff7f5}
+
+
+/* 交付态控件层级：触控尺寸使用 px，避免窄屏被 rpx 继续缩小。 */
+button {
+  min-height: 44px;
+  box-sizing: border-box;
+  white-space: nowrap;
+  line-height: 1.25;
+}
+
+.control-pressed {
+  opacity: .72;
+}
+
+.state {
+  min-height: 0;
+  padding-top: 44rpx;
+  padding-bottom: 44rpx;
+}
+
+.state-loading {
+  min-height: 320rpx;
+}
+
+
+input,
+textarea,
+picker {
+  min-height: 44px;
+  box-sizing: border-box;
+  font-size: 14px;
+}
+
+.tabs {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+}
+
+.tabs button {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+}

@@ -1,10 +1,10 @@
 <view class="page">
   <responsive-topbar title="我的订单" bind:back="back"/>
   <view class="filters"><view class="filter-track"><button wx:for="{{filters}}" wx:key="*this" class="{{filter == item ? 'active' : ''}}" bindtap="switchFilter" data-filter="{{item}}">{{item}}</button></view></view>
-  <view wx:if="{{loading}}" class="empty">正在加载订单…</view>
+  <view wx:if="{{loading}}" class="empty state-loading">正在加载订单…</view>
   <view wx:elif="{{error}}" class="empty"><text>订单加载失败</text><text>{{errorText}}</text><button bindtap="retry">重新加载</button></view>
   <block wx:elif="{{rows.length}}">
-    <view wx:for="{{rows}}" wx:key="id" class="order" bindtap="openDetail" data-id="{{item.id}}">
+    <view wx:for="{{rows}}" wx:key="id" class="order" bindtap="openDetail" data-id="{{item.id}}" aria-role="button" aria-label="查看订单 {{item.summary}}" hover-class="control-pressed">
       <view><text>梦食鲜</text><text>{{item.status}}</text></view>
       <text class="order-number">{{item.summary}}</text><text wx:if="{{item.itemSummary}}" class="order-items">{{item.itemSummary}}</text><text class="order-delivery">{{item.deliveryTime}}</text><text class="order-total">{{item.amountLabel}} ¥{{item.total}}</text>
       <view class="actions">

@@ -1,7 +1,27 @@
 const { config: serviceConfig, auth: authApi, catalog: catalogApi, content: contentApi, address: addressApi, cart: cartApi, delivery: deliveryApi, checkout: checkoutApi, orders: ordersApi, refunds: refundsApi, groups: groupsApi, favorites: favoritesApi, reviews: reviewsApi } = require('../../services/index');
 const { chunkUnique, fetchRemotePages } = require('../../services/collection');
+const MEAL_IDEAS = require('../../config/meal-ideas');
+const LAYOUT = require('../../config/layout');
 
 const LOGIN_AGREED_STORAGE_KEY = 'mengshixian_login_agreed';
+function remotePriceScope(page, user = page._remoteUser) {
+  const identity = user || {};
+  return JSON.stringify([
+    Number(page._identityGeneration || 0),
+    identity._id || identity.id || identity.userId || identity.openid || '',
+    identity.userType || '', identity.businessStatus || '', identity.organizationId || '',
+    identity.status || '', identity.priceLevel || ''
+  ]);
+}
+function clearRemotePriceCache(page) {
+  page._remotePriceBySku = {};
+  page._remotePriceScope = '';
+  page._remotePricesRequest = null;
+  // 旧版本价格缓存没有身份归属，不能在任何后续会话中继续使用。
+  if (typeof wx !== 'undefined' && typeof wx.removeStorageSync === 'function') {
+    try { wx.removeStorageSync('mx_price_cache'); } catch (_) {}
+  }
+}
 const ORDER_STATUS_LABELS = { pending_payment: '待付款', pending_confirmation: '待系统确认', picking: '备货中', shipping: '配送中', delivered: '待收货', completed: '已完成', cancelled: '已取消' };
 const REFUND_STATUS_LABELS = { requested: '售后申请中', processing: '退款处理中', succeeded: '已退款', refunded: '已退款', rejected: '售后已驳回', failed: '退款失败' };
 const ORDER_EMPTY_TITLE = { '全部订单': '暂无订单记录', '待付款': '暂无待付款订单', '待收货': '暂无待收货订单', '售后/退款': '暂无售后申请' };
@@ -224,6 +244,7 @@ PRODUCTS.forEach(product => {
     product.specLabel = spec;
     if (spec) product.specs = [spec];
   }
+  product.priceUnitLabel = displayUnitLabel(product.unit);
   product.benefit = '\u51b7\u94fe\u914d\u9001 \u00b7 \u5bb6\u5ead\u56e4\u8d27';
   if (!product.img) product.img = '/assets/products/placeholder.svg';
 });
@@ -252,16 +273,20 @@ const CATEGORY_GROUPS = CATEGORY_PRESENTATION.map((item) => ({ ...item, categori
 // 不随接口返回数量扩张，避免首页后续模块的垂直位置发生跳变。
 const HOME_CATEGORY_LIMIT = 10;
 const HOME_CATEGORIES = CATEGORY_PRESENTATION.slice(0, HOME_CATEGORY_LIMIT).map(({ label, image }) => ({ label, image }));
+const HOME_CATEGORY_SKELETONS = Array.from({ length: HOME_CATEGORY_LIMIT }, (_, index) => ({ id: `home-category-skeleton-${index}` }));
 function fixedHomeCategories(categories) {
   const incoming = (Array.isArray(categories) ? categories : [])
     .filter(item => item && item.label && item.image)
     .slice(0, HOME_CATEGORY_LIMIT);
-  return incoming;
+  if (!incoming.length) return [];
+  const labels = new Set(incoming.map((item) => item.label));
+  const fallback = HOME_CATEGORIES.filter((item) => !labels.has(item.label));
+  return incoming.concat(fallback).slice(0, HOME_CATEGORY_LIMIT);
 }
 const BANNER_ITEMS = [
-  { image: '/assets/products/frozen-hero-v2.jpg', eyebrow: '中秋家庭囤货季', headline: '鲜冻好物\n悦享团圆', subline: '全场满 99 元免基础配送费' },
-  { image: '/assets/products/frozen-shrimp-pack-v2.jpg', eyebrow: '冷链海鲜专场', headline: '海鲜囤货\n鲜享到家', subline: '虾仁、鱼段等冷冻海鲜低至 8 折' },
-  { image: '/assets/products/frozen-beef-pack-v2.jpg', eyebrow: '家庭火锅季', headline: '火锅肉卷\n一站备齐', subline: '精选牛羊肉卷，冷链直达餐桌' }
+  { image: '/assets/products/frozen-hero-v2.jpg', eyebrow: '精选冻品 · 冷链严选', headline: '鲜冻好物\n悦享团圆', subline: '配送范围与费用在下单前确认' },
+  { image: '/assets/products/frozen-shrimp-pack-v2.jpg', eyebrow: '冷链海鲜精选', headline: '海鲜囤货\n鲜享到家', subline: '虾仁、鱼段等冷冻海鲜分类选购' },
+  { image: '/assets/products/frozen-beef-pack-v2.jpg', eyebrow: '家庭火锅食材', headline: '火锅肉卷\n一站备齐', subline: '精选牛羊肉卷，冷链配送到家' }
 ];
 const GROUP_DEALS = [
   { productId: 1, size: 5, joined: 3, ends: '\u660e\u5929 18:00 \u622a\u6b62' },
@@ -276,7 +301,7 @@ const WAREHOUSE_AREAS = {
 const WAREHOUSES = [{ name: '赣州仓', eta: '预计今天 18:30 前送达' }, { name: '南康仓', eta: '预计今天 19:30 前送达' }];
 const UTILITY = {
   group: ['拼团专场', '人满自动成团，拼团价不区分顾客和商家'],
-  warehouse: ['选择配送仓', '配送范围和到货时间以所选仓为准'], activity: ['活动头条', '商品优惠以商品页和确认订单为准'], special: ['特价专区', '家庭冻品优惠以页面展示为准'], orders: ['我的订单', '订单信息将在这里展示'], coupon: ['优惠活动', '商品优惠以商品页和确认订单为准'], address: ['收货地址', '管理配送地址'], checkout: ['确认订单', '请确认收货信息与预计送达时间'], demoPayment: ['支付确认（测试）', '测试环境不会唤起微信支付或发生扣款'], service: ['微信客服', '订单和配送问题可通过微信客服咨询'], favorites: ['我的收藏', '已收藏的食材会在这里展示'], trace: ['商品保障说明', '商品生产信息和批次号以实际包装为准'], aftersale: ['售后服务', '售后规则以订单和店铺说明为准'], invoice: ['开票说明', '在线开票服务待订单服务接入后开放'], points: ['积分中心', '每日签到可获得积分'], review: ['评价晒单', '订单完成后可查看可评价商品'], coldchain: ['冷链服务说明', '配送范围和服务规则以所选仓为准'], about: ['关于梦食鲜', '让家庭囤货更安心'], faq: ['常见问题', '下单与配送常见问题'], policy: ['服务条款', '购物服务与隐私说明'], account: ['账户信息', '会员等级与账户设置'], businessApplication: ['商家采购申请', '提交企业资料后由运营审核']
+  warehouse: ['选择配送仓', '查看配送范围与预计到货时间'], activity: ['本周好物', '查看近期上新与优惠'], special: ['特价专区', '家庭囤货好价'], orders: ['我的订单', '查看订单与配送进度'], coupon: ['优惠活动', '查看可用优惠'], address: ['收货地址', '管理配送地址'], checkout: ['确认订单', '确认收货信息与送达时间'], demoPayment: ['支付服务', '在线支付暂未开放'], service: ['微信客服', '咨询商品、订单与配送问题'], favorites: ['我的收藏', '收藏的食材'], trace: ['商品保障说明', '查看商品与冷链保障'], aftersale: ['售后服务', '申请售后并查看进度'], invoice: ['开票说明', '查看电子发票服务'], points: ['积分中心', '签到与积分明细'], review: ['评价晒单', '评价已完成订单'], coldchain: ['冷链服务说明', '查看配送与收货提醒'], about: ['关于梦食鲜', '让家庭囤货更安心'], faq: ['常见问题', '下单与配送帮助'], policy: ['服务条款', '购物服务与隐私说明'], account: ['账户信息', '会员与账户设置'], businessApplication: ['商家采购申请', '提交企业资料后由运营审核']
 };
 
 const money = value => {
@@ -285,6 +310,20 @@ const money = value => {
   return number.toFixed(2);
 };
 const moneyCent = value => (Number(value || 0) / 100).toFixed(2);
+function displayUnitLabel(value) {
+  const text = String(value || '').trim();
+  if (!text) return '';
+  if (text === '称重') return '称重';
+  const outerPackage = text.match(/\/\s*(?:\d+(?:\.\d+)?\s*)?(件|箱|包|袋|盒|桶|盘|盅|卷|只|条|根|份)$/);
+  if (outerPackage) return outerPackage[1];
+  const packageMatch = text.match(/^(?:\d+(?:\.\d+)?\s*)?(件|箱|包|袋|盒|桶|盘|盅|卷|只|条|根|份)(?:[/*×xX]|$)/);
+  if (packageMatch) return packageMatch[1];
+  return /^(?:\d+(?:\.\d+)?\s*)?(?:kg|g|ml|L|克|千克|公斤|斤|毫升|升)$/i.test(text) ? text : '';
+}
+const quantityLabel = (value, item) => {
+  const unit = displayUnitLabel(item && (item.packageUnit || item.unit));
+  return unit ? `${value} ${unit}` : `数量 ${value}`;
+};
 const currentLayoutInfo = (size = {}) => {
   const windowInfo = typeof wx.getWindowInfo === 'function' ? wx.getWindowInfo() : {};
   const deviceInfo = typeof wx.getDeviceInfo === 'function' ? wx.getDeviceInfo() : {};
@@ -315,16 +354,18 @@ function pricingForQuantity(price, sku, quantity = 1) {
   const amountCent = activeTier ? activeTier.amountCent : (hasPriceAmount(price) ? Number(price.amountCent) : null);
   const minOrderQuantity = positiveInteger(price && price.minOrderQuantity, positiveInteger(sku && sku.minOrderQuantity, 1));
   const orderMultiple = positiveInteger(price && price.orderMultiple, positiveInteger(sku && sku.orderMultiple, 1));
-  const purchaseRuleUnavailable = Math.floor(999 / orderMultiple) * orderMultiple < minOrderQuantity;
-  const purchaseRuleText = [minOrderQuantity > 1 ? `${minOrderQuantity} 件起购` : '', orderMultiple > 1 ? `按 ${orderMultiple} 件倍数购买` : ''].filter(Boolean).join(' · ');
+  const maximumQuantity = Math.floor(999 / orderMultiple) * orderMultiple;
+  const minimumQuantity = Math.ceil(minOrderQuantity / orderMultiple) * orderMultiple;
+  const purchaseRuleUnavailable = maximumQuantity < minOrderQuantity;
+  const purchaseRuleText = [minOrderQuantity > 1 ? `${quantityLabel(minOrderQuantity, sku)}起购` : '', orderMultiple > 1 ? `按 ${quantityLabel(orderMultiple, sku)}倍数购买` : ''].filter(Boolean).join(' · ');
   const quantityTierRows = quantityTiers.map((item) => ({
     ...item,
-    label: item.maxQuantity === null ? `${item.minQuantity} 件及以上` : `${item.minQuantity}-${item.maxQuantity} 件`,
+    label: item.maxQuantity === null ? `${quantityLabel(item.minQuantity, sku)}及以上` : quantityLabel(`${item.minQuantity}-${item.maxQuantity}`, sku),
     priceText: `¥${moneyCent(item.amountCent)}`,
     active: activeTier === item
   }));
   const nextTier = quantityTiers.find((item) => item.minQuantity > qty);
-  const activeTierText = activeTier ? `当前已享 ${activeTier.minQuantity} 件阶梯价` : nextTier ? `满 ${nextTier.minQuantity} 件可享 ¥${moneyCent(nextTier.amountCent)}` : '';
+  const activeTierText = activeTier ? `当前已享 ${quantityLabel(activeTier.minQuantity, sku)}阶梯价` : nextTier ? `满 ${quantityLabel(nextTier.minQuantity, sku)}可享 ¥${moneyCent(nextTier.amountCent)}` : '';
   return {
     price: amountCent === null ? undefined : amountCent / 100,
     priceText: amountCent === null ? '' : `¥${moneyCent(amountCent)}`,
@@ -334,6 +375,8 @@ function pricingForQuantity(price, sku, quantity = 1) {
     activeTierText,
     minOrderQuantity,
     orderMultiple,
+    minimumQuantity,
+    maximumQuantity,
     purchaseRuleUnavailable,
     purchaseRuleText
   };
@@ -351,9 +394,9 @@ function quantityIssue(item, quantity) {
   const orderMultiple = positiveInteger(item && item.orderMultiple, 1);
   if (Math.floor(999 / orderMultiple) * orderMultiple < minOrderQuantity) return '当前规格购买规则不可用';
   if (!Number.isInteger(qty) || qty < 1) return '购买数量必须是整数';
-  if (qty > 999) return '单个规格最多购买 999 件';
-  if (!Number.isInteger(qty) || qty < minOrderQuantity) return `该规格 ${minOrderQuantity} 件起购`;
-  if (qty % orderMultiple !== 0) return `该规格须按 ${orderMultiple} 件倍数购买`;
+  if (qty > 999) return `单个规格最多购买 ${quantityLabel(999, item)}`;
+  if (!Number.isInteger(qty) || qty < minOrderQuantity) return `该规格 ${quantityLabel(minOrderQuantity, item)}起购`;
+  if (qty % orderMultiple !== 0) return `该规格须按 ${quantityLabel(orderMultiple, item)}倍数购买`;
   return '';
 }
 function steppedQuantity(item, current, direction, allowRemove = false) {
@@ -379,7 +422,8 @@ function cartQuantityFor(product, cartItems, selectedSpec) {
 function productWithPrice(product, priceBySku, selectedSpec, quantity = 1) {
   const sku = (product.skuOptions || []).find((item) => item.label === selectedSpec) || (product.skuOptions || [])[0] || null;
   const price = sku && priceBySku && priceBySku[sku.id];
-  return { ...product, specLabel: sku && sku.label || product.specLabel, unit: sku && sku.packageUnit || product.unit, selectedSkuId: sku && sku.id || product.selectedSkuId, ...pricingForQuantity(price, sku, quantity), priceUnavailable: IS_CLOUD_MODE && !hasPriceAmount(price) };
+  const unit = sku && sku.packageUnit || product.unit;
+  return { ...product, specLabel: sku && sku.label || product.specLabel, unit, priceUnitLabel: displayUnitLabel(unit), selectedSkuId: sku && sku.id || product.selectedSkuId, ...pricingForQuantity(price, sku, quantity), priceUnavailable: IS_CLOUD_MODE && !hasPriceAmount(price) };
 }
 function orderTracking(status) {
   const currentIndex = ORDER_TRACKING_STEPS.findIndex((item) => item.key === status);
@@ -395,7 +439,7 @@ function toOrderRow(order, options = {}) {
     totalAmountCent: Number(order.totalAmountCent || 0),
     amountLabel: order.paymentMethod === 'demo' ? '订单金额' : '实付',
     deliveryTime: options.deliveryTime || order.deliverySlotSnapshot && order.deliverySlotSnapshot.name || '预计送达时间以订单为准',
-    status: REFUND_STATUS_LABELS[order.refundStatus] || ORDER_STATUS_LABELS[order.status] || order.status,
+    status: REFUND_STATUS_LABELS[order.refundStatus] || ORDER_STATUS_LABELS[order.status] || '处理中',
     rawStatus: order.status,
     paymentStatus: order.paymentStatus || '',
     refundStatus: order.refundStatus || '',
@@ -415,26 +459,111 @@ function orderEmptyCopy(filter, field) {
   const source = field === 'title' ? ORDER_EMPTY_TITLE : ORDER_EMPTY_HINT;
   return source[filter] || source['全部订单'] || '';
 }
+const hasCompleteCartPricing = cartItems => Array.isArray(cartItems) && cartItems.length > 0 && cartItems.every((item) => Number.isFinite(item.price) && item.price > 0 && Number(item.qty || 0) > 0);
 const calculateTotals = cartItems => {
-  const goodsTotal = cartItems.reduce((sum, item) => sum + (Number.isFinite(item.price) ? item.price * item.qty : 0), 0);
-  if (!goodsTotal) return { cartTotal: '\u4ef7\u683c\u5f85\u8865\u5145', freightTotal: '\u5f85\u5546\u54c1\u5b9a\u4ef7', orderTotal: '\u4ef7\u683c\u5f85\u8865\u5145' };
+  if (!hasCompleteCartPricing(cartItems)) return { cartTotal: '\u4ef7\u683c\u5f85\u8865\u5145', freightTotal: '\u5f85\u5546\u54c1\u5b9a\u4ef7', orderTotal: '\u4ef7\u683c\u5f85\u8865\u5145' };
+  const goodsTotal = cartItems.reduce((sum, item) => sum + item.price * Number(item.qty || 0), 0);
   const freight = goodsTotal >= FREIGHT_RULE.free ? 0 : FREIGHT_RULE.fee;
   return { cartTotal: money(goodsTotal), freightTotal: money(freight), orderTotal: money(goodsTotal + freight) };
 };
 const selectedCartItems = cartItems => (cartItems || []).filter(item => item.selected !== false);
 const selectedCartSummary = cartItems => {
   const selected = selectedCartItems(cartItems);
-  if (!selected.length) return { selectedCartCount: 0, selectedCartTotal: money(0) };
-  return { selectedCartCount: selected.reduce((sum, item) => sum + Number(item.qty || 0), 0), selectedCartTotal: calculateTotals(selected).cartTotal };
+  if (!selected.length) return { selectedCartCount: 0, selectedCartTotal: money(0), selectedCartPriceReady: false, selectedCartAmountCompact: false };
+  const selectedCartTotal = calculateTotals(selected).cartTotal;
+  return {
+    selectedCartCount: selected.reduce((sum, item) => sum + Number(item.qty || 0), 0),
+    selectedCartTotal,
+    selectedCartPriceReady: hasCompleteCartPricing(selected),
+    selectedCartAmountCompact: selectedCartTotal.length > 9
+  };
 };
 const hasMultiSku = items => (items || []).some((item) => item && Array.isArray(item.specs) && item.specs.length > 1);
 const customerWarehouseName = name => String(name || '配送仓').replace(/演示/g, '').replace(/\s{2,}/g, ' ').trim() || '配送仓';
 const customerAddressText = (value, fallback) => String(value || '').replace(/梦食鲜演示收货点（非客户地址）/g, '已保存的收货地址').replace(/演示用户/g, '收货人').replace(/演示/g, '').trim() || fallback;
 const IS_CLOUD_MODE = serviceConfig.provider === 'cloudbase';
+const CUSTOMER_MEAL_IDEAS_ENABLED = serviceConfig.customerMealIdeasEnabled !== false;
 const EMPTY_ADDRESS = { id: '', name: '', phone: '', masked: '', detail: '', regionCode: '' };
 const EMPTY_WAREHOUSE = { name: '', eta: '' };
+const MEAL_SCENES = ['全部', '快手家常', '家庭聚餐', '火锅暖锅', '宴客硬菜', '早餐夜宵'];
+const MEAL_BATCH_SIZE = 4;
+function isApprovedBusiness(user) {
+  return Boolean(user && user.userType === 'b' && user.businessStatus === 'approved' && user.organizationId && user.status !== 'disabled');
+}
+function shortcutProfile(user) {
+  const approvedBusiness = isApprovedBusiness(user);
+  const customerMealIdeas = CUSTOMER_MEAL_IDEAS_ENABLED && !approvedBusiness;
+  const shortcutLabel = customerMealIdeas ? '吃什么' : (approvedBusiness ? '常购清单' : '常用清单');
+  return {
+    isApprovedBusiness: approvedBusiness,
+    shortcutLabel,
+    shortcutToolLabel: shortcutLabel,
+    shortcutIcon: customerMealIdeas ? '/assets/icons/meal.svg' : '/assets/icons/list.svg'
+  };
+}
+function identityState(user) {
+  const profile = identityProfile(user);
+  const approvedBusiness = isApprovedBusiness(user);
+  return {
+    userType: user && user.userType || '',
+    businessStatus: user && user.businessStatus || '',
+    organizationId: user && user.organizationId || '',
+    userStatus: user && user.status || '',
+    canApplyBusiness: Boolean(user && !approvedBusiness && user.businessStatus !== 'pending' && user.status !== 'disabled'),
+    profileTitle: profile.profileTitle,
+    profileSub: profile.profileSub,
+    ...shortcutProfile(user)
+  };
+}
+function safeReturnPage(page, user) {
+  return isApprovedBusiness(user) && ['mealIdeas', 'mealIdea', 'frequent'].includes(page) ? 'home' : page;
+}
+function remoteSessionExpired(result) {
+  const code = result && result.error && result.error.code;
+  return ['AUTH_ACCOUNT_DISABLED', 'AUTH_SESSION_EXPIRED', 'AUTH_EXPIRED', 'AUTH_REQUIRED', 'UNAUTHORIZED'].includes(code);
+}
+function mealProductScore(product, idea) {
+  const name = String(product && product.name || '').trim().toLowerCase();
+  if (!name) return -1;
+  if ((idea.excludeKeywords || []).some((keyword) => name.includes(String(keyword).toLowerCase()))) return -1;
+  const dishTitle = String(idea.title || '').trim().toLowerCase();
+  if (dishTitle.length >= 2 && name.includes(dishTitle)) return 10000 + dishTitle.length * 50 - Math.min(name.length, 60);
+  return idea.productKeywords.reduce((best, keyword, index) => {
+    const term = String(keyword || '').trim().toLowerCase();
+    if (term.length < 2 || !name.includes(term)) return best;
+    const matchType = name === term ? 3000 : (name.startsWith(term) ? 2000 : 1000);
+    return Math.max(best, matchType + term.length * 20 - index * 40 - Math.min(name.length, 60));
+  }, -1);
+}
+function buildMealIdeaRows(products, failedCoverIds = new Set()) {
+  const catalog = Array.isArray(products) ? products : [];
+  return MEAL_IDEAS.map((idea) => {
+    const linkedProducts = catalog.map((product, order) => ({ product, order, score: mealProductScore(product, idea) }))
+      .filter((match) => match.score >= 0)
+      .sort((left, right) => right.score - left.score || left.order - right.order)
+      .slice(0, 3)
+      .map((match) => match.product);
+    const configuredCover = String(idea.cover || '').trim();
+    return {
+      ...idea,
+      // 相关商品图片不等于成品菜图；未配置一对一菜品素材前统一使用明确标注的中性示意图。
+      cover: configuredCover && !failedCoverIds.has(idea.id) ? configuredCover : idea.coverFallback,
+      coverLabel: configuredCover && !failedCoverIds.has(idea.id) ? '菜品图' : 'AI 临时示意',
+      linkedProducts,
+      linkedCountText: linkedProducts.length ? `已找到 ${linkedProducts.length} 件相关商品` : '相关商品待补充'
+    };
+  });
+}
+function mealIdeaPool(rows, scene) {
+  return scene === '全部' ? rows : rows.filter((item) => item.scene === scene);
+}
+function mealIdeaBatch(rows, cursor) {
+  if (rows.length <= MEAL_BATCH_SIZE) return rows;
+  const start = Math.max(0, Number(cursor || 0)) % rows.length;
+  return Array.from({ length: MEAL_BATCH_SIZE }, (_, index) => rows[(start + index) % rows.length]);
+}
 function identityProfile(user) {
-  if (user && user.userType === 'b') return { profileTitle: '梦食鲜商家', profileSub: '商家采购账号' };
+  if (isApprovedBusiness(user)) return { profileTitle: '梦食鲜商家', profileSub: '商家采购账号' };
   if (user && user.businessStatus === 'pending') return { profileTitle: '梦食鲜顾客', profileSub: '企业采购申请审核中' };
   if (user && user.businessStatus === 'rejected') return { profileTitle: '梦食鲜顾客', profileSub: '企业申请未通过，可重新提交' };
   return { profileTitle: '梦食鲜顾客', profileSub: '微信用户 · 普通会员' };
@@ -452,14 +581,17 @@ function orderCategoriesForHome(rows) {
 
 Page({
   data: {
-    navSafeHeight: '108rpx',
+    fixedLayerStyle: LAYOUT.fixedLayerStyle,
+    navSafeHeight: '0rpx',
     navContentTop: '170rpx',
+    pageViewportHeight: 'calc(100vh - 170rpx)',
     catalogHeight: '360px', catalogResultsScrollTop: 0, checkoutItems: [], checkoutItemCount: 0, checkoutItemQty: 0,
     page: 'home', pageMotion: false, pageScrollTop: 0, activeTab: 'home', query: '', category: '全部', categoryGroup: IS_CLOUD_MODE ? '全部' : CATEGORY_GROUPS[0].id, activeGroup: IS_CLOUD_MODE ? null : CATEGORY_GROUPS[0], subCategories: IS_CLOUD_MODE ? ['全部'] : ALL_CATEGORIES, categoryProducts: [], homeSections: [], activityTitle: '活动头条', activityCopy: '速冻面点、火锅食材、海鲜水产陆续上新', activityMoreText: '更多', specialTitle: '特价专区', specialSubtitle: '家庭囤货好价', specialMoreText: '更多',
-    products: IS_CLOUD_MODE ? [] : PRODUCTS, homeCategories: IS_CLOUD_MODE ? [] : fixedHomeCategories(HOME_CATEGORIES), categoryGroups: IS_CLOUD_MODE ? [] : CATEGORY_GROUPS, bannerItems: IS_CLOUD_MODE ? [] : BANNER_ITEMS, specials: IS_CLOUD_MODE ? [] : PRODUCTS.slice(0, 8), frequent: IS_CLOUD_MODE ? [] : [PRODUCTS[1], PRODUCTS[0], PRODUCTS[2], PRODUCTS[6]], frequentHasMultiSku: IS_CLOUD_MODE ? false : hasMultiSku([PRODUCTS[1], PRODUCTS[0], PRODUCTS[2], PRODUCTS[6]]), groupDeals: IS_CLOUD_MODE ? [] : GROUP_DEALS, freightRule: FREIGHT_RULE, warehouseAreaText: IS_CLOUD_MODE ? '' : WAREHOUSE_AREAS[WAREHOUSES[0].name].join('、'),
+    customerMealIdeasEnabled: CUSTOMER_MEAL_IDEAS_ENABLED, ...shortcutProfile(null), mealScenes: MEAL_SCENES, mealScene: '全部', mealBatchCursor: 0, mealBatchSize: MEAL_BATCH_SIZE, mealCanShuffle: !IS_CLOUD_MODE, mealIdeaCountText: IS_CLOUD_MODE ? '' : `${MEAL_IDEAS.length} 道`, mealIdeasStatus: IS_CLOUD_MODE ? 'loading' : 'ready', mealIdeasErrorText: '', mealIdeas: buildMealIdeaRows(IS_CLOUD_MODE ? [] : PRODUCTS), mealIdeaRows: mealIdeaBatch(buildMealIdeaRows(IS_CLOUD_MODE ? [] : PRODUCTS), 0), selectedMealIdea: null,
+    products: IS_CLOUD_MODE ? [] : PRODUCTS, homeCategories: IS_CLOUD_MODE ? [] : fixedHomeCategories(HOME_CATEGORIES), homeCategorySkeletons: HOME_CATEGORY_SKELETONS, categoryGroups: IS_CLOUD_MODE ? [] : CATEGORY_GROUPS, bannerItems: IS_CLOUD_MODE ? [] : BANNER_ITEMS, specials: IS_CLOUD_MODE ? [] : PRODUCTS.slice(0, 8), frequent: IS_CLOUD_MODE ? [] : [PRODUCTS[1], PRODUCTS[0], PRODUCTS[2], PRODUCTS[6]], frequentHasMultiSku: IS_CLOUD_MODE ? false : hasMultiSku([PRODUCTS[1], PRODUCTS[0], PRODUCTS[2], PRODUCTS[6]]), groupDeals: IS_CLOUD_MODE ? [] : GROUP_DEALS, freightRule: FREIGHT_RULE, warehouseAreaText: IS_CLOUD_MODE ? '' : WAREHOUSE_AREAS[WAREHOUSES[0].name].join('、'),
     warehouse: IS_CLOUD_MODE ? EMPTY_WAREHOUSE : WAREHOUSES[0], warehouses: IS_CLOUD_MODE ? [] : WAREHOUSES, address: { ...EMPTY_ADDRESS },
-    cartItems: IS_CLOUD_MODE ? [] : [{ ...PRODUCTS[1], selected: true, selectedSpec: PRODUCTS[1].specLabel || PRODUCTS[1].unit, qty: 2 }, { ...PRODUCTS[3], selected: true, selectedSpec: PRODUCTS[3].specLabel || PRODUCTS[3].unit, qty: 1 }], cartCount: IS_CLOUD_MODE ? 0 : 3, selectedCartCount: IS_CLOUD_MODE ? 0 : 3, cartTotal: '\u4ef7\u683c\u5f85\u8865\u5145', selectedCartTotal: '\u4ef7\u683c\u5f85\u8865\u5145', freightTotal: '\u5f85\u5546\u54c1\u5b9a\u4ef7', orderTotal: '\u4ef7\u683c\u5f85\u8865\u5145',
-    selectedProduct: null, selectedGroup: null, selectedSpec: '', detailDraftQty: 1, detailReturnPage: 'home', detailImageSrc: '', detailImageLoading: false, detailImageError: false, detailStatus: 'idle', detailErrorText: '', detailLimited: false, productReviews: [], productReviewsStatus: 'idle', productReviewsError: '', quantityPickerVisible: false, quantityPickerProduct: null, quantityPickerSpec: '', quantityPickerQty: 1, demoPaymentOrder: null, checkoutQuoteState: 'idle', catalogStatus: IS_CLOUD_MODE ? 'loading' : 'ready', catalogErrorTitle: '商品目录加载失败', catalogErrorText: '请检查网络后点击重试', priceFallback: '登录后查看价格', motionReduced: serviceConfig.motionEnabled === false, loggedIn: false, agreed: false, showLogin: false, loginMounted: false, loginVisible: false, cartFeedbackId: '', cartPulse: false, userType: '', businessStatus: '', profileTitle: '梦食鲜顾客', profileSub: '微信用户 · 普通会员', couponCount: IS_CLOUD_MODE ? 0 : 2, points: IS_CLOUD_MODE ? 0 : 268, checkedIn: false,
+    cartItems: IS_CLOUD_MODE ? [] : [{ ...PRODUCTS[1], selected: true, selectedSpec: PRODUCTS[1].specLabel || PRODUCTS[1].unit, qty: 2 }, { ...PRODUCTS[3], selected: true, selectedSpec: PRODUCTS[3].specLabel || PRODUCTS[3].unit, qty: 1 }], cartCount: IS_CLOUD_MODE ? 0 : 3, selectedCartCount: IS_CLOUD_MODE ? 0 : 3, selectedCartPriceReady: false, selectedCartAmountCompact: false, cartTotal: '\u4ef7\u683c\u5f85\u8865\u5145', selectedCartTotal: '\u4ef7\u683c\u5f85\u8865\u5145', freightTotal: '\u5f85\u5546\u54c1\u5b9a\u4ef7', orderTotal: '\u4ef7\u683c\u5f85\u8865\u5145',
+    selectedProduct: null, selectedGroup: null, selectedSpec: '', detailDraftQty: 1, detailReturnPage: 'home', detailImageSrc: '', detailImagePreviewable: false, detailImageLoading: false, detailImageError: false, detailStatus: 'idle', detailErrorText: '', detailLimited: false, productReviews: [], productReviewsStatus: 'idle', productReviewsError: '', quantityPickerVisible: false, quantityPickerProduct: null, quantityPickerSpec: '', quantityPickerQty: 1, demoPaymentOrder: null, checkoutQuoteState: 'idle', catalogStatus: IS_CLOUD_MODE ? 'loading' : 'ready', catalogErrorTitle: '商品目录加载失败', catalogErrorText: '请检查网络后点击重试', priceFallback: '登录后查看价格', motionReduced: serviceConfig.motionEnabled === false, loggedIn: false, agreed: false, showLogin: false, loginMounted: false, loginVisible: false, cartFeedbackId: '', cartPulse: false, userType: '', businessStatus: '', organizationId: '', userStatus: '', canApplyBusiness: false, profileTitle: '梦食鲜顾客', profileSub: '微信用户 · 普通会员', couponCount: IS_CLOUD_MODE ? 0 : 2, points: IS_CLOUD_MODE ? 0 : 268, checkedIn: false,
     utilityType: '', utilityTitle: '', utilitySub: '', orderFilter: '全部订单', showAddressForm: false, lastOrder: null, orderRows: [], allOrderRows: [], orderEmptyTitle: '暂无订单记录', orderEmptyHint: '下单后会在这里显示订单状态和预计送达时间', pendingReceiptCount: 0, orderActionBusyId: '', cloudModeEnabled: IS_CLOUD_MODE, businessSubmitting: false
   },
 
@@ -477,31 +609,35 @@ Page({
     const windowWidth = system.windowWidth || 375;
     const windowHeight = system.windowHeight || 667;
     const menu = typeof wx.getMenuButtonBoundingClientRect === 'function' ? wx.getMenuButtonBoundingClientRect() : null;
-    const storeRowHeight = 58 / 750 * windowWidth;
     const statusBarHeight = Number(system.statusBarHeight || 0);
-    const systemName = String(system.system || '').toLowerCase();
-    const platform = String(system.platform || '').toLowerCase();
-    const isWindowsLayout = platform === 'windows' || systemName.includes('windows');
     const menuBottom = menu ? Number(menu.bottom || 0) + 4 : 0;
-    const contentTop = isWindowsLayout ? statusBarHeight : Math.max(statusBarHeight, menuBottom);
-    const safeHeight = isWindowsLayout ? statusBarHeight : Math.max(statusBarHeight, contentTop - storeRowHeight);
+    // Phone mini programs draw behind the status/capsule area; desktop mini
+    // programs already reserve that title area outside windowHeight. Applying
+    // the phone offset again on Windows/macOS creates a conspicuous blank band.
+    const isDesktopWindow = /windows|mac os/i.test(String(system.system || '')) || /^(windows|mac\s)/i.test(String(system.model || ''));
+    const contentTop = isDesktopWindow ? 0 : Math.max(statusBarHeight, menuBottom);
     const safeBottom = Math.max(0, (system.screenHeight || windowHeight) - ((system.safeArea && system.safeArea.bottom) || (system.screenHeight || windowHeight)));
-    const catalogChromeHeight = (98 + 68 + 10 + 158) / 750 * windowWidth;
-    const tabbarHeight = 112 / 750 * windowWidth;
+    const catalogChromeHeight = 191;
+    const tabbarHeight = LAYOUT.FIXED_BAR_HEIGHT;
     const catalogHeight = Math.max(260, Math.floor(windowHeight - contentTop - catalogChromeHeight - tabbarHeight - safeBottom));
     this.setData({
-      navSafeHeight: `${Math.ceil(safeHeight / windowWidth * 750)}rpx`,
+      // Safety is reserved outside the scroll viewport, never in a scrolling banner.
+      navSafeHeight: '0rpx',
       navContentTop: `${Math.ceil(contentTop / windowWidth * 750)}rpx`,
+      pageViewportHeight: `${Math.max(1, Math.floor(windowHeight - contentTop))}px`,
       catalogHeight: `${catalogHeight}px`
     });
   },
   onShow() {
     if (!IS_CLOUD_MODE) return;
     const tasks = [];
+    const hasRemoteSession = this.data.loggedIn || this._remoteUser || typeof wx !== 'undefined' && typeof wx.getStorageSync === 'function' && wx.getStorageSync(LOGIN_AGREED_STORAGE_KEY);
+    const identityTask = hasRemoteSession ? Promise.resolve(this.refreshRemoteIdentity()).catch(() => null) : Promise.resolve(null);
+    if (hasRemoteSession) tasks.push(identityTask);
     if (!this._contentRefreshedAt || Date.now() - this._contentRefreshedAt >= 30000) tasks.push(this.refreshRemoteContent());
     if (this.data.loggedIn || this._remoteUser) {
-      tasks.push(Promise.resolve(this.loadRemoteCart()).catch(() => null));
-      if (this.data.page === 'utility' && this.data.utilityType === 'orders') tasks.push(Promise.resolve(this.loadRemoteOrders()).catch(() => null));
+      tasks.push(identityTask.then(() => this.data.loggedIn || this._remoteUser ? this.loadRemoteCart() : null).catch(() => null));
+      if (this.data.page === 'utility' && this.data.utilityType === 'orders') tasks.push(identityTask.then(() => this.data.loggedIn || this._remoteUser ? this.loadRemoteOrders() : null).catch(() => null));
     }
     return tasks.length ? Promise.all(tasks) : undefined;
   },
@@ -591,7 +727,7 @@ Page({
     const requestToken = (this._catalogLoadSeq || 0) + 1;
     this._catalogLoadSeq = requestToken;
     const searching = Boolean(String(this.data.query || '').trim());
-    this.setData({ catalogStatus: 'loading', catalogErrorTitle: searching ? '商品搜索失败' : '商品目录加载失败', catalogErrorText: searching ? '未能完成本次搜索，请检查网络后重试' : '请检查网络后点击重试' });
+    this.setData({ catalogStatus: 'loading', mealIdeasStatus: 'loading', mealIdeasErrorText: '', mealIdeaCountText: '', catalogErrorTitle: searching ? '商品搜索失败' : '商品目录加载失败', catalogErrorText: searching ? '未能完成本次搜索，请检查网络后重试' : '请检查网络后点击重试' });
     const catalogResults = await Promise.all([
       (typeof catalogApi.listAllProducts === 'function' ? catalogApi.listAllProducts() : fetchRemotePages((params) => catalogApi.listProducts(params), { pageSize: 100, maxPages: 50 })).catch(() => ({ ok: false })),
       (typeof catalogApi.listAllCategories === 'function' ? catalogApi.listAllCategories() : fetchRemotePages((params) => catalogApi.listCategories(params), { pageSize: 100, maxPages: 20 })).catch(() => ({ ok: false }))
@@ -599,29 +735,33 @@ Page({
     if (requestToken !== this._catalogLoadSeq) return;
     const result = catalogResults[0];
     const categoryResult = catalogResults[1];
-    if (!result.ok || !categoryResult.ok) {
-      const failed = !result.ok ? result : categoryResult;
-      this.setData({ catalogStatus: 'error', catalogErrorText: failed && failed.error && failed.error.message || (searching ? '未能完成本次搜索，请检查网络后重试' : '请检查网络后点击重试') });
+    if (!result || !result.ok) {
+      const errorText = searching ? '未能完成本次搜索，请检查网络后重试' : '商品暂时无法加载，请点击重试';
+      this.setData({ catalogStatus: 'error', catalogErrorText: errorText, mealIdeasStatus: 'error', mealIdeasErrorText: errorText, mealIdeaCountText: '' });
       return;
     }
     const productRows = result.data && Array.isArray(result.data.rows) ? result.data.rows : result.rows;
-    const categoryRows = categoryResult.data && Array.isArray(categoryResult.data.rows) ? categoryResult.data.rows : categoryResult.rows;
+    let categoryRows = categoryResult && categoryResult.ok ? (categoryResult.data && Array.isArray(categoryResult.data.rows) ? categoryResult.data.rows : categoryResult.rows) : [];
+    const derivedCategories = [...new Set((productRows || []).map((item) => String(item.categoryName || '').trim()).filter(Boolean))]
+      .map((name, index) => ({ _id: `derived-category-${index}`, name, imageMediaId: '', sort: index }));
+    if (!Array.isArray(categoryRows) || !categoryRows.length) categoryRows = derivedCategories;
     const remoteCategories = orderCategoriesForHome(categoryRows);
     const categoryById = new Map(remoteCategories.map(item => [item._id, item]));
     let products = productRows.map((item) => {
-      const skuOptions = Array.isArray(item.skus) ? item.skus.map((sku) => ({ id: sku._id, label: sku.specName || sku.packageUnit || sku.netWeight || '默认规格', packageUnit: sku.packageUnit || '', minOrderQuantity: positiveInteger(sku.minOrderQuantity, 1), orderMultiple: positiveInteger(sku.orderMultiple, 1) })) : [];
+      const skuOptions = Array.isArray(item.skus) ? item.skus.map((sku) => ({ id: sku._id, label: sku.specName || sku.packageUnit || sku.netWeight || '标准规格', packageUnit: sku.packageUnit || '', minOrderQuantity: positiveInteger(sku.minOrderQuantity, 1), orderMultiple: positiveInteger(sku.orderMultiple, 1) })) : [];
       const specs = skuOptions.map((sku) => sku.label);
       const categoryName = (categoryById.get(item.categoryId) || {}).name || item.categoryName || '其他冻品';
       return {
       id: item._id,
-      name: item.name || '未命名商品',
+      name: item.name || '商品信息暂不可用',
       category: categoryName,
-      unit: skuOptions[0] && skuOptions[0].packageUnit ? skuOptions[0].packageUnit : '规格待补充',
+      unit: skuOptions[0] && skuOptions[0].packageUnit ? skuOptions[0].packageUnit : '规格信息暂不可用',
+      priceUnitLabel: displayUnitLabel(skuOptions[0] && skuOptions[0].packageUnit),
       specLabel: specs[0] || '',
       specs,
       skuOptions,
       sales: 0,
-      tag: '待补充',
+      tag: '',
       img: '/assets/products/placeholder.svg',
       coverMediaId: item.coverMediaId || '',
       benefit: '冷链配送 · 家庭囤货'
@@ -644,7 +784,7 @@ Page({
     const categoryGroup = categoryGroups.some(item => item.id === this.data.categoryGroup) ? this.data.categoryGroup : '全部';
     const category = remoteCategories.some(item => item.name === this.data.category) ? this.data.category : '全部';
     const frequent = products.slice(0, 4);
-    this.setData({ products, specials: products.slice(0, 8), frequent, frequentHasMultiSku: hasMultiSku(frequent), categoryGroups, homeCategories, categoryGroup, category, catalogStatus: 'ready', catalogErrorText: '' }, () => { this.syncCategory(); this.loadRemoteGroupCampaigns(); });
+    this.setData({ products, specials: products.slice(0, 8), frequent, frequentHasMultiSku: hasMultiSku(frequent), categoryGroups, homeCategories, categoryGroup, category, catalogStatus: 'ready', catalogErrorText: '', mealIdeasStatus: 'ready', mealIdeasErrorText: '' }, () => { this.syncCategory(); this.syncMealIdeas(products); this.loadRemoteGroupCampaigns(); });
     if (this.data.loggedIn || this._remoteUser) await this.loadRemoteCatalogPrices(products);
     else this._pricesWaitingLogin = true;
   },
@@ -655,29 +795,30 @@ Page({
       return;
     }
     if (this.data.priceFallback !== '暂未定价') this.setData({ priceFallback: '暂未定价' });
-    // 优先使用本地缓存的价格即时渲染，避免每次冷启动都闪现"核验中"
-    if (!this._remotePriceBySku || !Object.keys(this._remotePriceBySku).length) {
-      const cached = wx.getStorageSync('mx_price_cache');
-      if (cached && cached.bySku && Object.keys(cached.bySku).length) {
-        this._remotePriceBySku = cached.bySku;
-        this.applyRemotePriceLabels();
-      }
+    const priceScope = remotePriceScope(this);
+    if (this._remotePriceScope !== priceScope) {
+      clearRemotePriceCache(this);
+      this._remotePriceScope = priceScope;
+      this.applyRemotePriceLabels();
     }
     if (this._remotePricesRequest) return this._remotePricesRequest;
     const skuIds = [...new Set(products.flatMap((item) => (item.skuOptions || []).map((sku) => sku.id)).filter(Boolean))];
     if (!skuIds.length) return;
-    // 加载期间保留上一次的价格展示，不再闪现"核验中"
-    this._remotePricesRequest = (async () => {
+    // 只保留当前身份、当前登录会话的内存价格，不跨会话持久化。
+    const request = (async () => {
       const result = await catalogApi.listPrices(skuIds);
+      if (this._remotePricesRequest !== request || priceScope !== remotePriceScope(this) || !(this.data.loggedIn || this._remoteUser)) return false;
       if (!result || !result.ok || !result.data || !Array.isArray(result.data.rows)) return false;
       this._remotePriceBySku = result.data.rows.reduce((output, item) => ({ ...output, [item.skuId]: item }), {});
-      try { wx.setStorageSync('mx_price_cache', { bySku: this._remotePriceBySku, at: Date.now() }); } catch (_) {}
       this.applyRemotePriceLabels();
       return true;
     })();
-    try { return await this._remotePricesRequest; } finally {
-      this._remotePricesRequest = null;
-      this.setData({ priceFallback: this.data.loggedIn || this._remoteUser ? '暂未定价' : '登录后查看价格' });
+    this._remotePricesRequest = request;
+    try { return await request; } finally {
+      if (this._remotePricesRequest === request) {
+        this._remotePricesRequest = null;
+        this.setData({ priceFallback: this.data.loggedIn || this._remoteUser ? '暂未定价' : '登录后查看价格' });
+      }
     }
   },
   applyRemotePriceLabels() {
@@ -686,14 +827,14 @@ Page({
     const productById = new Map(products.map((item) => [String(item.id), item]));
     const cartItems = (this.data.cartItems || []).map((item) => {
       const price = priceBySku[item.skuId];
-      return { ...item, ...pricingForQuantity(price, item, item.qty) };
+      return { ...item, priceUnitLabel: displayUnitLabel(item.unit || item.selectedSpec), ...pricingForQuantity(price, item, item.qty) };
     });
     const selectedSource = productById.get(String(this.data.selectedProduct && this.data.selectedProduct.id));
     const pricedSelected = selectedSource ? productWithPrice(selectedSource, priceBySku, this.data.selectedSpec, this.data.detailDraftQty) : this.data.selectedProduct;
     const selectedProduct = pricedSelected ? { ...pricedSelected, cartQty: cartQuantityFor(pricedSelected, cartItems, this.data.selectedSpec) } : null;
     const quantityPickerProduct = this.data.quantityPickerProduct ? productWithPrice(this.data.quantityPickerProduct, priceBySku, this.data.quantityPickerSpec, this.data.quantityPickerQty) : null;
     const frequent = products.slice(0, 4);
-    this.setData({ products, specials: products.slice(0, 8), frequent, frequentHasMultiSku: hasMultiSku(frequent), cartItems, selectedProduct, quantityPickerProduct, ...calculateTotals(cartItems), ...selectedCartSummary(cartItems) }, () => this.syncCategory());
+    this.setData({ products, specials: products.slice(0, 8), frequent, frequentHasMultiSku: hasMultiSku(frequent), cartItems, selectedProduct, quantityPickerProduct, ...calculateTotals(cartItems), ...selectedCartSummary(cartItems) }, () => { this.syncCategory(); this.syncMealIdeas(products); });
   },
   async loadRemoteGroupCampaigns() {
     const result = await groupsApi.campaigns({ page: 1, pageSize: 20 });
@@ -722,6 +863,22 @@ Page({
     if (!options.resetCatalogScroll) return this.setData(patch);
     this.setData({ ...patch, catalogResultsScrollTop: 1 }, () => this.setData({ catalogResultsScrollTop: 0 }));
   },
+  syncMealIdeas(products = this.data.products || []) {
+    const mealIdeas = buildMealIdeaRows(products, this._mealCoverErrorIds || new Set());
+    const mealScene = this.data.mealScene || '全部';
+    const pool = mealIdeaPool(mealIdeas, mealScene);
+    const mealBatchCursor = pool.length ? Number(this.data.mealBatchCursor || 0) % pool.length : 0;
+    const mealIdeaRows = mealIdeaBatch(pool, mealBatchCursor);
+    const selectedMealIdea = this.data.selectedMealIdea ? mealIdeas.find((item) => item.id === this.data.selectedMealIdea.id) || null : null;
+    this.setData({ mealIdeas, mealIdeaRows, selectedMealIdea, mealBatchCursor, mealCanShuffle: pool.length > MEAL_BATCH_SIZE, mealIdeaCountText: `${pool.length} 道` });
+  },
+  handleMealCoverError(event) {
+    const id = event.currentTarget.dataset.id;
+    if (!id) return;
+    this._mealCoverErrorIds = this._mealCoverErrorIds || new Set();
+    this._mealCoverErrorIds.add(id);
+    this.syncMealIdeas();
+  },
   triggerPageMotion(patch, callback) {
     if (this._pageMotionTimer) clearTimeout(this._pageMotionTimer);
     this.setData({ ...patch, pageMotion: true, pageScrollTop: 1 }, () => this.setData({ pageScrollTop: 0 }, callback));
@@ -733,13 +890,37 @@ Page({
   switchTab(event) {
     const tab = event.currentTarget.dataset.tab;
     if (!tab) return;
-    if (tab === 'frequent' && IS_CLOUD_MODE) {
-      if (!this.data.loggedIn) return this.requireLogin({ type: 'frequentPage', returnPage: this.data.page, activeTab: this.data.activeTab });
+    if (tab === 'frequent' && this.data.isApprovedBusiness && IS_CLOUD_MODE) {
+      if (this.data.quantityPickerVisible) this.closeQuantityPicker();
       return wx.navigateTo({ url: '/package-business/pages/frequent/index' });
     }
-    if (tab === this.data.page && !this.data.showAddressForm) return;
-    this.triggerPageMotion({ page: tab, activeTab: tab, showAddressForm: false });
+    if (tab === 'frequent' && this.data.customerMealIdeasEnabled) {
+      if (this.data.page === 'mealIdeas' && !this.data.showAddressForm && !this.data.quantityPickerVisible) return;
+      return this.triggerPageMotion({ page: 'mealIdeas', activeTab: 'frequent', showAddressForm: false, quantityPickerVisible: false, quantityPickerProduct: null, quantityPickerSpec: '', quantityPickerQty: 1 }, () => this.syncMealIdeas());
+    }
+    if (tab === this.data.page && !this.data.showAddressForm && !this.data.quantityPickerVisible) return;
+    this.triggerPageMotion({ page: tab, activeTab: tab, showAddressForm: false, quantityPickerVisible: false, quantityPickerProduct: null, quantityPickerSpec: '', quantityPickerQty: 1 });
     if (tab === 'category') this.syncCategory({ page: tab, activeTab: tab, query: '' });
+  },
+  selectMealScene(event) {
+    const requested = event.currentTarget.dataset.scene || '全部';
+    const mealScene = MEAL_SCENES.includes(requested) ? requested : '全部';
+    const pool = mealIdeaPool(this.data.mealIdeas || [], mealScene);
+    this.setData({ mealScene, mealBatchCursor: 0, mealIdeaRows: mealIdeaBatch(pool, 0), mealCanShuffle: pool.length > MEAL_BATCH_SIZE, mealIdeaCountText: `${pool.length} 道` });
+  },
+  shuffleMealIdeas() {
+    const pool = mealIdeaPool(this.data.mealIdeas || [], this.data.mealScene || '全部');
+    if (pool.length <= MEAL_BATCH_SIZE) return;
+    const mealBatchCursor = (Number(this.data.mealBatchCursor || 0) + MEAL_BATCH_SIZE) % pool.length;
+    this.setData({ mealBatchCursor, mealIdeaRows: mealIdeaBatch(pool, mealBatchCursor) });
+  },
+  openMealIdea(event) {
+    const selectedMealIdea = (this.data.mealIdeas || []).find((item) => item.id === event.currentTarget.dataset.id);
+    if (!selectedMealIdea) return;
+    this.triggerPageMotion({ page: 'mealIdea', activeTab: 'frequent', selectedMealIdea });
+  },
+  backToMealIdeas() {
+    this.triggerPageMotion({ page: 'mealIdeas', activeTab: 'frequent', selectedMealIdea: null });
   },
   openCategory(event) {
     return this.openCategoryByLabel(event.currentTarget.dataset.category);
@@ -828,8 +1009,11 @@ Page({
     const draftQty = options.draftQty ? Math.max(1, Math.min(999, Number(options.draftQty))) : firstValidQuantity(initialProduct);
     const selectedProduct = productWithPrice(product, this._remotePriceBySku || {}, selectedSpec, draftQty);
     const detailRequestToken = (this._detailLoadSeq || 0) + 1;
+    const detailImageSrc = product.img || '/assets/products/placeholder.svg';
+    const detailImagePreviewable = detailImageSrc.indexOf('/assets/products/placeholder.svg') < 0;
+    const detailImageLoading = detailImagePreviewable;
     this._detailLoadSeq = detailRequestToken;
-    this.triggerPageMotion({ page: 'detail', selectedProduct, selectedGroup: this.data.groupDeals.find(item => item.productId === product.id) || null, selectedSpec, detailDraftQty: draftQty, detailReturnPage: this.data.page, detailImageSrc: product.img || '/assets/products/placeholder.svg', detailImageLoading: true, detailImageError: false, detailVideoSrc: '', detailVideoError: false, detailStatus: IS_CLOUD_MODE ? 'loading' : 'ready', detailErrorText: '', detailLimited: false, productReviews: [], productReviewsStatus: IS_CLOUD_MODE ? 'loading' : 'idle', productReviewsError: '' }, () => { this.loadRemoteProductDetail(selectedProduct, detailRequestToken); this.loadProductReviews(product.id); });
+    this.triggerPageMotion({ page: 'detail', selectedProduct, selectedGroup: this.data.groupDeals.find(item => item.productId === product.id) || null, selectedSpec, detailDraftQty: draftQty, detailReturnPage: this.data.page, detailImageSrc, detailImagePreviewable, detailImageLoading, detailImageError: false, detailVideoSrc: '', detailVideoError: false, detailStatus: IS_CLOUD_MODE ? 'loading' : 'ready', detailErrorText: '', detailLimited: false, productReviews: [], productReviewsStatus: IS_CLOUD_MODE ? 'loading' : 'idle', productReviewsError: '' }, () => { this.loadRemoteProductDetail(selectedProduct, detailRequestToken); this.loadProductReviews(product.id); });
   },
   isCurrentDetailImageEvent(event) {
     const eventSrc = event && event.currentTarget && event.currentTarget.dataset && event.currentTarget.dataset.src;
@@ -846,12 +1030,13 @@ Page({
   previewDetailImage() {
     const src = this.data.detailImageSrc;
     if (!src || this.data.detailImageError || typeof wx.previewImage !== 'function') return;
-    if (src.indexOf('/assets/products/placeholder.svg') >= 0) return wx.showToast({ title: '商品图片待补充', icon: 'none' });
+    if (src.indexOf('/assets/products/placeholder.svg') >= 0) return wx.showToast({ title: '暂无可预览图片', icon: 'none' });
     wx.previewImage({ current: src, urls: [src] });
   },
   retryDetailImage() {
     const src = (this.data.selectedProduct && this.data.selectedProduct.img) || '/assets/products/placeholder.svg';
-    this.setData({ detailImageSrc: '', detailImageLoading: true, detailImageError: false }, () => {
+    const loading = src.indexOf('/assets/products/placeholder.svg') < 0;
+    this.setData({ detailImageSrc: '', detailImagePreviewable: loading, detailImageLoading: loading, detailImageError: false }, () => {
       setTimeout(() => {
         if (this.data.page === 'detail') this.setData({ detailImageSrc: src });
       }, 0);
@@ -905,14 +1090,14 @@ Page({
     const result = await catalogApi.getProduct(product.id);
     if (!result || !result.ok || !result.data || !result.data.product) {
       if (requestToken !== this._detailLoadSeq || this.data.page !== 'detail' || String(this.data.selectedProduct && this.data.selectedProduct.id) !== String(product.id)) return;
-      return this.setData({ detailStatus: 'error', detailErrorText: result && result.error && result.error.message || '商品详情暂时无法加载，请稍后重试' });
+      return this.setData({ detailStatus: 'error', detailErrorText: '商品暂时无法加载，请稍后重试' });
     }
     if (requestToken !== this._detailLoadSeq || this.data.page !== 'detail' || String(this.data.selectedProduct && this.data.selectedProduct.id) !== String(product.id)) return;
     if (!Array.isArray(result.data.skus) || !result.data.skus.length) {
-      return this.setData({ detailStatus: 'ready', detailLimited: true, detailErrorText: '商品规格资料待补充，当前暂不可购买' });
+      return this.setData({ detailStatus: 'ready', detailLimited: true, detailErrorText: '商品暂不可购买' });
     }
     const remote = result.data.product;
-    const skuOptions = result.data.skus.map((sku) => ({ id: sku._id, label: sku.specName || sku.packageUnit || sku.netWeight || '默认规格', packageUnit: sku.packageUnit || '', minOrderQuantity: positiveInteger(sku.minOrderQuantity, 1), orderMultiple: positiveInteger(sku.orderMultiple, 1) }));
+    const skuOptions = result.data.skus.map((sku) => ({ id: sku._id, label: sku.specName || sku.packageUnit || sku.netWeight || '标准规格', packageUnit: sku.packageUnit || '', minOrderQuantity: positiveInteger(sku.minOrderQuantity, 1), orderMultiple: positiveInteger(sku.orderMultiple, 1) }));
     const specs = skuOptions.map((sku) => sku.label);
     const videoMedia = (result.data.media || []).find((item) => item && item.mediaType === 'video' && item.mediaAssetId);
     const videoFiles = videoMedia ? await this.resolveMediaFileMap([videoMedia.mediaAssetId]) : {};
@@ -924,7 +1109,10 @@ Page({
     const nextImage = merged.img || '/assets/products/placeholder.svg';
     const imageChanged = nextImage !== this.data.detailImageSrc;
     const resolvedVideoSrc = videoFiles[videoMedia && videoMedia.mediaAssetId] || '';
-    this.setData({ products, selectedProduct: merged, selectedSpec: selectedSpec || merged.unit, detailVideoSrc: resolvedVideoSrc, detailVideoError: Boolean(videoMedia && !resolvedVideoSrc), detailStatus: 'ready', detailErrorText: '', detailLimited: false, ...(imageChanged ? { detailImageSrc: nextImage, detailImageLoading: true, detailImageError: false } : {}) }, () => this.syncCategory());
+    this.setData({ products, selectedProduct: merged, selectedSpec: selectedSpec || merged.unit, detailVideoSrc: resolvedVideoSrc, detailVideoError: Boolean(videoMedia && !resolvedVideoSrc), detailStatus: 'ready', detailErrorText: '', detailLimited: false, ...(imageChanged ? { detailImageSrc: nextImage, detailImagePreviewable: nextImage.indexOf('/assets/products/placeholder.svg') < 0, detailImageLoading: nextImage.indexOf('/assets/products/placeholder.svg') < 0, detailImageError: false } : {}) }, () => {
+      this.syncCategory();
+      this.syncMealIdeas(products);
+    });
   },
   async loadProductReviews(productId) {
     if (!IS_CLOUD_MODE || !productId) return;
@@ -932,7 +1120,7 @@ Page({
     this.setData({ productReviewsStatus: 'loading', productReviewsError: '' });
     const result = await reviewsApi.list({ productId, page: 1, pageSize: 20 });
     if (this.data.page !== 'detail' || String(this.data.selectedProduct && this.data.selectedProduct.id) !== String(productId)) return;
-    if (!result || !result.ok) return this.setData({ productReviewsStatus: 'error', productReviewsError: result && result.error && result.error.message || '商品评价加载失败' });
+    if (!result || !result.ok) return this.setData({ productReviewsStatus: 'error', productReviewsError: '评价暂时无法加载' });
     const rows = result.data && result.data.rows || [];
     this.setData({ productReviewsStatus: rows.length ? 'ready' : 'empty', productReviews: rows.map(item => ({ id: item._id, rating: Number(item.rating || 0), content: item.content || '用户未填写文字评价', createdAt: String(item.createdAt || '').slice(0, 10), mediaCount: Array.isArray(item.mediaIds) ? item.mediaIds.length : 0 })) });
   },
@@ -942,7 +1130,11 @@ Page({
     if (!product || !product.id) return;
     return this.loadRemoteProductDetail(product);
   },
-  backFromDetail() { this.triggerPageMotion({ page: this.data.detailReturnPage || 'home', activeTab: this.data.detailReturnPage === 'utility' ? this.data.activeTab : this.data.detailReturnPage }); },
+  backFromDetail() {
+    const page = this.data.detailReturnPage || 'home';
+    const activeTab = page === 'utility' ? this.data.activeTab : (page === 'mealIdea' || page === 'mealIdeas' ? 'frequent' : page);
+    this.triggerPageMotion({ page, activeTab });
+  },
   selectSpec(event) {
     const selectedSpec = event.currentTarget.dataset.spec;
     let selectedProduct = productWithPrice(this.data.selectedProduct, this._remotePriceBySku || {}, selectedSpec);
@@ -1136,6 +1328,7 @@ Page({
     }
     const normalizedCartItems = cartItems.map((item) => ({
       ...item,
+      priceUnitLabel: displayUnitLabel(item.unit || item.selectedSpec),
       ...(serviceConfig.provider === 'cloudbase' ? pricingForQuantity(this._remotePriceBySku && this._remotePriceBySku[item.skuId], item, item.qty) : {}),
       cartKey: String(item.skuId || item.remoteCartItemId || item.id) + '::' + String(item.selectedSpec || item.specLabel || item.unit || '')
     }));
@@ -1263,72 +1456,131 @@ Page({
   openPolicyFromLogin() {
     wx.navigateTo({ url: '/package-member/pages/legal/index?type=privacy' });
   },
-  async completeLogin(event) {
-    if (!this.data.agreed) return wx.showToast({ title: '请先同意服务协议与隐私政策', icon: 'none' });
-    if (event && event.detail && event.detail.errMsg && event.detail.errMsg !== 'getPhoneNumber:ok') return wx.showToast({ title: '未完成手机号授权', icon: 'none' });
-    if (serviceConfig.provider === 'cloudbase') {
-      const result = await authApi.login();
-      if (!result || !result.ok) return wx.showToast({ title: result && result.error && result.error.message || '微信登录失败，请稍后重试', icon: 'none' });
-      const user = result.data && result.data.user;
-      this._remoteUser = user || null;
-      await this.loadRemoteCatalogPrices();
-      await this.loadRemoteAddress();
-      await this.loadRemoteCart();
-      await this.loadRemoteOrders();
+  applyRemoteIdentity(user) {
+    if (!user) return null;
+    if (IS_CLOUD_MODE && remotePriceScope(this) !== remotePriceScope(this, user)) {
+      clearRemotePriceCache(this);
+      this.applyRemotePriceLabels();
     }
-    const user = this._remoteUser || null;
-    const profile = identityProfile(user);
+    this._remoteUser = user;
+    const page = safeReturnPage(this.data.page, user) || 'home';
     const patch = {
       loggedIn: true,
       priceFallback: '暂未定价',
-      userType: user && user.userType || (serviceConfig.provider === 'cloudbase' ? '' : 'c'),
-      businessStatus: user && user.businessStatus || '',
-      profileTitle: profile.profileTitle,
-      profileSub: profile.profileSub
+      detailReturnPage: safeReturnPage(this.data.detailReturnPage, user) || 'home',
+      ...identityState(user)
+    };
+    if (page !== this.data.page) {
+      Object.assign(patch, {
+        page,
+        activeTab: page === 'home' ? 'home' : this.data.activeTab,
+        selectedMealIdea: null,
+        quantityPickerVisible: false,
+        quantityPickerProduct: null,
+        quantityPickerSpec: '',
+        quantityPickerQty: 1
+      });
+    }
+    this.setData(patch);
+    return user;
+  },
+  async refreshRemoteIdentity() {
+    if (!IS_CLOUD_MODE) return this._remoteUser || null;
+    if (this._remoteIdentityRequest) return this._remoteIdentityRequest;
+    const identityGeneration = Number(this._identityGeneration || 0);
+    this._remoteIdentityRequest = (async () => {
+      let result;
+      try {
+        result = await authApi.getMe();
+      } catch (_) {
+        return null;
+      }
+      if (identityGeneration !== Number(this._identityGeneration || 0)) return null;
+      if (!result || !result.ok || !result.data || !result.data.user) {
+        if (remoteSessionExpired(result)) this.performLogout({ silent: true });
+        return null;
+      }
+      return this.applyRemoteIdentity(result.data.user);
+    })();
+    try {
+      return await this._remoteIdentityRequest;
+    } finally {
+      this._remoteIdentityRequest = null;
+    }
+  },
+  async completeLogin(event) {
+    if (!this.data.agreed) return wx.showToast({ title: '请先同意服务协议与隐私政策', icon: 'none' });
+    if (event && event.detail && event.detail.errMsg && event.detail.errMsg !== 'getPhoneNumber:ok') return wx.showToast({ title: '未完成手机号授权', icon: 'none' });
+    this._identityGeneration = Number(this._identityGeneration || 0) + 1;
+    const identityGeneration = this._identityGeneration;
+    const isCurrentLogin = () => identityGeneration === Number(this._identityGeneration || 0);
+    if (serviceConfig.provider === 'cloudbase') {
+      const result = await authApi.login();
+      if (!isCurrentLogin()) return;
+      if (!result || !result.ok) return wx.showToast({ title: result && result.error && result.error.message || '微信登录失败，请稍后重试', icon: 'none' });
+      const user = result.data && result.data.user;
+      if (!user) return wx.showToast({ title: '微信登录返回异常，请稍后重试', icon: 'none' });
+      clearRemotePriceCache(this);
+      this.applyRemotePriceLabels();
+      this._remoteUser = user || null;
+      await this.loadRemoteCatalogPrices();
+      if (!isCurrentLogin()) return;
+      await this.loadRemoteAddress();
+      if (!isCurrentLogin()) return;
+      await this.loadRemoteCart();
+      if (!isCurrentLogin()) return;
+      await this.loadRemoteOrders();
+      if (!isCurrentLogin()) return;
+    }
+    const user = this._remoteUser || (IS_CLOUD_MODE ? null : { userType: 'c', status: 'active' });
+    const currentPage = safeReturnPage(this.data.page, user) || 'home';
+    const patch = {
+      loggedIn: true,
+      priceFallback: '暂未定价',
+      page: currentPage,
+      activeTab: currentPage === 'home' ? 'home' : this.data.activeTab,
+      detailReturnPage: safeReturnPage(this.data.detailReturnPage, user) || 'home',
+      ...(currentPage !== this.data.page ? { selectedMealIdea: null } : {}),
+      ...identityState(user)
     };
     const continuation = this._loginContinuation; this._loginContinuation = ''; this.setData(patch);
     if (serviceConfig.provider === 'cloudbase' && typeof wx !== 'undefined' && typeof wx.setStorageSync === 'function') wx.setStorageSync(LOGIN_AGREED_STORAGE_KEY, '1');
     this.dismissLogin(() => {
+      if (!isCurrentLogin()) return;
+      const returnPage = safeReturnPage(continuation && continuation.returnPage || this.data.page, user) || 'home';
+      const returnActiveTab = returnPage === 'home' ? 'home' : (continuation && continuation.activeTab || this.data.activeTab);
       if (continuation && continuation.type === 'checkout') {
         return this.goCheckout();
       }
       if (continuation && continuation.type === 'addProduct') {
-        return this.setData({ page: continuation.returnPage || this.data.page, activeTab: continuation.activeTab || this.data.activeTab, detailDraftQty: Math.max(1, Number(continuation.quantity || 1)) }, () => this.addProduct(continuation.id, continuation.spec, undefined, continuation.quantity));
+        return this.setData({ page: returnPage, activeTab: returnActiveTab, detailDraftQty: Math.max(1, Number(continuation.quantity || 1)) }, () => this.addProduct(continuation.id, continuation.spec, undefined, continuation.quantity));
       }
       if (continuation && continuation.type === 'quantityPicker') {
-        return this.setData({ page: continuation.returnPage || this.data.page, activeTab: continuation.activeTab || this.data.activeTab }, () => this.openQuantityPickerById(continuation.id));
+        return this.setData({ page: returnPage, activeTab: returnActiveTab }, () => this.openQuantityPickerById(continuation.id));
       }
       if (continuation && continuation.type === 'quantityPickerAdd') {
-        return this.setData({ page: continuation.returnPage || this.data.page, activeTab: continuation.activeTab || this.data.activeTab }, () => this.addProduct(continuation.id, continuation.spec, () => this.closeQuantityPicker(), continuation.quantity));
+        return this.setData({ page: returnPage, activeTab: returnActiveTab }, () => this.addProduct(continuation.id, continuation.spec, () => this.closeQuantityPicker(), continuation.quantity));
       }
       if (continuation && continuation.type === 'detailCheckout') {
-        return this.setData({ page: 'detail', activeTab: continuation.activeTab || this.data.activeTab, detailDraftQty: Math.max(1, Number(continuation.quantity || 1)) }, () => this.addProduct(continuation.id, continuation.spec, () => this.goCheckout(), continuation.quantity));
+        return this.setData({ page: 'detail', activeTab: returnActiveTab, detailReturnPage: safeReturnPage(this.data.detailReturnPage, user) || 'home', detailDraftQty: Math.max(1, Number(continuation.quantity || 1)) }, () => this.addProduct(continuation.id, continuation.spec, () => this.goCheckout(), continuation.quantity));
       }
       if (continuation && continuation.type === 'addFrequent') {
-        return this.setData({ page: continuation.returnPage || this.data.page, activeTab: continuation.activeTab || this.data.activeTab }, () => this.addFrequent());
+        return this.setData({ page: returnPage, activeTab: returnActiveTab }, () => this.addFrequent());
       }
       if (continuation && continuation.type === 'address') return wx.navigateTo({ url: '/package-trade/pages/addresses/index' });
-      if (continuation && continuation.type === 'frequentPage') return wx.navigateTo({ url: '/package-business/pages/frequent/index' });
+      if (continuation && continuation.type === 'frequentPage') {
+        if (isApprovedBusiness(user)) return wx.navigateTo({ url: '/package-business/pages/frequent/index' });
+        return this.setData({ page: 'frequent', activeTab: 'frequent' });
+      }
       if (continuation && continuation.type === 'mine') { this.setData({ page: 'mine', activeTab: 'mine' }); wx.showToast({ title: '登录成功', icon: 'success' }); return; }
-      if (continuation && continuation.type) { this.openUtilityByType(continuation.type, continuation.filter); wx.showToast({ title: '登录成功', icon: 'success' }); return; }
+      if (continuation && continuation.type) { this.openUtility({ currentTarget: { dataset: { type: continuation.type, filter: continuation.filter } } }); wx.showToast({ title: '登录成功', icon: 'success' }); return; }
       this.setData({ page: 'mine', activeTab: 'mine' }); wx.showToast({ title: '登录成功', icon: 'success' });
     });
   },
   async restoreRemoteSession() {
     if (!IS_CLOUD_MODE || typeof wx === 'undefined' || typeof wx.getStorageSync !== 'function' || !wx.getStorageSync(LOGIN_AGREED_STORAGE_KEY)) return;
-    const result = await authApi.getMe();
-    if (!result || !result.ok || !result.data || !result.data.user) return;
-    const user = result.data.user;
-    const profile = identityProfile(user);
-    this._remoteUser = user;
-    this.setData({
-      loggedIn: true,
-      priceFallback: '暂未定价',
-      userType: user.userType || '',
-      businessStatus: user.businessStatus || '',
-      profileTitle: profile.profileTitle,
-      profileSub: profile.profileSub
-    });
+    const user = await this.refreshRemoteIdentity();
+    if (!user) return;
     // 目录加载先于登录恢复完成时：目录尾部会标记等待登录，这里补一次价格加载
     await this.loadRemoteCatalogPrices();
     if (this._pricesWaitingLogin) {
@@ -1346,8 +1598,9 @@ Page({
   logout() {
     this.confirmAction({ title: '退出登录', content: '退出后需要重新登录才能查看购物车和订单。', confirmText: '退出', confirmColor: '#e65353' }, () => this.performLogout());
   },
-  performLogout() {
-    const patch = { loggedIn: false, page: 'mine', activeTab: 'mine', priceFallback: '登录后查看价格' };
+  performLogout(options = {}) {
+    this._identityGeneration = Number(this._identityGeneration || 0) + 1;
+    const patch = { loggedIn: false, page: 'mine', activeTab: 'mine', priceFallback: '登录后查看价格', selectedMealIdea: null, quantityPickerVisible: false, quantityPickerProduct: null, quantityPickerSpec: '', quantityPickerQty: 1, ...identityState(null) };
     if (IS_CLOUD_MODE) {
       patch.cartItems = [];
       patch.cartCount = 0;
@@ -1360,25 +1613,21 @@ Page({
       patch.couponCount = 0;
       patch.points = 0;
       patch.checkedIn = false;
-      patch.userType = '';
-      patch.businessStatus = '';
-      patch.profileTitle = '梦食鲜顾客';
-      patch.profileSub = '微信用户 · 普通会员';
     }
     this._remoteUser = null;
-    this._remotePriceBySku = {};
+    clearRemotePriceCache(this);
     if (IS_CLOUD_MODE && typeof wx !== 'undefined' && typeof wx.removeStorageSync === 'function') wx.removeStorageSync(LOGIN_AGREED_STORAGE_KEY);
     this.setData(patch, () => this.applyRemotePriceLabels());
     this._remoteOrderKey = '';
     this._submittingRemoteOrder = false;
-    wx.showToast({ title: '已退出登录', icon: 'none' });
+    if (!options.silent) wx.showToast({ title: '已退出登录', icon: 'none' });
   },
   openBusinessApplication() {
     if (!this.data.loggedIn) return this.requireLogin({ type: 'businessApplication' });
     this.openUtilityByType('businessApplication');
   },
   openProcurementCenter() {
-    if (this.data.userType !== 'b' || this.data.businessStatus !== 'approved') return wx.showToast({ title: '企业采购中心仅对已审核企业账户开放', icon: 'none' });
+    if (!this.data.isApprovedBusiness) return wx.showToast({ title: '企业采购中心仅对已审核企业账户开放', icon: 'none' });
     wx.navigateTo({ url: '/package-business/pages/center/index' });
   },
   async submitBusinessApplication(event) {
@@ -1398,13 +1647,14 @@ Page({
       return wx.showToast({ title: result && result.error && result.error.message || '企业申请提交失败', icon: 'none' });
     }
     this._remoteUser = { ...(this._remoteUser || {}), businessStatus: 'pending' };
-    const profile = identityProfile(this._remoteUser);
-    this.setData({ businessStatus: 'pending', businessSubmitting: false, profileTitle: profile.profileTitle, profileSub: profile.profileSub });
+    this.setData({ businessSubmitting: false, ...identityState(this._remoteUser) });
     wx.showToast({ title: '企业申请已提交', icon: 'success' });
   },
 
   async loadRemoteAddress() {
+    const identityScope = remotePriceScope(this);
     const result = await addressApi.list();
+    if (identityScope !== remotePriceScope(this)) return;
     if (!result || !result.ok || !result.data || !Array.isArray(result.data.rows)) return;
     if (!result.data.rows.length) {
       if (IS_CLOUD_MODE) this.setData({ address: { ...EMPTY_ADDRESS } });
@@ -1415,24 +1665,29 @@ Page({
   },
 
   async loadRemoteCart() {
+    const identityScope = remotePriceScope(this);
     const pendingWrite = this._cartWriteQueue;
     if (pendingWrite) await pendingWrite.catch(() => null);
+    if (identityScope !== remotePriceScope(this)) return;
     const result = await cartApi.getAll();
+    if (identityScope !== remotePriceScope(this)) return;
     if (!result || !result.ok || !result.data || !Array.isArray(result.data.rows)) return;
     const remoteItems = result.data.rows.filter((item) => item.sku && item.product && !item.unavailable).map((item) => {
       const categoryName = item.product.categoryName || '其他冻品';
       const catalogProduct = (this.data.products || []).find((product) => String(product.id) === String(item.product._id));
       return {
       id: item.product._id,
-      name: item.product.name || '未命名商品',
+      name: item.product.name || '商品信息暂不可用',
       category: categoryName,
-      unit: item.sku.packageUnit || item.sku.netWeight || '规格待补充',
-      selectedSpec: item.sku.specName || item.sku.packageUnit || item.sku.netWeight || '默认规格',
+      unit: item.sku.packageUnit || item.sku.netWeight || '规格信息暂不可用',
+      priceUnitLabel: displayUnitLabel(item.sku.packageUnit || item.sku.netWeight),
+      selectedSpec: item.sku.specName || item.sku.packageUnit || item.sku.netWeight || '标准规格',
       skuId: item.skuId,
       remoteCartItemId: item._id,
       selected: item.selected !== false,
       qty: item.quantity,
-      tag: '待补充',
+      tag: '',
+      coverMediaId: item.product.coverMediaId || '',
       img: catalogProduct && catalogProduct.img || item.product.image || item.product.coverUrl || '/assets/products/placeholder.svg',
       benefit: '冷链配送 · 家庭囤货',
       minOrderQuantity: positiveInteger(item.sku.minOrderQuantity, 1),
@@ -1441,11 +1696,12 @@ Page({
       };
     });
     // 临时图片 URL 会过期：购物车渲染前按最新 coverMediaId 重新解析临时链接
-    const coverIds = [...new Set(remoteItems.map((item) => item.product && item.product.coverMediaId).filter(Boolean))];
+    const coverIds = [...new Set(remoteItems.map((item) => item.coverMediaId).filter(Boolean))];
     if (coverIds.length) {
       const fileMap = await this.resolveMediaFileMap(coverIds);
+      if (identityScope !== remotePriceScope(this)) return;
       for (const item of remoteItems) {
-        const url = item.product && item.product.coverMediaId && fileMap[item.product.coverMediaId];
+        const url = item.coverMediaId && fileMap[item.coverMediaId];
         if (url) item.img = url;
       }
     }
@@ -1453,7 +1709,9 @@ Page({
   },
 
   async loadRemoteOrders() {
+    const identityScope = remotePriceScope(this);
     const result = await ordersApi.list({ page: 1, pageSize: 20 });
+    if (identityScope !== remotePriceScope(this)) return;
     if (!result || !result.ok || !result.data || !Array.isArray(result.data.rows)) return;
     const rows = result.data.rows;
     if (!rows.length) {
@@ -1529,6 +1787,7 @@ Page({
   goCheckout() {
     if (!this.data.cartItems.length) return wx.showToast({ title: '请先添加商品再结算', icon: 'none' });
     if (!this.data.selectedCartCount) return wx.showToast({ title: '请先选择要结算的商品', icon: 'none' });
+    if (!this.data.selectedCartPriceReady) return wx.showToast({ title: '所选商品价格待确认', icon: 'none' });
     if (this.requireLogin({ type: 'checkout', returnPage: this.data.page, activeTab: this.data.activeTab })) return;
     // 交易链路已迁入独立分包。只传递页面意图，购物车、地址、报价和金额均由分包重新从服务端读取。
     wx.navigateTo({ url: '/package-trade/pages/checkout/index?source=cart' });
@@ -1567,7 +1826,7 @@ Page({
       if (!address.id || !warehouse.id || items.length !== purchasedCartItems.length) return wx.showToast({ title: '请先完成商品规格和收货地址配置', icon: 'none' });
       const me = await authApi.getMe();
       if (!me || !me.ok || !me.data || !me.data.user) return wx.showToast({ title: '登录状态已失效，请重新登录', icon: 'none' });
-      const isBusiness = me.data.user.userType === 'b' && me.data.user.businessStatus === 'approved';
+      const isBusiness = isApprovedBusiness(me.data.user);
       if (!this._remoteOrderKey) this._remoteOrderKey = `mini-demo-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
       const summary = purchasedCartItems.slice(0, 2).map((item) => item.name).join('、') + (purchasedCartItems.length > 2 ? ` 等 ${purchasedCartItems.length} 件商品` : '');
       const result = await checkoutApi.createOrder({ idempotencyKey: this._remoteOrderKey, addressId: address.id, warehouseId: warehouse.id, items, paymentMethod: isBusiness ? 'offline' : 'demo' });
@@ -1632,7 +1891,7 @@ Page({
         this.setData({ checkoutQuoteState: 'loading', cartTotal: '--', freightTotal: '--', orderTotal: '--' });
         this.loadRemoteQuote();
       }
-      return wx.showToast({ title: '正在核验本次报价，请稍候', icon: 'none' });
+      return wx.showToast({ title: '订单金额计算中，请稍候', icon: 'none' });
     }
     if (serviceConfig.provider === 'cloudbase') return this.placeRemoteOrder();
     const summary = purchasedCartItems.slice(0, 2).map(item => item.name).join('、') + (purchasedCartItems.length > 2 ? ` 等 ${purchasedCartItems.length} 件商品` : '');

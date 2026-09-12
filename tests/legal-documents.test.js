@@ -27,9 +27,10 @@ for (const required of ['微信公众平台公示主体', '手机号授权凭证
 assert.ok(!privacyText.includes('赣州梦食鲜商贸'), '未核验的运营主体不得写成确定事实');
 
 const termsText = JSON.stringify(DOCUMENTS.terms);
-for (const required of ['服务内容与账号', '冷冻食品提示', '服务端核算结果', '不会产生真实扣款', '退换货与售后', '不适用无理由退货', '企业采购', '不得排除', '有管辖权的人民法院']) {
+for (const required of ['服务内容与账号', '冷冻食品提示', '服务端核算结果', '页面不会发起扣款', '退换货与售后', '不适用无理由退货', '企业采购', '不得排除', '有管辖权的人民法院']) {
   assert.ok(termsText.includes(required), `用户服务协议缺少：${required}`);
 }
+assert.ok(!termsText.includes('测试页面'), '交付协议不应向用户暴露测试术语');
 
 assert.match(indexWxml, /data-document="terms"[^>]*>《用户服务协议》/u, '登录弹窗必须可单独打开用户服务协议');
 assert.match(indexWxml, /data-document="privacy"[^>]*>《隐私政策》/u, '登录弹窗必须可单独打开隐私政策');

@@ -16,7 +16,7 @@ const itemRow = item => ({
   orderItemId: item._id || item.orderItemId || '',
   skuId: item.skuId || '',
   name: item.productNameSnapshot || '订单商品',
-  spec: [item.specSnapshot, item.packageUnitSnapshot].filter(Boolean).join(' · ') || '规格以订单快照为准',
+  spec: [item.specSnapshot, item.packageUnitSnapshot].filter(Boolean).join(' · ') || '暂无规格信息',
   media: item.mediaSnapshot || '',
   orderedQuantity: Math.max(1, Number(item.quantity || 1)),
   paidAmount: money(item.paidSubtotalCent === undefined ? item.subtotalCent : item.paidSubtotalCent),
@@ -47,7 +47,7 @@ Page({
     const activeRefund = (refundResult && refundResult.ok && refundResult.data && refundResult.data.rows || []).find(item => item.orderId === id && ['requested', 'approved', 'awaiting_manual_refund', 'processing'].includes(item.status));
     if (activeRefund) return this.setData({ status: 'empty', errorText: '该订单已有处理中售后申请，请从订单详情查看进度' });
     const items = (result.data.items || order.items || order.itemsSnapshot || []).map(itemRow);
-    if (!items.length) return this.setData({ status: 'empty', errorText: '订单商品快照缺失，暂时无法申请售后' });
+    if (!items.length) return this.setData({ status: 'empty', errorText: '订单商品信息暂不可用，请稍后重试' });
     this.setData({ status: 'ready', orderNo: order.orderNo || order._id, items, errorText: '' });
   },
   retry() { return this.loadOrder(); },

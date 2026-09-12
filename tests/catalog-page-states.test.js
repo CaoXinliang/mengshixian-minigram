@@ -13,6 +13,7 @@ const products = Array.from({ length: 125 }, (_, index) => ({
   skus: [{ _id: `sku-${index + 1}`, specName: '500克', packageUnit: '500克' }]
 }));
 let catalogFailure = false;
+let categoryFailure = false;
 let detailFailure = true;
 
 const servicesStub = {
@@ -20,7 +21,7 @@ const servicesStub = {
   auth: { login: async () => okRows([]), getMe: async () => okRows([]), applyBusiness: async () => okRows([]) },
   catalog: {
     listAllProducts: async () => catalogFailure ? { ok: false, error: { message: '目录网络错误' } } : okRows(products),
-    listAllCategories: async () => okRows(categories),
+    listAllCategories: async () => categoryFailure ? { ok: false, error: { message: '分类接口失败' } } : okRows(categories),
     listProducts: async () => okRows([]), listCategories: async () => okRows([]), listPrices: async () => okRows([]),
     getProduct: async (productId) => detailFailure
       ? { ok: false, error: { message: '详情网络错误' } }
@@ -65,6 +66,12 @@ async function run() {
   await page.loadRemoteCatalog();
   assert.equal(page.data.catalogStatus, 'ready');
   assert.equal(page.data.products.length, 125, 'the page must retain the complete service catalog');
+  categoryFailure = true;
+  await page.loadRemoteCatalog();
+  assert.equal(page.data.catalogStatus, 'ready', 'category failure must not hide an otherwise valid product catalog');
+  assert.equal(page.data.mealIdeasStatus, 'ready', 'meal ideas only depend on the product catalog');
+  assert.equal(page.data.products.length, 125);
+  categoryFailure = false;
   page.syncCategory({ categoryGroup: '全部', category: '全部', query: '大虾' });
   assert.deepEqual(page.data.categoryProducts.map((item) => item.id), ['product-125'], 'search must include products from later remote pages');
 
@@ -73,7 +80,7 @@ async function run() {
   await page.loadRemoteCatalog();
   assert.equal(page.data.catalogStatus, 'error');
   assert.equal(page.data.catalogErrorTitle, '商品搜索失败');
-  assert.equal(page.data.catalogErrorText, '目录网络错误');
+  assert.equal(page.data.catalogErrorText, '未能完成本次搜索，请检查网络后重试', 'raw service errors must not be rendered in the customer-facing catalog');
   assert.equal(page.data.products.length, 125, 'a failed refresh must preserve the last complete catalog');
   catalogFailure = false;
   await page.retryRemoteCatalog();
@@ -85,7 +92,7 @@ async function run() {
   page.data.selectedProduct = product;
   await page.loadRemoteProductDetail(product);
   assert.equal(page.data.detailStatus, 'error');
-  assert.equal(page.data.detailErrorText, '详情网络错误');
+  assert.equal(page.data.detailErrorText, '商品暂时无法加载，请稍后重试', 'raw service errors must not be rendered on product detail');
   detailFailure = false;
   await page.retryRemoteProductDetail();
   assert.equal(page.data.detailStatus, 'ready');

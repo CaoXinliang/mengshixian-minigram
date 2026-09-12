@@ -44,7 +44,7 @@ function uploadEvidence(item) {
         const metadata = mediaMetadata(item);
         resolve(await apiRequest('refunds.media.upload', { ...metadata, sizeBytes: Number(item.size || 0), contentBase64: result.data }));
       },
-      fail: error => resolve({ ok: false, data: null, error: { code: 'FILE_READ_FAILED', message: error && error.errMsg || '凭证读取失败，请重新选择。' } })
+      fail: () => resolve({ ok: false, data: null, error: { code: 'FILE_READ_FAILED', message: '凭证读取失败，请重新选择。' } })
     });
   });
 }

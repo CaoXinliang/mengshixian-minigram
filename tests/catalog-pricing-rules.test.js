@@ -101,7 +101,7 @@ async function run() {
   page.openQuantityPickerById('product-tiered');
   assert.equal(page.data.quantityPickerQty, 6, 'price rule must override the lower SKU minimum and round to a valid multiple');
   assert.equal(page.data.quantityPickerProduct.priceText, '¥9.00', 'the initial valid quantity must use its matching tier and keep two decimals');
-  assert.equal(page.data.quantityPickerProduct.purchaseRuleText, '5 件起购 · 按 2 件倍数购买');
+  assert.equal(page.data.quantityPickerProduct.purchaseRuleText, '5 箱起购 · 按 2 箱倍数购买');
   page.changeQuantityPicker({ detail: { delta: 1 } });
   assert.equal(page.data.quantityPickerQty, 8, 'the quantity picker must step by orderMultiple');
   page.changeQuantityPicker({ detail: { delta: 1 } });
@@ -112,13 +112,13 @@ async function run() {
   const addCountBeforeInvalid = cartAdds.length;
   await page.addQuantityPicker();
   assert.equal(cartAdds.length, addCountBeforeInvalid, 'invalid quantities must be rejected before the cart API call');
-  assert.match(toasts.at(-1).title, /2 件倍数/);
+  assert.match(toasts.at(-1).title, /2 箱倍数/);
 
   page.data.quantityPickerQty = 6;
   await page.addQuantityPicker();
   assert.equal(cartAdds.at(-1).quantity, 6);
   assert.equal(page.data.cartItems[0].priceText, '¥9.00');
-  assert.equal(page.data.cartItems[0].activeTierText, '当前已享 6 件阶梯价');
+  assert.equal(page.data.cartItems[0].activeTierText, '当前已享 6 箱阶梯价');
 
   await page.applyChangeQuantity({ currentTarget: { dataset: { id: 'product-tiered', spec: '整箱', delta: 1 } } });
   assert.equal(cartUpdates.at(-1).quantity, 8);
@@ -128,7 +128,7 @@ async function run() {
 
   page.openQuantityPickerById('product-defaults');
   assert.equal(page.data.quantityPickerQty, 4, 'SKU minimum and multiple must apply when the price row omits rule overrides');
-  assert.equal(page.data.quantityPickerProduct.purchaseRuleText, '3 件起购 · 按 2 件倍数购买');
+  assert.equal(page.data.quantityPickerProduct.purchaseRuleText, '3 箱起购 · 按 2 箱倍数购买');
 
   page.openQuantityPickerById('product-impossible');
   assert.equal(page.data.quantityPickerQty, 0, 'an impossible rule must not manufacture an invalid quantity below 999');

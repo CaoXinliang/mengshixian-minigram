@@ -62,14 +62,14 @@ Page({
     const warehouses = rawWarehouses.map((item) => ({
       id: item._id,
       name: customerWarehouseName(item.name),
-      eta: '预计送达时间以订单确认页为准',
+      eta: '',
       areas: normalizedAreas.filter((area) => !area.warehouseIds || !area.warehouseIds.length || area.warehouseIds.includes(item._id)).flatMap((area) => area.regionCodes || [])
     }));
     const warehouse = warehouses[0] || null;
     const deliverySlotsContractAvailable = Array.isArray(slotsSource);
     const allDeliverySlots = deliverySlotsContractAvailable ? slotsSource.map((item) => ({ id: item._id, name: item.name || `${item.startTime || ''}-${item.endTime || ''}`, startTime: item.startTime || '', endTime: item.endTime || '', warehouseId: item.warehouseId || '', deliveryAreaId: item.deliveryAreaId || '' })) : [];
-    const allPickupSites = pickupSitesSource.map((item) => ({ id: item._id, name: item.name || '自提点', address: item.address || '', regionCode: item.regionCode || '', warehouseId: item.warehouseId || '', openingHours: item.openingHours || '营业时间以门店通知为准' }));
-    await new Promise((resolve) => this.setData({ warehouses, warehouse, deliveryAreas: normalizedAreas, allDeliverySlots, deliverySlotsContractAvailable, allPickupSites, warehouseAreaText: warehouse && warehouse.areas.length ? warehouse.areas.join('、') : '配送区域以订单确认页为准' }, resolve));
+    const allPickupSites = pickupSitesSource.map((item) => ({ id: item._id, name: item.name || '自提点', address: item.address || '', regionCode: item.regionCode || '', warehouseId: item.warehouseId || '', openingHours: item.openingHours || '请联系门店确认' }));
+    await new Promise((resolve) => this.setData({ warehouses, warehouse, deliveryAreas: normalizedAreas, allDeliverySlots, deliverySlotsContractAvailable, allPickupSites, warehouseAreaText: warehouse && warehouse.areas.length ? warehouse.areas.join('、') : '暂无配送范围信息' }, resolve));
     this.syncDeliverySlots();
     this.syncPickupSites();
     return true;
@@ -94,7 +94,7 @@ Page({
     return pickupSite;
   },
   async loadCart() {
-    if (this.data.groupMode) { await new Promise(resolve => this.setData({ cartItems: [{ id: 'group-item', skuId: this.data.groupSkuId, name: '拼团商品', unit: '规格与数量以活动服务端为准', qty: 1, image: '/assets/products/placeholder.svg' }] }, resolve)); return true; }
+    if (this.data.groupMode) { await new Promise(resolve => this.setData({ cartItems: [{ id: 'group-item', skuId: this.data.groupSkuId, name: '拼团商品', unit: '', qty: 1, image: '/assets/products/placeholder.svg' }] }, resolve)); return true; }
     if (this.data.bundleId) {
       const result = await bundleApi.get({ id: this.data.bundleId });
       const bundle = result && result.ok && result.data && (result.data.bundle || result.data);
@@ -107,7 +107,7 @@ Page({
     if (!result || !result.ok) { this.setData({ loadError: true, loadErrorText: '购物车读取失败，请重新加载' }); return false; }
     const rows = result && result.ok && result.data && Array.isArray(result.data.rows) ? result.data.rows : [];
     const cartItems = rows.filter((item) => item.selected !== false && item.sku && item.product && !item.unavailable).map((item) => ({
-      id: item._id, skuId: item.skuId, name: item.product.name || '未命名商品', unit: item.sku.specName || item.sku.packageUnit || item.sku.netWeight || '规格待补充', qty: item.quantity, image: productImage(item.product)
+      id: item._id, skuId: item.skuId, name: item.product.name || '商品信息暂不可用', unit: item.sku.specName || item.sku.packageUnit || item.sku.netWeight || '暂无规格信息', qty: item.quantity, image: productImage(item.product)
     }));
     await new Promise((resolve) => this.setData({ cartItems }, resolve));
     return true;
@@ -123,7 +123,7 @@ Page({
     const missingDelivery = fulfillmentType === 'delivery' && (!address.id || (deliverySlotsContractAvailable && !deliverySlot));
     const missingPickup = fulfillmentType === 'pickup' && !pickupSite;
     if (!warehouse || !cartItems.length || missingDelivery || missingPickup) {
-      const reason = !warehouse ? '暂未配置履约仓库' : !cartItems.length ? '购物车暂无可结算商品' : fulfillmentType === 'pickup' ? '当前仓库暂无可用自提点' : !address.id ? '请先添加收货地址' : '当前仓库与收货区域暂无可用配送时段';
+      const reason = !warehouse ? '当前暂无可配送仓库' : !cartItems.length ? '购物车暂无可结算商品' : fulfillmentType === 'pickup' ? '当前仓库暂无可用自提点' : !address.id ? '请先添加收货地址' : '当前仓库与收货区域暂无可用配送时段';
       return commit({ cartItems: unpricedCartItems, quoteState: 'invalid', quoteErrorText: reason, cartTotal: '--', freightTotal: '--', discountTotal: '0.00', orderTotal: '--', pickupFree: false });
     }
     await commit({ cartItems: unpricedCartItems, quoteState: 'loading', quoteErrorText: '', cartTotal: '--', freightTotal: '--', orderTotal: '--', pickupFree: false });
@@ -134,7 +134,7 @@ Page({
     const result = this.data.groupMode ? await groupsApi.quote({ ...quotePayload, campaignId: this.data.groupCampaignId }) : this.data.bundleId ? await bundleApi.quote(quotePayload) : await checkoutApi.quote(quotePayload);
     if (requestToken !== this._quoteRequestSeq) return;
     const quote = result && result.ok && result.data && result.data.quote;
-    if (!quote) return commit({ cartItems: unpricedCartItems, quoteState: 'error', quoteErrorText: result && result.error && result.error.message || '履约费用和订单金额暂时无法核验，请重试', pickupFree: false });
+    if (!quote) return commit({ cartItems: unpricedCartItems, quoteState: 'error', quoteErrorText: result && result.error && result.error.message || '订单金额计算失败，请重试', pickupFree: false });
     const payable = quote.payableAmountCent !== undefined ? quote.payableAmountCent : quote.totalAmountCent;
     const quoteItems = Array.isArray(quote.items) ? quote.items : [];
     const quotedCartItems = cartItems.map((item) => {
@@ -149,7 +149,7 @@ Page({
   selectWarehouse(event) {
     const warehouse = this.data.warehouses.find((item) => item.id === event.currentTarget.dataset.id);
     if (!warehouse) return;
-    this.setData({ warehouse, warehouseAreaText: warehouse.areas && warehouse.areas.length ? warehouse.areas.join('、') : '配送区域以订单确认页为准' }, () => { this.syncDeliverySlots({ warehouse }); this.syncPickupSites({ warehouse }); this.loadQuote(); });
+    this.setData({ warehouse, warehouseAreaText: warehouse.areas && warehouse.areas.length ? warehouse.areas.join('、') : '暂无配送范围信息' }, () => { this.syncDeliverySlots({ warehouse }); this.syncPickupSites({ warehouse }); this.loadQuote(); });
   },
   selectFulfillmentType(event) {
     if (this.data.groupMode) return wx.showToast({ title: '拼团订单仅支持冷链配送', icon: 'none' });
@@ -181,11 +181,11 @@ Page({
   async submitOrder() {
     if (this._submittingOrder || this.data.submitting) return wx.showToast({ title: '正在提交订单，请稍候', icon: 'none' });
     if (this.data.quoteState !== 'ready') {
-      const hint = this.data.quoteState === 'error' ? '报价核验失败，请点击重新核验报价' : '正在核验本次报价，请稍候';
+      const hint = this.data.quoteState === 'error' ? '请先重新计算订单金额' : '正在计算订单金额，请稍候';
       return wx.showToast({ title: hint, icon: 'none' });
     }
     const { address, warehouse, cartItems, deliverySlot, deliverySlotsContractAvailable, fulfillmentType, pickupSite } = this.data;
-    if (!warehouse || !cartItems.length) return wx.showToast({ title: '请先完善履约仓和商品', icon: 'none' });
+    if (!warehouse || !cartItems.length) return wx.showToast({ title: '请先选择仓库和商品', icon: 'none' });
     if (fulfillmentType === 'delivery' && !address.id) return wx.showToast({ title: '请先选择收货地址', icon: 'none' });
     if (fulfillmentType === 'delivery' && deliverySlotsContractAvailable && !deliverySlot) return wx.showToast({ title: '当前没有可用配送时段，暂不能提交订单', icon: 'none' });
     if (fulfillmentType === 'pickup' && !pickupSite) return wx.showToast({ title: '当前仓库暂无可用自提点', icon: 'none' });
@@ -197,7 +197,8 @@ Page({
       // 与主包内嵌结算的支付方式口径一致：已审核商家走线下结算，其余走演示支付
       const me = await authApi.getMe();
       if (!me || !me.ok || !me.data || !me.data.user) return wx.showToast({ title: '登录状态已失效，请重新登录', icon: 'none' });
-      const isBusiness = me.data.user.userType === 'b' && me.data.user.businessStatus === 'approved';
+      const user = me.data.user;
+      const isBusiness = user.userType === 'b' && user.businessStatus === 'approved' && Boolean(user.organizationId) && user.status !== 'disabled';
       const paymentMethod = this.data.groupMode ? 'wechat' : isBusiness ? 'offline' : 'demo';
       const fulfillmentPayload = fulfillmentType === 'pickup'
         ? { fulfillmentType: 'pickup', pickupSiteId: pickupSite.id }
@@ -205,7 +206,7 @@ Page({
       const orderPayload = { idempotencyKey, ...fulfillmentPayload, warehouseId: warehouse.id, ...(this.data.bundleId ? { bundleId: this.data.bundleId, bundleQuantity: this.data.bundleQuantity } : { items: cartItems.map((item) => ({ skuId: item.skuId, quantity: item.qty })) }), paymentMethod, ...(this.data.couponId ? { couponId: this.data.couponId } : {}), ...(this.data.acceptedQuoteToken ? { acceptedQuoteToken: this.data.acceptedQuoteToken } : {}) };
       const result = this.data.groupMode ? await groupsApi.join({ ...orderPayload, groupId: this.data.groupId }) : await checkoutApi.createOrder(orderPayload);
       const order = result && result.ok && result.data && result.data.order;
-      if (!order) { if (result && result.error && result.error.code === 'PAYMENT_NOT_CONFIGURED') return wx.showModal({ title: '微信支付尚未配置', content: '当前无法完成拼团参团，也不会发生扣款。', showCancel: false }); return wx.showToast({ title: result && result.error && result.error.message || '订单创建失败，请稍后重试', icon: 'none' }); }
+      if (!order) { if (result && result.error && result.error.code === 'PAYMENT_NOT_CONFIGURED') return wx.showModal({ title: '微信支付暂不可用', content: '当前无法完成拼团参团，也不会发生扣款。', showCancel: false }); return wx.showToast({ title: result && result.error && result.error.message || '订单创建失败，请稍后重试', icon: 'none' }); }
       this._orderIdempotencyKey = '';
       const removed = this.data.bundleId ? [] : await Promise.all(cartItems.map((item) => cartApi.removeItem(item.id)));
       if (removed.some((item) => !item || !item.ok)) wx.showToast({ title: '订单已创建，购物车同步失败', icon: 'none' });

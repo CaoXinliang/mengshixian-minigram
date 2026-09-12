@@ -3,8 +3,8 @@
     class="topbar__content"
     style="height: {{navigationHeight}}px; padding-right: {{capsuleInsetRight}}px;"
   >
-    <view class="topbar__back" aria-role="button" aria-label="返回" bindtap="handleBack">
-      <text aria-hidden="true">‹</text>
+    <view class="topbar__back" aria-role="button" aria-label="返回" hover-class="topbar__back--pressed" bindtap="handleBack">
+      <text class="topbar__back-face" aria-hidden="true">‹</text>
     </view>
     <view class="topbar__copy">
       <text class="topbar__title">{{title}}</text>
@@ -14,6 +14,8 @@
       wx:if="{{actionLabel}}"
       class="topbar__action"
       aria-role="button"
+      aria-label="{{actionLabel}}"
+      hover-class="topbar__action--pressed"
       bindtap="handleAction"
     >{{actionLabel}}</view>
   </view>

@@ -1,11 +1,15 @@
-.quantity-stepper{display:flex;align-items:center;justify-content:flex-end;min-width:132rpx;height:56rpx;box-sizing:border-box;flex:none;gap:4rpx}
-.quantity-stepper button{display:flex;align-items:center;justify-content:center;width:50rpx;height:50rpx;padding:0;box-sizing:border-box;border-radius:50%;font-size:25rpx;line-height:1;transition:transform 160ms ease,opacity 160ms ease}
-.quantity-stepper .is-plus{color:#fff;background:#287ff1}
-.quantity-stepper .is-minus{border:1rpx solid #c9d7e6;color:#476078;background:#fff}
-.quantity-stepper .is-minus[disabled],.quantity-stepper .is-plus[disabled]{opacity:.4}
-.quantity-stepper>text{min-width:28rpx;color:#1f3650;font-size:22rpx;font-weight:700;text-align:center}
+.quantity-stepper{display:flex;align-items:center;justify-content:flex-end;width:120px;min-width:120px;max-width:120px;height:44px;box-sizing:border-box;flex:0 0 120px;gap:2px}
+.quantity-stepper .step-control{display:flex;align-items:center;justify-content:center;width:44px;min-width:44px;max-width:44px;height:44px;min-height:44px;margin:0;padding:0;box-sizing:border-box;border:0;border-radius:0;background:transparent;line-height:1;flex:0 0 44px;transition:transform 160ms ease,opacity 160ms ease}
+.step-control::after{border:0}
+/* Keep the established visual diameter independent of the transparent hit area. */
+.step-face{display:flex;align-items:center;justify-content:center;width:50rpx;max-width:32px;height:50rpx;max-height:32px;box-sizing:border-box;border-radius:50%;font-size:25rpx;line-height:1;flex:none}
+.is-plus .step-face{border:1px solid #287ff1;color:#fff;background:#287ff1}
+.is-minus .step-face{border:1px solid #829ab2;color:#365675;background:#fff}
+.quantity-stepper .step-control.is-disabled{border:0;background:transparent;opacity:.4}
+.quantity-value{width:28px;min-width:28px;max-width:28px;color:#1f3650;font-size:15px;font-weight:700;text-align:center;white-space:nowrap;flex:none}
 .quantity-stepper .is-pressed{opacity:.74;transform:scale(.9)}
-.quantity-stepper.is-compact{min-width:124rpx;height:52rpx}
-.quantity-stepper.is-compact button{width:46rpx;height:46rpx;font-size:23rpx}
-.quantity-stepper.is-compact>text{min-width:24rpx;font-size:20rpx}
-@media (prefers-reduced-motion: reduce){.quantity-stepper button{transition:none}}
+.quantity-stepper.is-compact{width:112px;min-width:112px;max-width:112px;height:44px;flex-basis:112px;gap:0}
+.quantity-stepper.is-compact .step-control{width:44px;min-width:44px;max-width:44px;height:44px;flex-basis:44px}
+.quantity-stepper.is-compact .step-face{width:46rpx;height:46rpx;font-size:23rpx}
+.quantity-stepper.is-compact .quantity-value{width:24px;min-width:24px;max-width:24px;font-size:14px}
+@media (prefers-reduced-motion: reduce){.quantity-stepper .step-control{transition:none}}

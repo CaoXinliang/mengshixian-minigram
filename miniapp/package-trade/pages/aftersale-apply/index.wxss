@@ -1,1 +1,166 @@
-.page{min-height:100vh;padding-bottom:150rpx;background:#f3f7fc;color:#203a53}.topbar{display:flex;align-items:center;gap:20rpx;padding:56rpx 28rpx 24rpx;background:#0a69e9;color:#fff}.topbar>text{font-size:52rpx}.topbar>view{display:flex;min-width:0;flex-direction:column}.topbar>view text:first-child{font-size:32rpx;font-weight:700}.topbar>view text:last-child{margin-top:5rpx;color:#dcecff;font-size:20rpx}.card{display:flex;margin:18rpx;padding:24rpx;border-radius:12rpx;background:#fff;flex-direction:column;gap:16rpx}.title{font-size:26rpx;font-weight:700}.item{display:flex;align-items:center;gap:12rpx;padding:16rpx 0;border-top:1rpx solid #edf1f4}.item.selected{background:#f7fbff}.check{display:flex;align-items:center;justify-content:center;width:34rpx;height:34rpx;border:2rpx solid #a9bed2;border-radius:50%;color:#fff;background:#fff;font-size:22rpx}.selected .check{border-color:#0a69e9;background:#0a69e9}.item image{width:76rpx;height:76rpx}.item-info{display:flex;min-width:0;flex:1;flex-direction:column;gap:5rpx}.item-info text:first-child{font-size:23rpx;font-weight:700}.item-info text:not(:first-child){color:#60768c;font-size:20rpx}.quantity{display:flex;align-items:center;gap:8rpx}.quantity button{width:42rpx;height:42rpx;margin:0;padding:0;color:#0a69e9;background:#edf5ff;font-size:23rpx;line-height:42rpx}.quantity text{min-width:28rpx;text-align:center;font-size:21rpx}.reason-list{display:flex;flex-wrap:wrap;gap:12rpx}.reason{padding:11rpx 18rpx;border:1rpx solid #c4d7e8;border-radius:28rpx;color:#60768c;font-size:21rpx}.reason.active{border-color:#0a69e9;color:#0a69e9;background:#edf5ff}.card textarea{box-sizing:border-box;width:100%;height:170rpx;padding:16rpx;border:1rpx solid #d5e0ea;border-radius:8rpx;font-size:23rpx}.counter{align-self:flex-end;color:#8292a3;font-size:19rpx}.notice{padding:14rpx;border-radius:8rpx;color:#8b6430;background:#fff7e8;font-size:20rpx;line-height:1.55}.evidence{display:flex;flex-wrap:wrap;gap:12rpx}.evidence>view,.evidence>button{position:relative;width:132rpx;height:132rpx;margin:0;padding:0;border-radius:8rpx;overflow:hidden}.evidence image{width:100%;height:100%}.evidence>view text{position:absolute;right:0;bottom:0;left:0;padding:5rpx;color:#fff;background:rgba(0,0,0,.5);font-size:18rpx;text-align:center}.evidence>button{display:flex;align-items:center;justify-content:center;border:1rpx dashed #a9bed2;color:#0a69e9;background:#f7fbff;font-size:20rpx}.submit-error{display:block;margin:0 18rpx;padding:14rpx;border-radius:8rpx;color:#ba4b3d;background:#fff1ef;font-size:21rpx}.submit-bar{position:fixed;right:0;bottom:0;left:0;z-index:10;padding:15rpx 18rpx calc(15rpx + env(safe-area-inset-bottom));background:#fff;box-shadow:0 -4rpx 14rpx rgba(18,55,89,.1)}.submit-bar button{margin:0;color:#fff;background:#0a69e9;font-size:24rpx}.state{display:flex;align-items:center;justify-content:center;min-height:360rpx;margin:18rpx;padding:30rpx;border-radius:12rpx;background:#fff;flex-direction:column;gap:12rpx;text-align:center}.state text:first-child{font-size:27rpx;font-weight:700}.state text:nth-child(2){color:#60768c;font-size:22rpx}.state button{padding:10rpx 22rpx;color:#0a69e9;background:#edf5ff;font-size:22rpx}.state.error{background:#fff7f5}.state.error text:first-child{color:#c95042}
+.page{min-height:100vh;padding-bottom:150rpx;background:#f3f7fc;color:#203a53}.topbar{display:flex;align-items:center;gap:20rpx;padding:56rpx 28rpx 24rpx;background:#0a69e9;color:#fff}.topbar>text{font-size:52rpx}.topbar>view{display:flex;min-width:0;flex-direction:column}.topbar>view text:first-child{font-size:18px;font-weight:700}.topbar>view text:last-child{margin-top:5rpx;color:#dcecff;font-size:13px}.card{display:flex;margin:18rpx;padding:24rpx;border-radius:12rpx;background:#fff;flex-direction:column;gap:16rpx}.title{font-size:16px;font-weight:700}.item{display:flex;align-items:center;gap:12rpx;padding:16rpx 0;border-top:1rpx solid #edf1f4}.item.selected{background:#f7fbff}.check{display:flex;align-items:center;justify-content:center;width:34rpx;height:34rpx;border:2rpx solid #a9bed2;border-radius:50%;color:#fff;background:#fff;font-size:14px}.selected .check{border-color:#0a69e9;background:#0a69e9}.item image{width:76rpx;height:76rpx}.item-info{display:flex;min-width:0;flex:1;flex-direction:column;gap:5rpx}.item-info text:first-child{font-size:14px;font-weight:700}.item-info text:not(:first-child){color:#60768c;font-size:13px}.quantity{display:flex;align-items:center;gap:8rpx}.quantity button{width:42rpx;height:42rpx;margin:0;padding:0;color:#0a69e9;background:#edf5ff;font-size:14px;line-height:42rpx}.quantity text{min-width:28rpx;text-align:center;font-size:14px}.reason-list{display:flex;flex-wrap:wrap;gap:12rpx}.reason{padding:11rpx 18rpx;border:1rpx solid #c4d7e8;border-radius:28rpx;color:#60768c;font-size:14px}.reason.active{border-color:#0a69e9;color:#0a69e9;background:#edf5ff}.card textarea{box-sizing:border-box;width:100%;height:170rpx;padding:16rpx;border:1rpx solid #d5e0ea;border-radius:8rpx;font-size:14px}.counter{align-self:flex-end;color:#8292a3;font-size:13px}.notice{padding:14rpx;border-radius:8rpx;color:#8b6430;background:#fff7e8;font-size:13px;line-height:1.55}.evidence{display:flex;flex-wrap:wrap;gap:12rpx}.evidence>view,.evidence>button{position:relative;width:132rpx;height:132rpx;margin:0;padding:0;border-radius:8rpx;overflow:hidden}.evidence image{width:100%;height:100%}.evidence>view text{position:absolute;right:0;bottom:0;left:0;padding:5rpx;color:#fff;background:rgba(0,0,0,.5);font-size:13px;text-align:center}.evidence>button{display:flex;align-items:center;justify-content:center;border:1rpx dashed #a9bed2;color:#0a69e9;background:#f7fbff;font-size:13px}.submit-error{display:block;margin:0 18rpx;padding:14rpx;border-radius:8rpx;color:#ba4b3d;background:#fff1ef;font-size:14px}.submit-bar{position:fixed;right:0;bottom:0;left:0;z-index:10;padding:15rpx 18rpx calc(15rpx + env(safe-area-inset-bottom));background:#fff;box-shadow:0 -4rpx 14rpx rgba(18,55,89,.1)}.submit-bar button{margin:0;color:#fff;background:#0a69e9;font-size:14px}.state{display:flex;align-items:center;justify-content:center;min-height:360rpx;margin:18rpx;padding:30rpx;border-radius:12rpx;background:#fff;flex-direction:column;gap:12rpx;text-align:center}.state text:first-child{font-size:16px;font-weight:700}.state text:nth-child(2){color:#60768c;font-size:14px}.state button{padding:10rpx 22rpx;color:#0a69e9;background:#edf5ff;font-size:14px}.state.error{background:#fff7f5}.state.error text:first-child{color:#c95042}
+
+
+/* 交付态控件层级：触控尺寸使用 px，避免窄屏被 rpx 继续缩小。 */
+button {
+  min-height: 44px;
+  box-sizing: border-box;
+  white-space: nowrap;
+  line-height: 1.25;
+}
+
+.control-pressed {
+  opacity: .72;
+}
+
+.state {
+  min-height: 0;
+  padding-top: 44rpx;
+  padding-bottom: 44rpx;
+}
+
+.state-loading {
+  min-height: 320rpx;
+}
+
+.check,
+.quantity button {
+  width: 44px;
+  min-width: 44px;
+  height: 44px;
+  min-height: 44px;
+  padding: 0;
+}
+
+
+input,
+textarea,
+picker {
+  min-height: 44px;
+  box-sizing: border-box;
+  font-size: 14px;
+}
+
+.reason,
+.evidence text[aria-role="button"] {
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+  box-sizing: border-box;
+}
+
+/* 底部内容占位与固定提交栏高度使用同一组安全区计算。 */
+.page {
+  padding-bottom: calc(44px + 30rpx + constant(safe-area-inset-bottom));
+  padding-bottom: calc(44px + 30rpx + env(safe-area-inset-bottom));
+}
+
+.submit-bar {
+  padding: 15rpx 18rpx calc(15rpx + constant(safe-area-inset-bottom));
+  padding: 15rpx 18rpx calc(15rpx + env(safe-area-inset-bottom));
+}
+
+/* 凭证格留足操作文案宽度，窄屏自动换列，大字允许完整换行。 */
+.evidence {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 8px;
+}
+
+.evidence > view,
+.evidence > button {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  height: 96px;
+  box-sizing: border-box;
+}
+
+.evidence > button {
+  padding: 8px;
+  white-space: normal;
+  line-height: 1.4;
+}
+
+.evidence > view text {
+  justify-content: center;
+  white-space: normal;
+  line-height: 1.4;
+}
+
+/* Keep selection and quantity hit targets large while preserving small faces. */
+.check {
+  position: relative;
+  width: 44px;
+  min-width: 44px;
+  height: 44px;
+  border: 0;
+  background: transparent;
+}
+
+.check::before {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 34rpx;
+  max-width: 22px;
+  height: 34rpx;
+  max-height: 22px;
+  border: 1px solid #a9bed2;
+  border-radius: 50%;
+  box-sizing: border-box;
+  background: #fff;
+  transform: translate(-50%, -50%);
+  content: "";
+}
+
+.selected .check {
+  border: 0;
+  background: transparent;
+}
+
+.selected .check::before {
+  border-color: #0a69e9;
+  background: #0a69e9;
+}
+
+.check > text {
+  position: relative;
+  z-index: 1;
+}
+
+.quantity button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+.quantity button::after {
+  border: 0;
+}
+
+.quantity button > text {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 42rpx;
+  min-width: 0;
+  max-width: 28px;
+  height: 42rpx;
+  max-height: 28px;
+  box-sizing: border-box;
+  border: 1px solid #829ab2;
+  border-radius: 50%;
+  color: #365675;
+  background: #fff;
+  line-height: 1;
+}
+
+.quantity button:last-child > text {
+  border-color: #287ff1;
+  color: #fff;
+  background: #287ff1;
+}

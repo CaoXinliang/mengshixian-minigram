@@ -3,7 +3,7 @@ page {
   background: #f3f7fc;
   color: #10233f;
   font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
-  font-size: 28rpx;
+  font-size: 14px;
 }
 
 view,
@@ -30,6 +30,20 @@ picker {
   font-family: inherit;
 }
 
+button,
+input,
+picker {
+  min-height: 44px;
+}
+
+textarea {
+  min-height: 96px;
+}
+
+button[disabled] {
+  opacity: 0.48;
+}
+
 .page > .bottom,
 .page > .bar,
 .page > .submit-bar {
@@ -44,7 +58,7 @@ picker {
   justify-content: center;
   width: 100%;
   min-width: 0;
-  min-height: 80rpx;
+  min-height: 44px;
   margin: 0;
   padding: 0 22rpx;
   box-sizing: border-box;
