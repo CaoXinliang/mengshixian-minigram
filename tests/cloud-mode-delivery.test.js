@@ -68,9 +68,9 @@ async function run() {
   page.data.cartItems = [{ id: 'product-1', skuId: 'sku-1', qty: 1 }];
   await page.loadRemoteQuote();
   assert.equal(quoteCalls.length, 1);
-  assert.equal(page.data.cartTotal, '50');
-  assert.equal(page.data.freightTotal, '8');
-  assert.equal(page.data.orderTotal, '58', 'checkout total must use the backend payableAmountCent field');
+  assert.equal(page.data.cartTotal, '50.00');
+  assert.equal(page.data.freightTotal, '8.00');
+  assert.equal(page.data.orderTotal, '58.00', 'checkout total must use the backend payableAmountCent field and keep two decimals');
   assert.deepStrictEqual(quoteCalls[0], {
     addressId: 'address-remote-1',
     warehouseId: 'wh-remote-1',

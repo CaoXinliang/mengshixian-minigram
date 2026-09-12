@@ -76,7 +76,7 @@ async function runEmptyLoaders() {
   servicesStub.catalog.listProducts = async () => okRows([{ _id: 'p1', categoryId: 'cat-0', categoryName: '旧分类名称', name: '商品', skus: [] }]);
   page.resolveMediaFileMap = async ids => Object.fromEntries(ids.map(id => [id, `https://example.test/${id}.jpg`]));
   await page.loadRemoteCatalog();
-  assert.strictEqual(page.data.homeCategories.length, 5);
+  assert.strictEqual(page.data.homeCategories.length, 10, 'home must cap real backend categories at the fixed ten-entry layout');
   assert.strictEqual(page.data.categoryGroups.length, 13, 'all twelve backend categories plus all must remain accessible');
   assert.strictEqual(page.data.products[0].category, '后台分类0', 'category ID must resolve the current name after rename');
   assert.strictEqual(page.data.homeCategories[0].image, 'https://example.test/image-0.jpg');
@@ -84,11 +84,11 @@ async function runEmptyLoaders() {
   assert.strictEqual(page.data.categoryProducts.length, 0, 'enabled category without products must remain selectable');
   servicesStub.catalog.listProducts = async () => okRows(Array.from({ length: 55 }, (_, index) => ({ _id: `p-${index}`, categoryId: 'cat-0', categoryName: '后台分类0', name: `商品${index}`, skus: [] })));
   await page.loadRemoteCatalog();
-  assert.strictEqual(page.data.products.length, 50, 'cloud catalog must preserve the agreed 50-product demo boundary even when an API returns more rows');
+  assert.strictEqual(page.data.products.length, 55, 'cloud catalog must retain every product returned by the complete catalog service');
   servicesStub.catalog.listProducts = async () => okRows([{ _id: 'p1', categoryId: 'cat-0', categoryName: '旧分类名称', name: '商品', skus: [] }]);
   servicesStub.catalog.listCategories = async () => ({ ok: false });
   await page.loadRemoteCatalog();
-  assert.strictEqual(page.data.products.length, 50, 'failed category response must not partly replace the last successful 50-product catalog');
+  assert.strictEqual(page.data.products.length, 55, 'failed category response must not partly replace the last successful complete catalog');
   servicesStub.catalog.listCategories = okEmptyRows;
   servicesStub.catalog.listProducts = okEmptyRows;
   await page.loadRemoteCatalog();

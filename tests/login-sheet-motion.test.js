@@ -22,7 +22,7 @@ assert(wxss.includes('@keyframes catalog-status-breathe') && wxss.includes('.cat
 assert(wxss.includes('.catalog-empty.is-loading text:first-child{animation:none}'), 'catalog loading feedback must respect reduced-motion preferences');
 assert(js.includes('cartFeedbackId:') && js.includes('cartPulse:'), 'cart feedback state must be explicit');
 assert(js.includes('pulseCartBadge()') && js.includes('cartFeedbackSeq'), 'cart feedback must reconcile after the queued write');
-assert(stepperWxml.includes('disabled="{{quantity <= 0}}"') && stepperWxml.includes('class="quantity-value"') && !stepperWxml.includes('wx:if="{{quantity <= 0}}"'), 'shared quantity control must render a complete minus-count-plus stepper even when quantity is zero');
+assert(stepperWxml.includes('disabled="{{disabled || quantity <= 0}}"') && stepperWxml.includes('class="quantity-value"') && !stepperWxml.includes('wx:if="{{quantity <= 0}}"'), 'shared quantity control must render a complete minus-count-plus stepper even when quantity is zero');
 assert(stepperWxml.includes('hover-class="is-pressed"'), 'shared add controls must expose press feedback');
 assert(wxml.includes("cartPulse ? 'is-pulsing' : ''"), 'cart tab must expose success feedback state');
 assert(stepperWxss.includes('transition:transform 160ms ease,opacity 160ms ease') && wxss.includes('@keyframes cart-badge-pulse'), 'cart feedback must use restrained transform motion');

@@ -1,4 +1,4 @@
-const { orders, refunds } = require('../../../services/index');
+const { orders, aftersales } = require('../../../services/index');
 const { toOrderRow, orderMatchesFilter } = require('../../services/trade-format');
 const FILTERS = ['全部订单', '待付款', '待收货', '售后/退款'];
 const decodeFilter = (value) => {
@@ -10,8 +10,7 @@ Page({
   data: {
     filters: FILTERS, filter: '全部订单', rows: [], sourceRows: [], loading: true, error: false,
     errorText: '订单加载失败，请稍后重试', emptyTitle: '暂无订单记录', emptyHint: '下单后会在这里显示订单状态和预计送达时间',
-    actionBusyId: '', actionBusyType: '', nextPage: 1, total: 0, hasMore: false, loadingMore: false, loadMoreError: false,
-    refundFormVisible: false, refundTarget: null, refundReason: ''
+    actionBusyId: '', actionBusyType: '', nextPage: 1, total: 0, hasMore: false, loadingMore: false, loadMoreError: false
   },
   onLoad(query) {
     const filter = decodeFilter(query && query.filter);
@@ -24,13 +23,21 @@ Page({
     this._orderLoadSeq = requestToken;
     const page = append ? Math.max(2, Number(this.data.nextPage || 2)) : 1;
     this.setData(append ? { loadingMore: true, loadMoreError: false } : { loading: true, error: false, loadMoreError: false });
-    const result = await orders.list({ page, pageSize: 30 });
+    const refundPromise = aftersales && typeof aftersales.list === 'function' ? aftersales.list({ page: 1, pageSize: 100 }) : Promise.resolve({ ok: true, data: { rows: [] } });
+    const [result, refundResult] = await Promise.all([orders.list({ page, pageSize: 30 }), refundPromise]);
     if (requestToken !== this._orderLoadSeq) return;
     if (!result || !result.ok) {
       if (append) return this.setData({ loadingMore: false, loadMoreError: true });
       return this.setData({ rows: [], sourceRows: [], loading: false, error: true, errorText: result && result.error && result.error.message || '订单加载失败，请稍后重试', hasMore: false, loadingMore: false });
     }
-    const loaded = result && result.data && Array.isArray(result.data.rows) ? result.data.rows.map(toOrderRow) : [];
+    const refundsByOrder = {};
+    for (const refund of refundResult && refundResult.ok && refundResult.data && refundResult.data.rows || []) {
+      if (!refundsByOrder[refund.orderId]) refundsByOrder[refund.orderId] = refund;
+    }
+    const loaded = result && result.data && Array.isArray(result.data.rows) ? result.data.rows.map(order => {
+      const refund = refundsByOrder[order._id];
+      return toOrderRow(refund ? { ...order, latestRefundId: refund._id, latestRefundStatus: refund.status } : order);
+    }) : [];
     const sourceRows = append ? [...this.data.sourceRows, ...loaded].filter((item, index, all) => all.findIndex((row) => row.id === item.id) === index) : loaded;
     const rows = sourceRows.filter((item) => orderMatchesFilter(item, this.data.filter));
     const total = Math.max(sourceRows.length, Number(result && result.data && result.data.total || 0));
@@ -48,6 +55,10 @@ Page({
   },
   retry() { this.loadOrders({ reset: true }); },
   loadMore() { this.loadOrders({ append: true }); },
+  openDetail(event) {
+    const id = event.currentTarget.dataset.id;
+    if (id) wx.navigateTo({ url: `/package-trade/pages/order-detail/index?id=${encodeURIComponent(id)}` });
+  },
   confirmAction(options, onConfirm) {
     if (typeof wx === 'undefined' || typeof wx.showModal !== 'function') return onConfirm();
     wx.showModal({ ...options, success: (result) => { if (result.confirm) onConfirm(); } });
@@ -79,30 +90,11 @@ Page({
     const row = this.data.rows.find((item) => item.id === event.currentTarget.dataset.id);
     if (!row) return;
     if (this.data.actionBusyId) return;
-    this.setData({ refundFormVisible: true, refundTarget: row, refundReason: '' });
+    wx.navigateTo({ url: `/package-trade/pages/aftersale-apply/index?orderId=${encodeURIComponent(row.id)}` });
   },
-  closeRefundForm() { this.setData({ refundFormVisible: false, refundTarget: null, refundReason: '' }); },
-  onRefundReasonInput(event) { this.setData({ refundReason: String(event.detail && event.detail.value || '').slice(0, 300) }); },
-  submitRefund() {
-    const row = this.data.refundTarget;
-    const reason = String(this.data.refundReason || '').trim();
-    if (!row) return this.closeRefundForm();
-    if (reason.length < 2) return wx.showToast({ title: '请写明售后原因', icon: 'none' });
-    this.closeRefundForm();
-    return this.runOrderAction(row.id, 'refund', async () => {
-      this._refundKeyMap = this._refundKeyMap || {};
-      const key = this._refundKeyMap[row.id] || `mini-refund-${row.id}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-      this._refundKeyMap[row.id] = key;
-      const result = await refunds.request({ orderId: row.id, idempotencyKey: key, amountCent: row.totalAmountCent, reason });
-      if (!result || !result.ok) {
-        const code = result && result.error && result.error.code;
-        if (code !== 'REQUEST_FAILED') delete this._refundKeyMap[row.id];
-        return wx.showToast({ title: result && result.error && result.error.message || '售后申请失败，请稍后重试', icon: 'none' });
-      }
-      delete this._refundKeyMap[row.id];
-      await this.loadOrders({ reset: true });
-      wx.showToast({ title: '售后申请已提交', icon: 'success' });
-    });
+  viewAftersale(event) {
+    const row = this.data.rows.find(item => item.id === event.currentTarget.dataset.id);
+    if (row && row.afterSaleId) wx.navigateTo({ url: `/package-trade/pages/aftersale-detail/index?id=${encodeURIComponent(row.afterSaleId)}&orderId=${encodeURIComponent(row.id)}` });
   },
   noop() {},
   back() { wx.navigateBack(); }

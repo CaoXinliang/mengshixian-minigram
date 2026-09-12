@@ -4,7 +4,7 @@ const RECEIPT_ORDER_STATUSES = ['picking', 'shipping', 'delivered'];
 const money = (value) => {
   const number = Number(value);
   if (!Number.isFinite(number)) return '--';
-  return number.toFixed(2).replace(/\.00$/, '').replace(/(\.\d)0$/, '$1');
+  return number.toFixed(2);
 };
 
 function tracking(status) {
@@ -29,6 +29,8 @@ function orderItemSummary(items) {
 }
 
 function toOrderRow(order) {
+  const afterSaleStatus = order.activeRefundStatus || order.latestRefundStatus || '';
+  const activeAfterSale = ['requested', 'approved', 'awaiting_manual_refund', 'processing'].includes(afterSaleStatus);
   return {
     id: order._id,
     orderNo: order.orderNo || '',
@@ -38,21 +40,21 @@ function toOrderRow(order) {
     totalAmountCent: Number(order.totalAmountCent || 0),
     amountLabel: order.paymentMethod === 'demo' ? '订单金额' : '实付',
     deliveryTime: order.deliverySlotSnapshot && order.deliverySlotSnapshot.name || '预计送达时间以订单为准',
-    status: REFUND_STATUS_LABELS[order.refundStatus] || ORDER_STATUS_LABELS[order.status] || order.status,
+    status: REFUND_STATUS_LABELS[afterSaleStatus] || REFUND_STATUS_LABELS[order.refundStatus] || ORDER_STATUS_LABELS[order.status] || order.status,
     rawStatus: order.status,
     paymentStatus: order.paymentStatus || '',
-    refundStatus: order.refundStatus || '',
+    refundStatus: order.refundStatus || '', afterSaleStatus, afterSaleId: order.activeRefundId || order.latestRefundId || '',
     canCancel: order.status === 'pending_payment' || (order.status === 'pending_confirmation' && order.paymentStatus !== 'paid'),
-    canConfirm: order.status === 'delivered' && !order.refundStatus,
-    canRefund: order.paymentStatus === 'paid' && ['pending_confirmation', 'picking', 'shipping', 'delivered', 'completed'].includes(order.status) && !['requested', 'processing', 'succeeded', 'refunded'].includes(order.refundStatus),
+    canConfirm: order.status === 'delivered' && !activeAfterSale && !order.refundStatus,
+    canRefund: order.paymentStatus === 'paid' && ['pending_confirmation', 'picking', 'shipping', 'delivered', 'completed'].includes(order.status) && !activeAfterSale && order.refundStatus !== 'refunded',
     ...tracking(order.status)
   };
 }
 
 function orderMatchesFilter(row, filter) {
   if (filter === '待付款') return row.rawStatus === 'pending_payment';
-  if (filter === '待收货') return RECEIPT_ORDER_STATUSES.includes(row.rawStatus) && !row.refundStatus;
-  if (filter === '售后/退款') return Boolean(row.refundStatus);
+  if (filter === '待收货') return RECEIPT_ORDER_STATUSES.includes(row.rawStatus) && !row.refundStatus && !row.afterSaleStatus;
+  if (filter === '售后/退款') return Boolean(row.refundStatus || row.afterSaleStatus);
   return true;
 }
 

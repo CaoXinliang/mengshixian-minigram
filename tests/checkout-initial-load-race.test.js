@@ -46,15 +46,15 @@ async function run() {
     }
   });
 
-  await page.onLoad();
+  await page.onLoad({ source: 'cart' });
   assert.equal(quoteCalls.length, 1, 'initial checkout load must quote after all state is committed');
   assert.equal(quoteCalls[0].addressId, 'address-1');
   assert.equal(quoteCalls[0].warehouseId, 'warehouse-1');
   assert.deepEqual(quoteCalls[0].items, [{ skuId: 'sku-1', quantity: 2 }]);
   assert.equal(page.data.warehouseAreaText, '深圳市/南山区');
   assert.equal(page.data.quoteState, 'ready');
-  assert.equal(page.data.cartItems[0].unitPriceText, '25');
-  assert.equal(page.data.cartItems[0].subtotalText, '50');
+  assert.equal(page.data.cartItems[0].unitPriceText, '25.00');
+  assert.equal(page.data.cartItems[0].subtotalText, '50.00');
   console.log('checkout initial load race test: passed');
 }
 

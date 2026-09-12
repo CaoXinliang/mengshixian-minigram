@@ -1,0 +1,26 @@
+<view class="page">
+<responsive-topbar title="收货地址" subtitle="{{selectMode ? '选择本次结算地址' : '管理配送地址'}}" bind:back="back"/>
+  <view wx:if="{{status == 'loading'}}" class="state"><text>正在加载收货地址</text><text>请稍候</text></view>
+  <view wx:elif="{{status == 'error'}}" class="state error"><text>收货地址加载失败</text><text>{{errorText}}</text><button bindtap="retry">重新加载</button></view>
+  <block wx:elif="{{!formVisible}}">
+    <view wx:if="{{rows.length}}" class="address-list">
+      <view wx:for="{{rows}}" wx:key="id" class="address-row {{item.isDefault ? 'is-default' : ''}}" bindtap="selectAddress" data-id="{{item.id}}">
+        <view class="address-main"><view><text>{{item.name}}</text><text>{{item.phoneMasked}}</text><text wx:if="{{item.tag}}" class="tag">{{item.tag}}</text><text wx:if="{{item.isDefault}}" class="default-tag">默认</text></view><text>{{item.regionLabel}}</text><text>{{item.detail}}</text></view>
+        <view class="address-actions"><button wx:if="{{!item.isDefault}}" catchtap="setDefault" data-id="{{item.id}}" disabled="{{actionBusyId}}">设为默认</button><button catchtap="openEdit" data-id="{{item.id}}" disabled="{{actionBusyId}}">编辑</button><button catchtap="deleteAddress" data-id="{{item.id}}" disabled="{{actionBusyId}}">删除</button></view>
+      </view>
+    </view>
+    <view wx:else class="state empty"><text>暂未添加收货地址</text><text>添加后可用于核验配送范围与运费</text></view>
+    <view class="bottom"><button bindtap="openNew">新增收货地址</button></view>
+  </block>
+  <view wx:else class="form-card">
+    <view class="form-note"><text>{{form.id ? '编辑收货地址' : '新增收货地址'}}</text><text wx:if="{{form.id}}">为保护隐私，编辑时需重新输入完整手机号</text></view>
+    <button class="wechat-import" bindtap="importWechatAddress">从微信地址簿填写</button>
+    <label><text>收货人</text><input value="{{form.name}}" data-field="name" bindinput="updateField" maxlength="40" placeholder="请输入姓名" /></label>
+    <label><text>手机号码</text><input value="{{form.phone}}" data-field="phone" bindinput="updateField" type="number" maxlength="11" placeholder="{{form.phoneMasked || '请输入 11 位手机号'}}" /></label>
+    <label><text>所在地区</text><picker mode="region" bindchange="chooseRegion"><view class="region-picker">{{form.regionLabel || '请选择省 / 市 / 区'}}<text>›</text></view></picker></label>
+    <label><text>详细地址</text><textarea value="{{form.detail}}" data-field="detail" bindinput="updateField" maxlength="200" placeholder="街道、楼栋、门牌号" /></label>
+    <label><text>地址标签</text><input value="{{form.tag}}" data-field="tag" bindinput="updateField" maxlength="20" placeholder="例如：家、公司" /></label>
+    <checkbox-group bindchange="toggleDefault"><label class="default-check"><checkbox value="default" checked="{{form.isDefault}}" />设为默认地址</label></checkbox-group>
+    <view class="form-actions"><button bindtap="closeForm" disabled="{{saving}}">取消</button><button bindtap="saveAddress" disabled="{{saving}}">{{saving ? '正在保存' : '保存地址'}}</button></view>
+  </view>
+</view>

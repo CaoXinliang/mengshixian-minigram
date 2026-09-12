@@ -1,0 +1,11 @@
+const assert = require('assert/strict');
+const Module = require('module');
+const path = require('path');
+const originalLoad = Module._load; const holder = {}; let approved = false; let sensitiveCalls = 0;
+const services = { auth: { getMe: async () => ({ ok: true, data: { user: approved ? { userType: 'b', businessStatus: 'approved', priceLevel: 'B2' } : { userType: 'c', businessStatus: '' } } }) }, procurement: { getAccount: async () => { sensitiveCalls++; return { ok: true, data: { account: { creditLimitCent: 100000, occupiedCent: 20000, receivableCent: 15000, availableCent: 65000, status: 'active', source: 'client', temporary: false } } }; }, listReceivables: async () => { sensitiveCalls++; return { ok: true, data: { rows: [{ _id: 'l1', action: 'receivable_created', amountCent: 15000, createdAt: '2026-09-12' }] } }; }, listStatements: async () => { sensitiveCalls++; return { ok: true, data: { rows: [{ _id: 's1', statementNo: 'ST01', outstandingCent: 15000, amountCent: 15000, status: 'open' }] } }; } } };
+Module._load = function (request, parent, isMain) { if (request === '../../../services/index') return services; return originalLoad.call(this, request, parent, isMain); };
+global.Page = definition => { holder.value = definition; }; global.wx = { navigateTo: () => {}, navigateBack: () => {} };
+try { require(path.resolve(__dirname, '../miniapp/package-business/pages/center/index.js')); } finally { Module._load = originalLoad; delete global.Page; }
+const makePage = () => Object.assign({}, holder.value, { data: JSON.parse(JSON.stringify(holder.value.data)), setData(patch) { Object.assign(this.data, patch); } });
+async function run() { const denied = makePage(); await denied.load(); assert.equal(denied.data.status, 'forbidden'); assert.equal(sensitiveCalls, 0, 'C users must not request procurement account data'); approved = true; const page = makePage(); await page.load(); assert.equal(page.data.status, 'ready'); assert.equal(page.data.account.creditLimit, '1000.00'); assert.equal(page.data.account.creditUsed, '200.00'); assert.equal(page.data.account.receivable, '150.00'); assert.equal(page.data.account.creditAvailable, '650.00'); assert.equal(sensitiveCalls, 3); console.log('procurement center test: passed'); }
+run().catch(error => { console.error(error); process.exit(1); });

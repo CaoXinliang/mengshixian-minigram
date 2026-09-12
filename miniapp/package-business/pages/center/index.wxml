@@ -1,0 +1,16 @@
+<view class="page">
+  <responsive-topbar title="企业采购中心" subtitle="仅已审核企业账户可访问" bind:back="back"/>
+  <view wx:if="{{status == 'loading'}}" class="state">正在核验企业账户</view>
+  <view wx:elif="{{status == 'forbidden'}}" class="state"><text>暂不可访问</text><text>{{errorText}}</text><button bindtap="back">返回</button></view>
+  <view wx:elif="{{status == 'error'}}" class="state"><text>采购中心加载失败</text><text>{{errorText}}</text><button bindtap="retry">重新加载</button></view>
+  <block wx:elif="{{account}}">
+    <view class="account">
+      <text>{{account.organizationName}}</text><text>采购等级 {{account.priceLevel}} · 账期 {{account.paymentTerms}}</text>
+      <text wx:if="{{!account.configured || account.temporary}}">授信资料尚未确认为正式额度，不可用于真实账期结算</text>
+      <view><view><text>授信额度</text><text>¥{{account.creditLimit}}</text></view><view><text>已占用</text><text>¥{{account.creditUsed}}</text></view><view><text>应收余额</text><text>¥{{account.receivable}}</text></view><view><text>可用额度</text><text>¥{{account.creditAvailable}}</text></view></view>
+    </view>
+    <view class="quick"><button bindtap="openFrequent">常购清单</button><button bindtap="openInquiries">询价记录</button><button bindtap="createInquiry">新建询价</button></view>
+    <view class="card"><text class="title">应收流水</text><view wx:for="{{receivables}}" wx:key="_id" class="row"><view><text>{{item.label}}</text><text>{{item.date}} · {{item.status || '状态同步中'}}</text></view><text>¥{{item.amount}}</text></view><text wx:if="{{!receivables.length}}" class="empty">暂无应收流水</text></view>
+    <view class="card"><text class="title">对账单</text><view wx:for="{{statements}}" wx:key="_id" class="row"><view><text>{{item.label}}</text><text>{{item.date}} · {{item.status || '待生成'}}</text></view><text>¥{{item.amount}}</text></view><text wx:if="{{!statements.length}}" class="empty">暂无对账单</text></view>
+  </block>
+</view>

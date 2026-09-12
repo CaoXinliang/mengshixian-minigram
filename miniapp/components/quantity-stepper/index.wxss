@@ -2,7 +2,7 @@
 .quantity-stepper button{display:flex;align-items:center;justify-content:center;width:50rpx;height:50rpx;padding:0;box-sizing:border-box;border-radius:50%;font-size:25rpx;line-height:1;transition:transform 160ms ease,opacity 160ms ease}
 .quantity-stepper .is-plus{color:#fff;background:#287ff1}
 .quantity-stepper .is-minus{border:1rpx solid #c9d7e6;color:#476078;background:#fff}
-.quantity-stepper .is-minus[disabled]{opacity:.4}
+.quantity-stepper .is-minus[disabled],.quantity-stepper .is-plus[disabled]{opacity:.4}
 .quantity-stepper>text{min-width:28rpx;color:#1f3650;font-size:22rpx;font-weight:700;text-align:center}
 .quantity-stepper .is-pressed{opacity:.74;transform:scale(.9)}
 .quantity-stepper.is-compact{min-width:124rpx;height:52rpx}

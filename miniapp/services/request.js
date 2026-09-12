@@ -28,18 +28,39 @@ function request(action, payload) {
     }, requestId));
   }
 
-  return wx.cloud.callFunction({
-    name: config.cloudFunctionName,
-    data: { action, payload: payload || {}, requestId }
-  }).then((res) => {
-    const result = res && res.result ? res.result : null;
-    return result && typeof result.ok === 'boolean'
-      ? result
-      : makeResult(true, result, null, requestId);
-  }).catch((err) => makeResult(false, null, {
-    code: 'REQUEST_FAILED',
-    message: err && err.errMsg ? err.errMsg : '请求失败'
-  }, requestId));
+  const timeoutMs = Number(config.timeoutMs) > 0 ? Number(config.timeoutMs) : 15000;
+  return new Promise((resolve) => {
+    let settled = false;
+    const finish = (result) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      resolve(result);
+    };
+    const timer = setTimeout(() => finish(makeResult(false, null, {
+      code: 'REQUEST_TIMEOUT',
+      message: '请求超时，请检查网络后重试。'
+    }, requestId)), timeoutMs);
+    let cloudCall;
+    try {
+      cloudCall = wx.cloud.callFunction({
+        name: config.cloudFunctionName,
+        data: { action, payload: payload || {}, requestId }
+      });
+    } catch (err) {
+      finish(makeResult(false, null, { code: 'REQUEST_FAILED', message: err && err.errMsg ? err.errMsg : '请求失败' }, requestId));
+      return;
+    }
+    Promise.resolve(cloudCall).then((res) => {
+      const result = res && res.result ? res.result : null;
+      finish(result && typeof result.ok === 'boolean'
+        ? result
+        : makeResult(true, result, null, requestId));
+    }).catch((err) => finish(makeResult(false, null, {
+      code: 'REQUEST_FAILED',
+      message: err && err.errMsg ? err.errMsg : '请求失败'
+    }, requestId)));
+  });
 }
 
 module.exports = { request, makeResult };

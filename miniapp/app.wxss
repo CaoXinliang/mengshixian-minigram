@@ -18,3 +18,35 @@ input {
 button::after {
   border: 0;
 }
+
+/* Shared responsive primitives. Page and component styles own their layout;
+ * these rules only normalize native control sizing across platforms. */
+button,
+input,
+textarea,
+picker {
+  min-width: 0;
+  box-sizing: border-box;
+  font-family: inherit;
+}
+
+.page > .bottom,
+.page > .bar,
+.page > .submit-bar {
+  box-sizing: border-box;
+}
+
+.page > .bottom button,
+.page > .bar button,
+.page > .submit-bar button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-width: 0;
+  min-height: 80rpx;
+  margin: 0;
+  padding: 0 22rpx;
+  box-sizing: border-box;
+  line-height: 1.3;
+}

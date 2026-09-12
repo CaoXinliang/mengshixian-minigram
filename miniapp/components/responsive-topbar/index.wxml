@@ -1,0 +1,20 @@
+<view class="responsive-topbar" style="padding-top: {{statusBarHeight}}px;">
+  <view
+    class="topbar__content"
+    style="height: {{navigationHeight}}px; padding-right: {{capsuleInsetRight}}px;"
+  >
+    <view class="topbar__back" aria-role="button" aria-label="返回" bindtap="handleBack">
+      <text aria-hidden="true">‹</text>
+    </view>
+    <view class="topbar__copy">
+      <text class="topbar__title">{{title}}</text>
+      <text wx:if="{{subtitle}}" class="topbar__subtitle">{{subtitle}}</text>
+    </view>
+    <view
+      wx:if="{{actionLabel}}"
+      class="topbar__action"
+      aria-role="button"
+      bindtap="handleAction"
+    >{{actionLabel}}</view>
+  </view>
+</view>

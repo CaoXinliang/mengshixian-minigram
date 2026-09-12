@@ -8,8 +8,46 @@
       "name": "trade",
       "pages": [
         "pages/checkout/index",
+        "pages/addresses/index",
         "pages/demo-payment/index",
-        "pages/orders/index"
+        "pages/orders/index",
+        "pages/order-detail/index",
+        "pages/aftersale-apply/index",
+        "pages/aftersale-detail/index"
+      ]
+    },
+    {
+      "root": "package-business",
+      "name": "business",
+      "pages": [
+        "pages/frequent/index",
+        "pages/repurchase/index",
+        "pages/center/index",
+        "pages/inquiries/index",
+        "pages/inquiry-create/index",
+        "pages/inquiry-detail/index"
+      ]
+    },
+    {
+      "root": "package-marketing",
+      "name": "marketing",
+      "pages": [
+        "pages/bundles/index",
+        "pages/bundle-detail/index",
+        "pages/groups/index",
+        "pages/group-detail/index",
+        "pages/coupons/index"
+      ]
+    },
+    {
+      "root": "package-member",
+      "name": "member",
+      "pages": [
+        "pages/points/index",
+        "pages/favorites/index",
+        "pages/reviews/index",
+        "pages/invoices/index",
+        "pages/stored-value/index"
       ]
     }
   ],
@@ -17,6 +55,9 @@
     "navigationStyle": "custom",
     "backgroundTextStyle": "light",
     "backgroundColor": "#F3F7FC"
+  },
+  "usingComponents": {
+    "responsive-topbar": "/components/responsive-topbar/index"
   },
   "lazyCodeLoading": "requiredComponents",
   "style": "v2",

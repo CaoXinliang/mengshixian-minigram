@@ -54,7 +54,7 @@ async function run() {
   const pending = page.toggleCartSelection({ currentTarget: { dataset: { id: 'product-1', skuId: 'sku-1', spec: '6袋/件' } }, detail: { value: [] } });
   assert.equal(page.data.cartItems[0].selected, false, 'unchecking must update local selection immediately');
   assert.equal(page.data.selectedCartCount, 0, 'unchecking must immediately clear selected quantity');
-  assert.equal(page.data.selectedCartTotal, '0', 'unchecking must immediately clear selected total');
+  assert.equal(page.data.selectedCartTotal, '0.00', 'unchecking must immediately clear selected total and keep two decimals');
   await new Promise((resolve) => setTimeout(resolve, 0));
   updateResult = { ok: false, error: { message: '网络失败' } };
   releaseUpdate();

@@ -10,5 +10,16 @@ module.exports = {
   address: require('./address'),
   delivery: require('./delivery'),
   refunds: require('./refunds'),
-  groups: require('./groups')
+  aftersales: require('./aftersales'),
+  frequent: require('./frequent'),
+  procurement: require('./procurement'),
+  inquiries: require('./inquiries'),
+  groups: require('./groups'),
+  bundles: require('./bundles'),
+  coupons: require('./coupons'),
+  membership: require('./membership'),
+  favorites: require('./favorites'),
+  reviews: require('./reviews'),
+  invoices: require('./invoices'),
+  storedValue: require('./stored-value')
 };
