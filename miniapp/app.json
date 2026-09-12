@@ -47,7 +47,8 @@
         "pages/favorites/index",
         "pages/reviews/index",
         "pages/invoices/index",
-        "pages/stored-value/index"
+        "pages/stored-value/index",
+        "pages/legal/index"
       ]
     }
   ],

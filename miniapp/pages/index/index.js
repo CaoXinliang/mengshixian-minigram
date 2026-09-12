@@ -1256,8 +1256,12 @@ Page({
   },
   preventClose() {},
   changeAgreement(event) { this.setData({ agreed: event.detail.value.includes('agree') }); },
+  openLegalDocument(event) {
+    const type = event && event.currentTarget && event.currentTarget.dataset && event.currentTarget.dataset.document === 'terms' ? 'terms' : 'privacy';
+    wx.navigateTo({ url: `/package-member/pages/legal/index?type=${type}` });
+  },
   openPolicyFromLogin() {
-    this.dismissLogin(() => this.openUtilityByType('policy'));
+    wx.navigateTo({ url: '/package-member/pages/legal/index?type=privacy' });
   },
   async completeLogin(event) {
     if (!this.data.agreed) return wx.showToast({ title: '请先同意服务协议与隐私政策', icon: 'none' });
@@ -1643,6 +1647,7 @@ Page({
     if (type === 'orders') return wx.navigateTo({ url: `/package-trade/pages/orders/index?filter=${encodeURIComponent(filter || '全部订单')}` });
     if (type === 'address') return wx.navigateTo({ url: '/package-trade/pages/addresses/index' });
     if (type === 'checkout') return this.goCheckout();
+    if (type === 'policy') return wx.navigateTo({ url: '/package-member/pages/legal/index?type=privacy' });
     const memberRoutes = { coupon: '/package-marketing/pages/coupons/index', favorites: '/package-member/pages/favorites/index', invoice: '/package-member/pages/invoices/index', points: '/package-member/pages/points/index', review: '/package-member/pages/reviews/index', storedValue: '/package-member/pages/stored-value/index', group: '/package-marketing/pages/groups/index', bundles: '/package-marketing/pages/bundles/index' };
     if (serviceConfig.provider === 'cloudbase' && memberRoutes[type]) return wx.navigateTo({ url: memberRoutes[type] });
     this.openUtilityByType(type, filter);

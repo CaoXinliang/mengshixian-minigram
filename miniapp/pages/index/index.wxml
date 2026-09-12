@@ -377,6 +377,10 @@
 <text>客服中心</text>
 <text>订单、配送与商品问题可通过微信客服咨询</text>
 <button bindtap="openUtility" data-type="service">进入微信客服 ›</button>
+<view class="mine-legal-links">
+<text data-document="terms" bindtap="openLegalDocument">用户服务协议</text>
+<text data-document="privacy" bindtap="openLegalDocument">隐私政策</text>
+</view>
 </view>
 </view>
 <view class="bottom-space">
@@ -781,9 +785,10 @@
 </block>
       <block wx:elif="{{utilityType == 'policy'}}">
 <view class="info-card">
-<text>服务说明</text>
-<text>下单前请确认商品规格、配送地址和预计送达时间；登录授权用于查看和管理账户订单、地址及会员权益。</text>
-<text>手机号信息仅用于收货联系并在服务端加密保存；支付页不会发起真实扣款。</text>
+<text>隐私与协议</text>
+<text>当前通用初始版本已覆盖登录、手机号、地址、订单、企业采购、发票与售后场景。</text>
+<button data-document="terms" bindtap="openLegalDocument">查看用户服务协议</button>
+<button data-document="privacy" bindtap="openLegalDocument">查看隐私政策</button>
 </view>
 </block>
       <block wx:elif="{{utilityType == 'account'}}">
@@ -907,7 +912,7 @@
 <checkbox-group class="login-agreement" bindchange="changeAgreement">
 <label>
 <checkbox value="agree" checked="{{agreed}}" />
-<view>我已阅读并同意<text class="policy-link" catchtap="openPolicyFromLogin">《服务协议》和《隐私政策》</text></view>
+<view>我已阅读并同意<text class="policy-link" data-document="terms" catchtap="openLegalDocument">《用户服务协议》</text>和<text class="policy-link" data-document="privacy" catchtap="openLegalDocument">《隐私政策》</text></view>
 </label>
 </checkbox-group>
 <button open-type="getPhoneNumber" bindgetphonenumber="completeLogin" disabled="{{!agreed}}">微信一键登录</button>

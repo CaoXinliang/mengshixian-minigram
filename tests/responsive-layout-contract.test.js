@@ -40,7 +40,11 @@ assert(
 const packagePages = appJson.subpackages.flatMap((subpackage) =>
   subpackage.pages.map((page) => `miniapp/${subpackage.root}/${page}.wxml`)
 );
-assert.strictEqual(packagePages.length, 23, 'all 23 package routes must remain declared');
+assert.strictEqual(packagePages.length, 24, 'all 24 package routes must remain declared');
+assert(
+  packagePages.includes('miniapp/package-member/pages/legal/index.wxml'),
+  'the versioned privacy policy and service agreement route must remain declared'
+);
 for (const pagePath of packagePages) {
   const wxml = read(pagePath);
   assert(wxml.includes('<responsive-topbar'), `${pagePath} must use the shared topbar`);
