@@ -96,10 +96,20 @@ const specialHeadingWxml = sourceSlice(homePageWxml, '<view class="section-headi
 
 assert(wxml.includes('class="wide-outline"') && wxml.includes('bindtap="showAddressForm"'), 'address entry must remain a clear interactive control');
 assert(wxss.includes('.wide-outline{display:flex;align-items:center;justify-content:center;'), 'address entry text must be optically centered');
-assert(!wxml.includes('class="chevron">⌄</text>') && wxml.includes('class="location-name"') && wxss.includes('.store-row{position:relative;') && wxss.includes('.location-button{position:absolute;left:0;top:50%;') && wxss.includes('.location-name{min-width:0;') && wxss.includes('.brand{position:absolute;left:50%;top:50%;') && wxss.includes('transform:translate(-50%,-50%)'), 'header must remove the trailing warehouse glyph, preserve the visible left warehouse label, and center the brand against the viewport');
+const locationButtonRule = Object.assign({}, ...cssRules(wxss, '.location-button'));
+const locationNameRule = Object.assign({}, ...cssRules(wxss, '.location-name'));
+const homeBrandRule = Object.assign({}, ...cssRules(wxss, '.brand'));
+assert(
+  !wxml.includes('class="chevron">⌄</text>') && wxml.includes('class="location-name"') && wxss.includes('.store-row{position:relative;') &&
+    locationButtonRule.position === 'absolute' && locationButtonRule.left === '0' && locationButtonRule.top === '50%' && locationButtonRule.width === 'fit-content' && locationButtonRule['min-width'] === '44px' &&
+    locationNameRule['min-width'] === '0' && locationNameRule.flex === '0 1 auto' &&
+    homeBrandRule.position === 'absolute' && homeBrandRule.left === '50%' && homeBrandRule.top === '50%' && homeBrandRule.transform === 'translate(-50%,-50%)',
+  'header must remove the trailing warehouse glyph, keep a content-width left warehouse label, and center the brand against the viewport'
+);
 assert(homeStoreRowWxml.includes('class="location-name">{{warehouse.name}}</view>') && homeStoreRowWxml.includes('<view class="brand">') && homeStoreRowWxml.includes('<text>梦食鲜</text>'), 'home header must preserve the warehouse and brand text after removing decorative marks');
 assert(!homeStoreRowWxml.includes('<image') && !/(?:location-icon|brand-logo|logo-mark)/.test(homeStoreRowWxml), 'home header must not restore a location icon or circular logo');
 assert(!homePageWxml.includes('class="news-strip"') && !homePageWxml.includes('data-section-type="news"') && !homePageWxml.includes('{{activityTitle}}') && !homePageWxml.includes('{{activityCopy}}') && !homePageWxml.includes('{{activityMoreText}}'), 'the approved home page must not restore the activity headline module');
+assert(!homePageWxml.includes('class="banner-action"') && !homePageWxml.includes('bindtap="openBanner"') && !homePageWxml.includes('data-section-type="special"') && !/\bopenBanner\s*\(/.test(js), 'the approved home banner must remain visual-only without relocating or retaining the deleted special-offer action');
 assert(specialHeadingWxml.includes('{{specialTitle}}') && specialHeadingWxml.includes('{{specialSubtitle}}') && !specialHeadingWxml.includes('<button') && !specialHeadingWxml.includes('{{specialMoreText}}') && !specialHeadingWxml.includes('更多'), 'the special-offer heading must keep its title and subtitle without a more button');
 const approvedBusinessShortcut = indexInternals.shortcutProfile({ userType: 'b', businessStatus: 'approved', organizationId: 'org-1', status: 'active' });
 assert.deepStrictEqual({ label: approvedBusinessShortcut.shortcutLabel, toolLabel: approvedBusinessShortcut.shortcutToolLabel, icon: approvedBusinessShortcut.shortcutIcon, approved: approvedBusinessShortcut.isApprovedBusiness }, { label: '常购清单', toolLabel: '常购清单', icon: '/assets/icons/list.svg', approved: true }, 'a complete enabled B identity must receive the frequent-purchase shortcut');
@@ -128,8 +138,25 @@ assert.strictEqual(indexInternals.selectedCartSummary([{ price: 10, qty: 1 }, { 
 assert(wxml.includes('disabled="{{!selectedCartCount || !selectedCartPriceReady}}"') && js.includes("if (!this.data.selectedCartPriceReady) return wx.showToast({ title: '所选商品价格待确认'"), 'quick checkout must block incomplete pricing both visually and in the handler');
 assert(wxml.includes('<text>{{item.specLabel || item.unit}}</text>') && !wxml.includes('<text>{{item.unit}}</text>\n<text>{{item.specLabel'), 'catalog rows must render one canonical spec-or-package line instead of repeating both values');
 const chooseSpecRules = cssRules(wxss, '.choose-spec');
-assert(chooseSpecRules.length && chooseSpecRules.some((rule) => rule.display === 'flex' && rule['align-items'] === 'center' && rule['justify-content'] === 'center') && chooseSpecRules.every((rule) => !rule.width || (px(rule.width) >= 44 && px(rule.width) <= 120)) && chooseSpecRules.every((rule) => !rule.height || px(rule.height) >= 44), 'catalog actions must retain a bounded column and a phone-safe touch target');
-assert(wxss.includes('.detail-line text:first-child{width:92rpx;') && wxss.includes('text-align:left;line-height:1.5'), 'detail labels and long values must use stable readable columns');
+const chooseSpecRule = Object.assign({}, ...chooseSpecRules);
+const chooseSpecFaceRule = Object.assign({}, ...cssRules(wxss, '.choose-spec-face'));
+const disabledChooseSpecRule = Object.assign({}, ...cssRules(wxss, '.choose-spec[disabled]'));
+assert(
+  chooseSpecRules.length &&
+    chooseSpecRule.display === 'flex' && chooseSpecRule['align-items'] === 'center' && chooseSpecRule['justify-content'] === 'center' &&
+    chooseSpecRule.width === 'fit-content' && chooseSpecRule.height === '44px' && chooseSpecRule.background === 'transparent' &&
+    chooseSpecFaceRule['border-radius'] && chooseSpecFaceRule.padding === '0 8px' && px(chooseSpecFaceRule['min-height']) > 0 && px(chooseSpecFaceRule['min-height']) < 44 &&
+    disabledChooseSpecRule.opacity === '1' && /class="choose-spec[^\n]+hover-class="control-pressed"/.test(wxml),
+  'catalog actions must keep a 44px transparent hit target around a compact content-width pill face'
+);
+const detailLineLabelRule = Object.assign({}, ...cssRules(wxss, '.detail-line>.detail-label'));
+const detailLineValueRule = Object.assign({}, ...cssRules(wxss, '.detail-line text:last-child'));
+assert(
+  detailLineLabelRule.width === '64px' && detailLineLabelRule.flex === '0 0 64px' && detailLineLabelRule['white-space'] === 'nowrap' &&
+    detailLineValueRule['min-width'] === '0' && detailLineValueRule['text-align'] === 'left' && detailLineValueRule['line-height'] === '1.5' && detailLineValueRule['overflow-wrap'] === 'anywhere',
+  'detail labels must keep a readable non-wrapping column while long values use the remaining width and wrap safely'
+);
+assert((wxml.match(/class="detail-label"/g) || []).length === 7 && !/<view wx:for="{{productReviews}}"[^>]*><text class="detail-label"/.test(wxml), 'only fixed semantic detail labels may use the 64px column; dynamic review metadata must remain fluid');
 assert(wxml.includes("item.priceTemporary ? 'is-temporary' : (!item.priceText ? 'is-locked' : '')") && wxml.includes('price-pending is-locked'), 'confirmed prices, temporary prices and access-locked prices must use separate visual states');
 assert(wxss.includes('.price-pending.is-locked') && wxss.includes('.price-pending.is-temporary'), 'price states must have distinct visual semantics');
 assert(wxss.includes('.simple-row>view .price-pending.is-locked,.cart-row>view .price-pending.is-locked{color:#6f8498;'), 'list-context selectors must not recolor access-locked prices as temporary prices');
@@ -151,7 +178,64 @@ assert(addressWxss.includes('.form-card input{height:72rpx;padding:0 17rpx;line-
 assert(wxml.includes('class="detail-price price-pending') && wxss.includes('.detail-product>view .detail-price{') && !wxss.includes('.detail-product>view text:last-child'), 'detail current price must use semantic styling and never inherit obsolete-price deletion');
 assert(wxml.includes('selectedProduct.specs && selectedProduct.specs.length > 1') && wxml.includes('包装规格') && wxml.includes('selectedProduct.unit != selectedSpec') && !wxml.includes('<text>商品规格</text>'), 'single-SKU products must not render a redundant spec selector, while distinct packaging remains visible');
 assert(wxml.includes('quantity="{{detailDraftQty}}"') && wxml.includes('{{selectedSpec}}') && !wxml.includes('已选 {{detailDraftQty}} 件') && !wxml.includes('请继续选择规格'), 'detail quantity and selected spec must remain visible without a duplicate instructional sentence');
-assert(wxml.includes("item.specs && item.specs.length > 1") && wxml.includes('openQuantityPicker') && wxml.includes('selectQuantityPickerSpec') && wxml.includes('openDetailFromQuantityPicker') && wxml.includes('addQuantityPicker') && wxml.includes('class="quantity-picker-actions"') && wxml.includes('查看详情') && wxml.includes('加入购物车'), 'multi-SKU rows must retain the quantity/spec panel and its normal product actions');
+assert(
+  wxml.includes("item.specs && item.specs.length > 1") && wxml.includes('openQuantityPicker') && wxml.includes('selectQuantityPickerSpec') &&
+    wxml.includes('openDetailFromQuantityPicker') && wxml.includes('addQuantityPicker') && wxml.includes('class="quantity-picker-actions"') &&
+    wxml.includes('class="quantity-picker-summary"') && wxml.includes('catchtap="openDetailFromQuantityPicker"') &&
+    wxml.includes('catchtouchstart="startQuantityPickerSummarySwipe"') && wxml.includes('catchtouchmove="moveQuantityPickerSummarySwipe"') &&
+    wxml.includes('catchtouchend="endQuantityPickerSummarySwipe"') && wxml.includes('catchtouchcancel="cancelQuantityPickerSummarySwipe"') &&
+    wxml.includes('查看详情') && wxml.includes('加入购物车'),
+  'multi-SKU rows must retain their actions while the enlarged product summary supports image tap and guarded upward swipe to detail'
+);
+
+function quantityPickerGestureContext() {
+  const context = Object.assign({}, indexInternals.pageDefinition, {
+    data: {
+      ...indexInternals.pageDefinition.data,
+      quantityPickerVisible: true,
+      quantityPickerProduct: { id: 'gesture-product', unit: '1卷', specLabel: '1卷' },
+      quantityPickerSpec: '6卷/件',
+      quantityPickerQty: 3
+    },
+    openedDetail: null,
+    setData(patch, callback) {
+      Object.assign(this.data, patch);
+      if (callback) callback.call(this);
+    },
+    openProductById(id, options) {
+      this.openedDetail = { id, options };
+    }
+  });
+  return context;
+}
+
+const upwardSwipe = quantityPickerGestureContext();
+upwardSwipe.startQuantityPickerSummarySwipe({ touches: [{ clientX: 100, clientY: 200 }] });
+upwardSwipe.moveQuantityPickerSummarySwipe({ touches: [{ clientX: 104, clientY: 154 }] });
+upwardSwipe.endQuantityPickerSummarySwipe({ changedTouches: [{ clientX: 104, clientY: 140 }] });
+assert.deepStrictEqual(upwardSwipe.openedDetail, { id: 'gesture-product', options: { draftQty: 3, selectedSpec: '6卷/件' } }, 'a deliberate upward summary swipe must open detail and preserve the chosen quantity/spec');
+
+const horizontalSwipe = quantityPickerGestureContext();
+horizontalSwipe.startQuantityPickerSummarySwipe({ touches: [{ clientX: 100, clientY: 200 }] });
+horizontalSwipe.moveQuantityPickerSummarySwipe({ touches: [{ clientX: 170, clientY: 185 }] });
+horizontalSwipe.endQuantityPickerSummarySwipe({ changedTouches: [{ clientX: 174, clientY: 135 }] });
+assert.strictEqual(horizontalSwipe.openedDetail, null, 'a predominantly horizontal gesture must not navigate');
+
+const shortSwipe = quantityPickerGestureContext();
+shortSwipe.startQuantityPickerSummarySwipe({ touches: [{ clientX: 100, clientY: 200 }] });
+shortSwipe.endQuantityPickerSummarySwipe({ changedTouches: [{ clientX: 101, clientY: 172 }] });
+assert.strictEqual(shortSwipe.openedDetail, null, 'a short upward drag must not navigate accidentally');
+
+const downwardSwipe = quantityPickerGestureContext();
+downwardSwipe.startQuantityPickerSummarySwipe({ touches: [{ clientX: 100, clientY: 160 }] });
+downwardSwipe.endQuantityPickerSummarySwipe({ changedTouches: [{ clientX: 100, clientY: 230 }] });
+assert.strictEqual(downwardSwipe.openedDetail, null, 'a downward drag must not navigate');
+
+const cancelledSwipe = quantityPickerGestureContext();
+cancelledSwipe.startQuantityPickerSummarySwipe({ touches: [{ clientX: 100, clientY: 200 }] });
+cancelledSwipe.cancelQuantityPickerSummarySwipe();
+cancelledSwipe.endQuantityPickerSummarySwipe({ changedTouches: [{ clientX: 100, clientY: 120 }] });
+assert.strictEqual(cancelledSwipe.openedDetail, null, 'a cancelled gesture must not navigate');
 assert(wxml.includes("checkoutQuoteState == 'ready' ? '提交订单'") && wxml.includes('在线支付暂未开放') && !wxml.includes('aria-label="完成支付确认"') && !wxml.includes('bindtap="finishDemoPayment"'), 'checkout may submit an order, but unavailable online payment must be read-only and expose no completion action');
 assert(wxml.includes('<button wx:if="{{!frequentHasMultiSku}}" bindtap="addFrequent">全部加购</button>') && wxml.includes('<text wx:else class="frequent-spec-hint">逐个选择</text>') && wxml.includes('catchtap="openQuantityPicker"') && js.includes('const hasMultiSku = items =>'), 'frequent bulk-add must disappear when any row requires an explicit SKU choice, while per-row selection remains available');
 const selectedSkuProduct = indexInternals.productWithPrice({

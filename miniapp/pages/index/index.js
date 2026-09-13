@@ -716,13 +716,16 @@ Page({
     // the phone offset again on Windows/macOS creates a conspicuous blank band.
     const isDesktopWindow = /windows|mac os/i.test(String(system.system || '')) || /^(windows|mac\s)/i.test(String(system.model || ''));
     const contentTop = isDesktopWindow ? 0 : Math.max(statusBarHeight, menuBottom);
+    const storeRowHeight = 44;
+    // The home header owns only the part above its 44px store row. Other pages
+    // remain below the full native-capsule clearance through the scroll margin.
+    const homeSafeTop = isDesktopWindow ? 0 : Math.max(statusBarHeight, contentTop - storeRowHeight);
     const safeBottom = Math.max(0, (system.screenHeight || windowHeight) - ((system.safeArea && system.safeArea.bottom) || (system.screenHeight || windowHeight)));
     const catalogChromeHeight = 191;
     const tabbarHeight = LAYOUT.FIXED_BAR_HEIGHT;
     const catalogHeight = Math.max(260, Math.floor(windowHeight - contentTop - catalogChromeHeight - tabbarHeight - safeBottom));
     this.setData({
-      // Safety is reserved outside the scroll viewport, never in a scrolling banner.
-      navSafeHeight: '0rpx',
+      navSafeHeight: `${Math.ceil(homeSafeTop / windowWidth * 750)}rpx`,
       navContentTop: `${Math.ceil(contentTop / windowWidth * 750)}rpx`,
       pageViewportHeight: `${Math.max(1, Math.floor(windowHeight - contentTop))}px`,
       catalogHeight: `${catalogHeight}px`
@@ -1358,6 +1361,8 @@ Page({
     const product = this.findProduct(id);
     if (!product) return;
     if (IS_CLOUD_MODE && !this.data.loggedIn) return this.requireLogin({ type: 'quantityPicker', id, returnPage: this.data.page, activeTab: this.data.activeTab });
+    this._quantityPickerSummarySwipe = null;
+    this._quantityPickerDetailOpening = false;
     const spec = product.specLabel || (product.specs && product.specs[0]) || product.unit || '';
     let pricedProduct = productWithPrice(product, this._remotePriceBySku || {}, spec);
     const quantityPickerQty = firstValidQuantity(pricedProduct);
@@ -1365,7 +1370,46 @@ Page({
     this.setData({ quantityPickerVisible: true, quantityPickerProduct: pricedProduct, quantityPickerSpec: spec, quantityPickerQty });
   },
   closeQuantityPicker() {
+    this._quantityPickerSummarySwipe = null;
+    this._quantityPickerDetailOpening = false;
     this.setData({ quantityPickerVisible: false, quantityPickerProduct: null, quantityPickerSpec: '', quantityPickerQty: 1 });
+  },
+  startQuantityPickerSummarySwipe(event) {
+    if (!this.data.quantityPickerVisible) return;
+    const point = event && event.touches && event.touches[0];
+    if (!point) return;
+    const x = Number(point.clientX !== undefined ? point.clientX : point.pageX);
+    const y = Number(point.clientY !== undefined ? point.clientY : point.pageY);
+    if (!Number.isFinite(x) || !Number.isFinite(y)) return;
+    this._quantityPickerSummarySwipe = { startX: x, startY: y, lastX: x, lastY: y, cancelled: false };
+  },
+  moveQuantityPickerSummarySwipe(event) {
+    const gesture = this._quantityPickerSummarySwipe;
+    const point = event && event.touches && event.touches[0];
+    if (!gesture || !point) return;
+    const x = Number(point.clientX !== undefined ? point.clientX : point.pageX);
+    const y = Number(point.clientY !== undefined ? point.clientY : point.pageY);
+    if (!Number.isFinite(x) || !Number.isFinite(y)) return;
+    gesture.lastX = x;
+    gesture.lastY = y;
+    const dx = x - gesture.startX;
+    const dy = y - gesture.startY;
+    if (Math.abs(dx) > Math.max(18, Math.abs(dy) * 1.5)) gesture.cancelled = true;
+  },
+  endQuantityPickerSummarySwipe(event) {
+    const gesture = this._quantityPickerSummarySwipe;
+    this._quantityPickerSummarySwipe = null;
+    if (!gesture || gesture.cancelled) return;
+    const point = event && event.changedTouches && event.changedTouches[0];
+    const x = point ? Number(point.clientX !== undefined ? point.clientX : point.pageX) : gesture.lastX;
+    const y = point ? Number(point.clientY !== undefined ? point.clientY : point.pageY) : gesture.lastY;
+    if (!Number.isFinite(x) || !Number.isFinite(y)) return;
+    const dx = x - gesture.startX;
+    const dy = y - gesture.startY;
+    if (dy <= -40 && Math.abs(dy) >= Math.abs(dx) * 1.25) this.openDetailFromQuantityPicker();
+  },
+  cancelQuantityPickerSummarySwipe() {
+    this._quantityPickerSummarySwipe = null;
   },
   changeQuantityPicker(event) {
     const delta = Number(event.detail && event.detail.delta !== undefined ? event.detail.delta : 0);
@@ -1382,12 +1426,21 @@ Page({
     this.setData({ quantityPickerSpec: selectedSpec, quantityPickerQty, quantityPickerProduct });
   },
   openDetailFromQuantityPicker() {
+    if (this._quantityPickerDetailOpening) return;
     const product = this.data.quantityPickerProduct;
     if (!product) return this.closeQuantityPicker();
     const requestedQuantity = Number(this.data.quantityPickerQty);
     const quantity = requestedQuantity > 0 ? Math.min(999, requestedQuantity) : 0;
     const spec = this.data.quantityPickerSpec || product.specLabel || product.unit;
-    this.setData({ quantityPickerVisible: false, quantityPickerProduct: null, quantityPickerSpec: '' }, () => this.openProductById(product.id, { draftQty: quantity, selectedSpec: spec }));
+    this._quantityPickerSummarySwipe = null;
+    this._quantityPickerDetailOpening = true;
+    this.setData({ quantityPickerVisible: false, quantityPickerProduct: null, quantityPickerSpec: '' }, () => {
+      try {
+        this.openProductById(product.id, { draftQty: quantity, selectedSpec: spec });
+      } finally {
+        this._quantityPickerDetailOpening = false;
+      }
+    });
   },
   addQuantityPicker() {
     const product = this.data.quantityPickerProduct;
@@ -1454,10 +1507,6 @@ Page({
     const section = (this.data.homeSections || []).find((item) => item.moduleType === sectionType);
     if (section && section.jumpType && section.jumpType !== 'none' && this.consumeContentJump(section)) return;
     this.openUtilityByType(fallbackType);
-  },
-  openBanner(event) {
-    const banner = this.data.bannerItems[Number(event.currentTarget.dataset.index)];
-    if (!banner || banner.jumpType === 'none' || !this.consumeContentJump(banner)) return;
   },
   consumeContentJump(item) {
     const jumpType = String(item.jumpType || 'none');

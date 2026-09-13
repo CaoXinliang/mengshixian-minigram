@@ -1,4 +1,5 @@
 const assert = require('assert/strict');
+const fs = require('fs');
 const Module = require('module');
 const path = require('path');
 
@@ -49,6 +50,7 @@ try {
 }
 
 async function run() {
+  const wxml = fs.readFileSync(path.resolve(__dirname, '../miniapp/pages/index/index.wxml'), 'utf8');
   const page = Object.assign({}, pageDefinition.value, {
     data: JSON.parse(JSON.stringify(pageDefinition.value.data)),
     setData(patch, callback) {
@@ -62,17 +64,15 @@ async function run() {
   await page.loadRemoteBanners();
   assert.equal(page.data.bannerItems.length, 2);
   assert.equal(page.data.bannerItems[0].jumpType, 'category');
+  assert.equal(page.data.bannerItems[1].jumpType, 'product');
+  assert(
+    !wxml.includes('bindtap="openBanner"') &&
+      !wxml.includes('class="banner-action"') &&
+      !/<view[^>]+class="banner-(?:slide|empty)"[^>]+aria-role="button"/.test(wxml),
+    '后台轮播素材和跳转元数据可保留，但本轮已删除的首页特价入口不得再从轮播图暴露点击功能'
+  );
 
-  page.openBanner({ currentTarget: { dataset: { index: 0 } } });
-  assert.equal(page.data.page, 'category', 'Banner 可按后台分类跳转');
-  assert.equal(page.data.category, '海鲜水产');
-
-  page.setData({ page: 'home', category: '全部' });
-  page.openBanner({ currentTarget: { dataset: { index: 1 } } });
-  assert.equal(page.data.page, 'detail', 'Banner 可按后台商品跳转');
-  assert.equal(page.data.selectedProduct.id, 'remote-1');
-
-  console.log('cloud mode banner jumps test: passed');
+  console.log('cloud mode banner presentation test: passed');
 }
 
 run().catch((error) => {

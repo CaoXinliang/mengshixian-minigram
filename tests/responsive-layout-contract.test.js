@@ -26,7 +26,12 @@ const layoutVariables = Object.fromEntries(layout.fixedLayerStyle.split(';').map
 assert.strictEqual(layout.FIXED_BAR_HEIGHT, 64, 'shared metrics must not enlarge the approved bars');
 assert.strictEqual(layout.CONTENT_END_GAP, 12, 'content end gap must retain its approved size');
 assert(indexWxml.includes('style="{{fixedLayerStyle}}"') && indexJs.includes('tabbarHeight = LAYOUT.FIXED_BAR_HEIGHT'), 'WXSS and viewport math must consume the same fixed-layer metrics');
-assert(indexWxml.includes('height: {{pageViewportHeight}}; margin-top: {{navContentTop}};') && !indexWxml.includes("page == 'home' ? '100vh'"), 'the home carousel must share the capsule-safe scroll boundary, not scroll content behind native controls');
+assert(
+  indexWxml.includes("style=\"height: {{page == 'home' ? '100vh' : pageViewportHeight}}; margin-top: {{page == 'home' ? '0rpx' : navContentTop}};\"") &&
+    indexWxml.includes('class="top-safe" style="height: {{navSafeHeight}};"') &&
+    !indexWxml.includes('class="sub-nav-safe"'),
+  'home must use a full-height zero-margin scroll view while non-home pages use the capsule-safe viewport and top margin'
+);
 assert(!/calc\((?:64|76|140)px \+ (?:constant|env)\(safe-area-inset-bottom\)/.test(indexWxss), 'fixed-layer numbers must not drift in duplicated WXSS constants');
 
 const fixedBottomPages = [
@@ -144,17 +149,23 @@ for (const pagePath of packagePages) {
 assert(
   indexWxss.includes('.quantity-picker{max-height:calc(100vh - var(--quantity-picker-safe-top) - 24rpx);overflow-y:auto}') &&
     indexWxml.includes('style="--quantity-picker-safe-top: {{navContentTop}};"') &&
-    indexWxss.includes('.quantity-picker-actions{grid-template-columns:minmax(0,.9fr) minmax(0,1.4fr)}') &&
-    indexWxss.includes('.quantity-picker-actions button,.detail-actions button{width:100%;min-width:0;'),
-  'quantity and detail action sheets must stay scrollable and keep both actions inside their grid'
+    indexWxml.includes('class="quantity-picker-action-face"') &&
+    effectiveRule(indexWxss, '.quantity-picker-actions')['justify-content'] === 'center' &&
+    effectiveRule(indexWxss, '.quantity-picker-actions')['flex-wrap'] === 'wrap',
+  'quantity sheet must stay scrollable while its compact action faces remain centered and wrap safely'
 );
 const quantityPickerActionButton = effectiveRule(indexWxss, '.quantity-picker-actions button');
+const quantityPickerActionFace = effectiveRule(indexWxss, '.quantity-picker-action-face');
 assert(
   quantityPickerActionButton.display === 'flex' &&
     quantityPickerActionButton['align-items'] === 'center' &&
     quantityPickerActionButton['justify-content'] === 'center' &&
-    quantityPickerActionButton.height === '48px',
-  'quantity picker action labels must stay centered without changing the approved 48px button height'
+    quantityPickerActionButton.width === 'auto' &&
+    quantityPickerActionButton.height === '44px' &&
+    quantityPickerActionButton.background === 'transparent' &&
+    quantityPickerActionFace['border-radius'] === '999px' &&
+    px(quantityPickerActionFace['min-height']) > 0 && px(quantityPickerActionFace['min-height']) < 44,
+  'quantity picker actions must separate a 44px transparent hit target from their compact content-width pill faces'
 );
 const catalogBaseSpace = safeAreaBasePx(indexWxss, '.catalog-bottom-space');
 const catalogStackedSpace = safeAreaBasePx(indexWxss, '.catalog-bottom-space.has-quick-checkout');
@@ -379,13 +390,15 @@ for (const layoutCase of layoutCases) {
   const viewport = String(pageContext.data.pageViewportHeight || '').match(/^(\d+)px$/);
   const catalog = String(pageContext.data.catalogHeight || '').match(/^(\d+)px$/);
   const expectedContentTop = layoutCase.desktop ? 0 : Math.max(layoutCase.windowInfo.statusBarHeight, layoutCase.menuRect.bottom + 4);
+  const expectedHomeSafeTop = layoutCase.desktop ? 0 : Math.max(layoutCase.windowInfo.statusBarHeight, expectedContentTop - 44);
   const expectedNavContentTop = `${Math.ceil(expectedContentTop / layoutCase.windowInfo.windowWidth * 750)}rpx`;
+  const expectedNavSafeHeight = `${Math.ceil(expectedHomeSafeTop / layoutCase.windowInfo.windowWidth * 750)}rpx`;
   const expectedSafeBottom = Math.max(0, layoutCase.windowInfo.screenHeight - layoutCase.windowInfo.safeArea.bottom);
   const expectedCatalogHeight = Math.max(260, Math.floor(layoutCase.windowInfo.windowHeight - expectedContentTop - 191 - 64 - expectedSafeBottom));
   assert.strictEqual(pageContext.data.navContentTop, expectedNavContentTop, `${layoutCase.name} must apply the correct capsule-safe top offset`);
-  assert.strictEqual(pageContext.data.navSafeHeight, '0rpx', `${layoutCase.name} must not add a second safe inset inside the scrolling carousel`);
+  assert.strictEqual(pageContext.data.navSafeHeight, expectedNavSafeHeight, `${layoutCase.name} home header must embed only the compact safe inset above its 44px store row`);
   assert(viewport && Number(viewport[1]) > 0, `${layoutCase.name} main viewport must be a positive px value`);
-  assert.strictEqual(pageContext.data.pageViewportHeight, `${layoutCase.windowInfo.windowHeight - expectedContentTop}px`, `${layoutCase.name} main viewport must subtract only its real top inset`);
+  assert.strictEqual(pageContext.data.pageViewportHeight, `${layoutCase.windowInfo.windowHeight - expectedContentTop}px`, `${layoutCase.name} non-home viewport must subtract the same native-capsule inset applied as its top margin`);
   assert(catalog && Number(catalog[1]) > 0, `${layoutCase.name} catalog viewport must be a positive px value`);
   assert.strictEqual(pageContext.data.catalogHeight, `${expectedCatalogHeight}px`, `${layoutCase.name} catalog viewport must subtract the fixed 191px catalog chrome`);
 }

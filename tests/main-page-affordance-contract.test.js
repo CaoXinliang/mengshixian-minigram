@@ -63,7 +63,6 @@ assert(
 
 for (const requiredMarkup of [
   'class="location-button"',
-  'class="banner-action"',
   'aria-label="查看优惠活动"',
   'aria-label="查看积分"',
   'aria-label="查看特价好物"',
@@ -108,9 +107,10 @@ for (const [selector, property, minimum] of [
 assertTouchTarget('.order-grid button', 'min-height', 44);
 assertTouchTarget('.tool-grid button', 'min-height', 44);
 assert(
-  wxml.includes(`wx:if="{{item.jumpType && item.jumpType != 'none'}}" class="banner-slide" aria-role="button"`) &&
-    wxml.includes('<view wx:else class="banner-slide">'),
-  'non-interactive banners must not expose a no-op button role'
+  !wxml.includes('class="banner-action"') &&
+    !wxml.includes('bindtap="openBanner"') &&
+    !/<view[^>]+class="banner-(?:slide|empty)"[^>]+aria-role="button"/.test(wxml),
+  'home banners must remain visual content after their conflicting promotion action is removed'
 );
 
 for (const selector of [
@@ -128,13 +128,19 @@ for (const selector of [
   assert(rule.background && rule.background !== 'transparent', `${selector} must have a visible button surface`);
   assert(rule['border-radius'], `${selector} must have a bounded button shape`);
 }
-const locationFace = cssRule('.location-button::before');
+const locationHitTarget = cssRule('.location-button');
+const locationFace = cssRule('.location-name');
 assert(
-  cssRule('.location-button').padding === '0' &&
+  locationHitTarget.padding === '0' &&
+    locationHitTarget.width === 'fit-content' &&
+    locationHitTarget['min-width'] === '44px' &&
+    locationHitTarget['min-height'] === '44px' &&
+    locationHitTarget['max-width'] &&
+    locationHitTarget.background === 'transparent' &&
     locationFace.background &&
     locationFace.border &&
     locationFace['border-radius'],
-  'warehouse affordance must add its visible face without shifting the approved left-aligned text'
+  'warehouse affordance must keep a content-width outlined face inside its 44px hit target without shifting the approved left-aligned text'
 );
 
 console.log('main page affordance contract test: passed');

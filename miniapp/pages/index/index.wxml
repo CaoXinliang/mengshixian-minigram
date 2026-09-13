@@ -19,23 +19,13 @@
 </template>
 
 <view class="app-shell {{page == 'home' ? 'is-home' : ''}} {{motionReduced ? 'is-motion-reduced' : ''}}" style="{{fixedLayerStyle}}">
-  <scroll-view class="page-scroll {{pageMotion ? 'is-page-entering' : ''}}" style="height: {{pageViewportHeight}}; margin-top: {{navContentTop}};" scroll-y="true" scroll-top="{{pageScrollTop}}" enhanced="true" show-scrollbar="false">
+  <scroll-view class="page-scroll {{pageMotion ? 'is-page-entering' : ''}}" style="height: {{page == 'home' ? '100vh' : pageViewportHeight}}; margin-top: {{page == 'home' ? '0rpx' : navContentTop}};" scroll-y="true" scroll-top="{{pageScrollTop}}" enhanced="true" show-scrollbar="false">
     <block wx:if="{{page == 'home'}}">
       <swiper wx:if="{{bannerItems.length}}" class="home-hero-swiper" style="height: calc({{navSafeHeight}} + 100px + 310rpx);" autoplay="true" interval="4500" circular="true" indicator-dots="{{bannerItems.length > 1}}" indicator-color="rgba(255,255,255,.55)" indicator-active-color="#fff">
         <swiper-item wx:for="{{bannerItems}}" wx:key="headline">
           <view class="home-hero-slide">
             <template is="homeHeroHeader" data="{{warehouse: warehouse, navSafeHeight: navSafeHeight, query: query}}" />
-            <view wx:if="{{item.jumpType && item.jumpType != 'none'}}" class="banner-slide" aria-role="button" aria-label="查看活动：{{item.headline}}" hover-class="control-pressed" bindtap="openBanner" data-index="{{index}}">
-              <image src="{{item.image}}" mode="aspectFill" />
-              <view class="banner-shade"></view>
-              <view class="banner-copy">
-                <text>{{item.eyebrow}}</text>
-                <text>{{item.headline}}</text>
-                <text>{{item.subline}}</text>
-              </view>
-              <view class="banner-action" aria-hidden="true">{{contentJumpLoadingId == item.jumpTarget ? '正在打开…' : '查看详情 ›'}}</view>
-            </view>
-            <view wx:else class="banner-slide">
+            <view class="banner-slide">
               <image src="{{item.image}}" mode="aspectFill" />
               <view class="banner-shade"></view>
               <view class="banner-copy">
@@ -51,7 +41,7 @@
         <swiper-item>
           <view class="home-hero-slide">
             <template is="homeHeroHeader" data="{{warehouse: warehouse, navSafeHeight: navSafeHeight, query: query}}" />
-            <view class="banner-empty" aria-role="button" aria-label="查看特价专区" hover-class="control-pressed" bindtap="openHomeSection" data-section-type="special">
+            <view class="banner-empty">
               <image src="/assets/products/frozen-hero-v2.jpg" mode="aspectFill" />
               <view class="banner-shade"></view>
               <view class="banner-copy">
@@ -59,7 +49,6 @@
                 <text>鲜冻好物\n悦享团圆</text>
                 <text>配送范围与费用在下单前确认</text>
               </view>
-              <view class="banner-action" aria-hidden="true">查看特价 ›</view>
             </view>
           </view>
         </swiper-item>
@@ -97,7 +86,7 @@
 
 </view>
 </view>
-<button wx:if="{{item.specs && item.specs.length > 1}}" disabled="{{loggedIn && item.priceUnavailable}}" class="choose-spec quantity-first-trigger {{loggedIn && item.priceUnavailable ? 'is-unavailable' : ''}}" catchtap="openQuantityPicker" data-id="{{item.id}}">{{loggedIn && item.priceUnavailable ? '暂不可售' : '选数量'}}</button>
+<button wx:if="{{item.specs && item.specs.length > 1}}" disabled="{{loggedIn && item.priceUnavailable}}" class="choose-spec quantity-first-trigger {{loggedIn && item.priceUnavailable ? 'is-unavailable' : ''}}" hover-class="control-pressed" catchtap="openQuantityPicker" data-id="{{item.id}}"><text class="choose-spec-face">{{loggedIn && item.priceUnavailable ? '暂不可售' : '选数量'}}</text></button>
 <quantity-stepper wx:else quantity="{{item.cartQty || 0}}" max="{{item.maximumQuantity || 999}}" disabled="{{loggedIn && item.priceUnavailable}}" compact bind:change="changeQuantity" data-id="{{item.id}}" data-spec="{{item.specLabel || item.unit}}" />
 </view>
 </block>
@@ -172,7 +161,7 @@
 <text>{{item.specLabel || item.unit}}</text>
 <text class="price-pending {{item.priceTemporary ? 'is-temporary' : (!item.priceText ? 'is-locked' : '')}}">{{item.priceText || priceFallback}}</text>
 </view>
-<button wx:if="{{item.specs && item.specs.length > 1}}" disabled="{{loggedIn && item.priceUnavailable}}" class="choose-spec quantity-first-trigger {{loggedIn && item.priceUnavailable ? 'is-unavailable' : ''}}" catchtap="openQuantityPicker" data-id="{{item.id}}">{{loggedIn && item.priceUnavailable ? '暂不可售' : '选数量'}}</button>
+<button wx:if="{{item.specs && item.specs.length > 1}}" disabled="{{loggedIn && item.priceUnavailable}}" class="choose-spec quantity-first-trigger {{loggedIn && item.priceUnavailable ? 'is-unavailable' : ''}}" hover-class="control-pressed" catchtap="openQuantityPicker" data-id="{{item.id}}"><text class="choose-spec-face">{{loggedIn && item.priceUnavailable ? '暂不可售' : '选数量'}}</text></button>
 <quantity-stepper wx:else quantity="{{item.cartQty || 0}}" max="{{item.maximumQuantity || 999}}" disabled="{{loggedIn && item.priceUnavailable}}" compact bind:change="changeQuantity" data-id="{{item.id}}" data-spec="{{item.specLabel || item.unit}}" />
 </view>
 </block>
@@ -304,7 +293,7 @@
 <text>{{item.specLabel || item.unit}}</text>
 <text class="price-pending {{item.priceTemporary ? 'is-temporary' : (!item.priceText ? 'is-locked' : '')}}">{{item.priceText || priceFallback}}</text>
 </view>
-<button wx:if="{{item.specs && item.specs.length > 1}}" disabled="{{loggedIn && item.priceUnavailable}}" class="choose-spec quantity-first-trigger {{loggedIn && item.priceUnavailable ? 'is-unavailable' : ''}}" catchtap="openQuantityPicker" data-id="{{item.id}}">{{loggedIn && item.priceUnavailable ? '暂不可售' : '选数量'}}</button>
+<button wx:if="{{item.specs && item.specs.length > 1}}" disabled="{{loggedIn && item.priceUnavailable}}" class="choose-spec quantity-first-trigger {{loggedIn && item.priceUnavailable ? 'is-unavailable' : ''}}" hover-class="control-pressed" catchtap="openQuantityPicker" data-id="{{item.id}}"><text class="choose-spec-face">{{loggedIn && item.priceUnavailable ? '暂不可售' : '选数量'}}</text></button>
 <quantity-stepper wx:else quantity="{{item.cartQty || 0}}" max="{{item.maximumQuantity || 999}}" disabled="{{loggedIn && item.priceUnavailable}}" compact bind:change="changeQuantity" data-id="{{item.id}}" data-spec="{{item.specLabel || item.unit}}" />
 </view>
 </view>
@@ -534,11 +523,11 @@
 <quantity-stepper quantity="{{detailDraftQty}}" min="{{selectedProduct.minimumQuantity || 1}}" max="{{selectedProduct.maximumQuantity || 999}}" disabled="{{loggedIn && selectedProduct.priceUnavailable}}" bind:change="changeDetailQuantity" />
 </view>
 <view class="detail-line detail-spec-heading">
-<text>选择规格</text>
+<text class="detail-label">选择规格</text>
 <text>{{selectedSpec}}</text>
 </view>
 <view class="spec-list">
-<button wx:for="{{selectedProduct.specs}}" wx:key="*this" class="{{selectedSpec == item ? 'is-active' : ''}}" bindtap="selectSpec" data-spec="{{item}}">{{item}}</button>
+<button wx:for="{{selectedProduct.specs}}" wx:key="*this" class="{{selectedSpec == item ? 'is-active' : ''}}" hover-class="control-pressed" bindtap="selectSpec" data-spec="{{item}}"><text class="spec-option-face">{{item}}</text></button>
 </view>
 </view>
 <view wx:else class="detail-panel detail-quantity single-spec">
@@ -553,7 +542,7 @@
 </view>
 <view wx:if="{{selectedGroup}}" class="detail-panel detail-group-panel">
 <view class="detail-line">
-<text>拼团专场</text>
+<text class="detail-label">拼团专场</text>
 <text>{{selectedGroup.size}} 人团</text>
 </view>
 <text>{{selectedGroup.ends}} · 已参团 {{selectedGroup.joined}}/{{selectedGroup.size}} 人 · 拼团价不分身份</text>
@@ -562,26 +551,26 @@
 </view>
 <view class="detail-panel">
 <view class="detail-line">
-<text>配送</text>
+<text class="detail-label">配送</text>
 <text>{{warehouse.name}} · 配送时间在确认订单页显示</text>
 </view>
 <view class="detail-line">
-<text>服务</text>
+<text class="detail-label">服务</text>
 <text>全程冷链 · 商品异常请在签收后 48 小时内联系售后客服</text>
 </view>
 </view>
 <view class="detail-panel">
 <text class="detail-title">商品详情</text>
 <view wx:if="{{selectedProduct.unit && selectedProduct.unit != selectedSpec}}" class="detail-line">
-<text>包装规格</text>
+<text class="detail-label">包装规格</text>
 <text>{{selectedProduct.unit}}</text>
 </view>
 <view class="detail-line">
-<text>贮存条件</text>
+<text class="detail-label">贮存条件</text>
 <text>-18℃ 冷冻保存</text>
 </view>
 <view class="detail-line">
-<text>温馨提示</text>
+<text class="detail-label">温馨提示</text>
 <text>开封后请尽快食用，并按包装说明充分加热。</text>
 </view>
 </view>
@@ -659,7 +648,7 @@
 
 </view>
 </view>
-<button wx:if="{{item.specs && item.specs.length > 1}}" disabled="{{loggedIn && item.priceUnavailable}}" class="choose-spec quantity-first-trigger {{loggedIn && item.priceUnavailable ? 'is-unavailable' : ''}}" catchtap="openQuantityPicker" data-id="{{item.id}}">{{loggedIn && item.priceUnavailable ? '暂不可售' : '选数量'}}</button>
+<button wx:if="{{item.specs && item.specs.length > 1}}" disabled="{{loggedIn && item.priceUnavailable}}" class="choose-spec quantity-first-trigger {{loggedIn && item.priceUnavailable ? 'is-unavailable' : ''}}" hover-class="control-pressed" catchtap="openQuantityPicker" data-id="{{item.id}}"><text class="choose-spec-face">{{loggedIn && item.priceUnavailable ? '暂不可售' : '选数量'}}</text></button>
 <quantity-stepper wx:else quantity="{{item.cartQty || 0}}" max="{{item.maximumQuantity || 999}}" disabled="{{loggedIn && item.priceUnavailable}}" compact bind:change="changeQuantity" data-id="{{item.id}}" data-spec="{{item.specLabel || item.unit}}" />
 </view>
 </view>
@@ -932,17 +921,19 @@
   <view wx:if="{{quantityPickerVisible}}" class="quantity-picker-mask" style="--quantity-picker-safe-top: {{navContentTop}};" bindtap="closeQuantityPicker">
     <view class="quantity-picker" catchtap="preventClose">
       <view class="quantity-picker-head">
-        <image src="{{quantityPickerProduct.img}}" mode="aspectFit" />
-        <view class="quantity-picker-product-copy">
-          <text>{{quantityPickerProduct.name}}</text>
-          <text class="quantity-picker-price price-pending {{quantityPickerProduct.priceTemporary ? 'is-temporary' : (!quantityPickerProduct.priceText ? 'is-locked' : '')}}">{{quantityPickerProduct.priceText || priceFallback}}</text>
+        <view class="quantity-picker-summary" catchtouchstart="startQuantityPickerSummarySwipe" catchtouchmove="moveQuantityPickerSummarySwipe" catchtouchend="endQuantityPickerSummarySwipe" catchtouchcancel="cancelQuantityPickerSummarySwipe">
+          <image src="{{quantityPickerProduct.img}}" mode="aspectFit" aria-role="button" aria-label="查看{{quantityPickerProduct.name}}详情" hover-class="control-pressed" catchtap="openDetailFromQuantityPicker" />
+          <view class="quantity-picker-product-copy">
+            <text>{{quantityPickerProduct.name}}</text>
+            <text class="quantity-picker-price price-pending {{quantityPickerProduct.priceTemporary ? 'is-temporary' : (!quantityPickerProduct.priceText ? 'is-locked' : '')}}">{{quantityPickerProduct.priceText || priceFallback}}</text>
+          </view>
         </view>
-        <button class="quantity-picker-close" aria-label="关闭选数量窗口" hover-class="control-pressed" bindtap="closeQuantityPicker"><text class="quantity-picker-close-face" aria-hidden="true">×</text></button>
+        <button class="quantity-picker-close" aria-label="关闭选数量窗口" hover-class="control-pressed" catchtap="closeQuantityPicker"><text class="quantity-picker-close-face" aria-hidden="true">×</text></button>
       </view>
       <view wx:if="{{quantityPickerProduct.specs && quantityPickerProduct.specs.length > 1}}" class="quantity-picker-spec-row">
         <text>规格</text>
         <view class="quantity-picker-specs">
-          <button wx:for="{{quantityPickerProduct.specs}}" wx:key="*this" class="{{quantityPickerSpec == item ? 'is-active' : ''}}" bindtap="selectQuantityPickerSpec" data-spec="{{item}}">{{item}}</button>
+          <button wx:for="{{quantityPickerProduct.specs}}" wx:key="*this" class="{{quantityPickerSpec == item ? 'is-active' : ''}}" hover-class="control-pressed" bindtap="selectQuantityPickerSpec" data-spec="{{item}}"><text class="spec-option-face">{{item}}</text></button>
         </view>
       </view>
       <view class="quantity-picker-row">
@@ -957,8 +948,8 @@
         </scroll-view>
       </view>
       <view class="quantity-picker-actions">
-        <button class="quantity-picker-detail" bindtap="openDetailFromQuantityPicker">查看详情</button>
-        <button class="quantity-picker-confirm" disabled="{{quantityPickerProduct.purchaseRuleUnavailable || (loggedIn && quantityPickerProduct.priceUnavailable) || quantityPickerQty < 1}}" bindtap="addQuantityPicker">{{loggedIn && quantityPickerProduct.priceUnavailable ? '暂不可售' : (quantityPickerProduct.purchaseRuleUnavailable || quantityPickerQty < 1 ? '暂不可购买' : '加入购物车')}}</button>
+        <button class="quantity-picker-detail" hover-class="control-pressed" bindtap="openDetailFromQuantityPicker"><text class="quantity-picker-action-face">查看详情</text></button>
+        <button class="quantity-picker-confirm" hover-class="control-pressed" disabled="{{quantityPickerProduct.purchaseRuleUnavailable || (loggedIn && quantityPickerProduct.priceUnavailable) || quantityPickerQty < 1}}" bindtap="addQuantityPicker"><text class="quantity-picker-action-face">{{loggedIn && quantityPickerProduct.priceUnavailable ? '暂不可售' : (quantityPickerProduct.purchaseRuleUnavailable || quantityPickerQty < 1 ? '暂不可购买' : '加入购物车')}}</text></button>
       </view>
     </view>
   </view>
