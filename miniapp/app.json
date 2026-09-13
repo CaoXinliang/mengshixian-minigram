@@ -52,6 +52,12 @@
       ]
     }
   ],
+  "preloadRule": {
+    "pages/index/index": {
+      "network": "all",
+      "packages": ["trade", "member"]
+    }
+  },
   "window": {
     "navigationStyle": "custom",
     "backgroundTextStyle": "light",

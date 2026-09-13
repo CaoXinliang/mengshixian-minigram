@@ -1,9 +1,36 @@
 const { config: serviceConfig, auth: authApi, catalog: catalogApi, content: contentApi, address: addressApi, cart: cartApi, delivery: deliveryApi, checkout: checkoutApi, orders: ordersApi, refunds: refundsApi, groups: groupsApi, favorites: favoritesApi, reviews: reviewsApi } = require('../../services/index');
-const { chunkUnique, fetchRemotePages } = require('../../services/collection');
+const { chunkUnique } = require('../../services/collection');
 const MEAL_IDEAS = require('../../config/meal-ideas');
 const LAYOUT = require('../../config/layout');
 
 const LOGIN_AGREED_STORAGE_KEY = 'mengshixian_login_agreed';
+const PUBLIC_CONTENT_MAX_AGE_MS = 5 * 60 * 1000;
+const CATALOG_INITIAL_PAGE_SIZE = 40;
+const CATALOG_BROWSE_PAGE_SIZE = 100;
+const PUBLIC_CONTENT_MEMORY_CACHE = Object.create(null);
+function readPublicContentCache(key, maxAgeMs) {
+  const cached = PUBLIC_CONTENT_MEMORY_CACHE[key];
+  if (!cached || !maxAgeMs || Date.now() - cached.savedAt >= maxAgeMs) return null;
+  return cached.value;
+}
+function writePublicContentCache(key, value) {
+  PUBLIC_CONTENT_MEMORY_CACHE[key] = { savedAt: Date.now(), value };
+  return value;
+}
+async function loadInitialProductPage() {
+  if (catalogApi.supportsPagedCatalog && typeof catalogApi.listProducts === 'function') {
+    return catalogApi.listProducts({ page: 1, pageSize: CATALOG_INITIAL_PAGE_SIZE });
+  }
+  if (typeof catalogApi.listAllProducts === 'function') return catalogApi.listAllProducts();
+  return catalogApi.listProducts({ page: 1, pageSize: CATALOG_INITIAL_PAGE_SIZE });
+}
+async function loadInitialCategoryPage() {
+  if (catalogApi.supportsPagedCatalog && typeof catalogApi.listCategories === 'function') {
+    return catalogApi.listCategories({ page: 1, pageSize: 100 });
+  }
+  if (typeof catalogApi.listAllCategories === 'function') return catalogApi.listAllCategories();
+  return catalogApi.listCategories({ page: 1, pageSize: 100 });
+}
 function remotePriceScope(page, user = page._remoteUser) {
   const identity = user || {};
   return JSON.stringify([
@@ -17,6 +44,9 @@ function clearRemotePriceCache(page) {
   page._remotePriceBySku = {};
   page._remotePriceScope = '';
   page._remotePricesRequest = null;
+  page._remotePricePendingSkuIds = new Set();
+  page._remotePriceActiveSkuIds = new Set();
+  page._remotePriceResolvedSkuIds = new Set();
   // 旧版本价格缓存没有身份归属，不能在任何后续会话中继续使用。
   if (typeof wx !== 'undefined' && typeof wx.removeStorageSync === 'function') {
     try { wx.removeStorageSync('mx_price_cache'); } catch (_) {}
@@ -535,9 +565,9 @@ function mealProductScore(product, idea) {
     return Math.max(best, matchType + term.length * 20 - index * 40 - Math.min(name.length, 60));
   }, -1);
 }
-function buildMealIdeaRows(products, failedCoverIds = new Set()) {
+function buildMealIdeaRows(products, failedCoverIds = new Set(), ideas = MEAL_IDEAS) {
   const catalog = Array.isArray(products) ? products : [];
-  return MEAL_IDEAS.map((idea) => {
+  return ideas.map((idea) => {
     const linkedProducts = catalog.map((product, order) => ({ product, order, score: mealProductScore(product, idea) }))
       .filter((match) => match.score >= 0)
       .sort((left, right) => right.score - left.score || left.order - right.order)
@@ -579,6 +609,76 @@ function orderCategoriesForHome(rows) {
   });
 }
 
+function normalizeRemoteProducts(rows, remoteCategories) {
+  const categoryById = new Map((remoteCategories || []).map(item => [item._id, item]));
+  return (Array.isArray(rows) ? rows : []).map((item) => {
+    const skuOptions = Array.isArray(item.skus) ? item.skus.map((sku) => ({
+      id: sku._id,
+      label: sku.specName || sku.packageUnit || sku.netWeight || '标准规格',
+      packageUnit: sku.packageUnit || '',
+      minOrderQuantity: positiveInteger(sku.minOrderQuantity, 1),
+      orderMultiple: positiveInteger(sku.orderMultiple, 1)
+    })) : [];
+    const specs = skuOptions.map((sku) => sku.label);
+    const categoryName = (categoryById.get(item.categoryId) || {}).name || item.categoryName || '其他冻品';
+    return {
+      id: item._id,
+      name: item.name || '商品信息暂不可用',
+      category: categoryName,
+      unit: skuOptions[0] && skuOptions[0].packageUnit ? skuOptions[0].packageUnit : '规格信息暂不可用',
+      priceUnitLabel: displayUnitLabel(skuOptions[0] && skuOptions[0].packageUnit),
+      specLabel: specs[0] || '',
+      specs,
+      skuOptions,
+      sales: 0,
+      tag: '',
+      img: '/assets/products/placeholder.svg',
+      coverMediaId: item.coverMediaId || '',
+      benefit: '冷链配送 · 家庭囤货'
+    };
+  });
+}
+
+function deriveRemoteCategories(rows) {
+  const categories = new Map();
+  (Array.isArray(rows) ? rows : []).forEach((item, index) => {
+    const name = String(item.categoryName || '').trim();
+    if (!name) return;
+    const id = String(item.categoryId || `derived-category-${index}`);
+    if (!categories.has(id)) categories.set(id, { _id: id, name, imageMediaId: '', sort: index });
+  });
+  return [...categories.values()];
+}
+
+function remoteCategoryPresentation(remoteCategories, products, categoryFiles = {}) {
+  const categories = Array.isArray(remoteCategories) ? remoteCategories : [];
+  const catalog = Array.isArray(products) ? products : [];
+  const categoryGroups = categories.map((item) => ({
+    id: item._id,
+    label: item.name,
+    categories: [item.name],
+    image: categoryFiles[item.imageMediaId] || '/assets/products/placeholder.svg'
+  }));
+  const homeCategories = fixedHomeCategories(categoryGroups.map(({ label, image }) => ({ label, image })));
+  categoryGroups.push({
+    id: '全部',
+    label: '全部分类',
+    image: '/assets/products/placeholder.svg',
+    categories: [...new Set((categories.length ? categories.map((item) => item.name) : catalog.map((item) => item.category)).filter(Boolean))]
+  });
+  return { categoryGroups, homeCategories };
+}
+
+function mergeProducts(current, incoming) {
+  const merged = new Map((Array.isArray(current) ? current : []).map((item) => [String(item.id), item]));
+  (Array.isArray(incoming) ? incoming : []).forEach((item) => {
+    const key = String(item.id);
+    const existing = merged.get(key);
+    merged.set(key, existing ? { ...item, ...existing, skuOptions: item.skuOptions, specs: item.specs, unit: item.unit, specLabel: item.specLabel, coverMediaId: item.coverMediaId } : item);
+  });
+  return [...merged.values()];
+}
+
 Page({
   data: {
     fixedLayerStyle: LAYOUT.fixedLayerStyle,
@@ -586,21 +686,21 @@ Page({
     navContentTop: '170rpx',
     pageViewportHeight: 'calc(100vh - 170rpx)',
     catalogHeight: '360px', catalogResultsScrollTop: 0, checkoutItems: [], checkoutItemCount: 0, checkoutItemQty: 0,
-    page: 'home', pageMotion: false, pageScrollTop: 0, activeTab: 'home', query: '', category: '全部', categoryGroup: IS_CLOUD_MODE ? '全部' : CATEGORY_GROUPS[0].id, activeGroup: IS_CLOUD_MODE ? null : CATEGORY_GROUPS[0], subCategories: IS_CLOUD_MODE ? ['全部'] : ALL_CATEGORIES, categoryProducts: [], homeSections: [], activityTitle: '活动头条', activityCopy: '速冻面点、火锅食材、海鲜水产陆续上新', activityMoreText: '更多', specialTitle: '特价专区', specialSubtitle: '家庭囤货好价', specialMoreText: '更多',
+    page: 'home', pageMotion: false, pageScrollTop: 0, activeTab: 'home', query: '', category: '全部', categoryGroup: IS_CLOUD_MODE ? '全部' : CATEGORY_GROUPS[0].id, activeGroup: IS_CLOUD_MODE ? null : CATEGORY_GROUPS[0], subCategories: IS_CLOUD_MODE ? ['全部'] : ALL_CATEGORIES, categoryProducts: [], catalogBrowseLoading: false, catalogBrowseError: '', homeSections: [], activityTitle: '活动头条', activityCopy: '速冻面点、火锅食材、海鲜水产陆续上新', activityMoreText: '更多', specialTitle: '特价专区', specialSubtitle: '家庭囤货好价', specialMoreText: '更多',
     customerMealIdeasEnabled: CUSTOMER_MEAL_IDEAS_ENABLED, ...shortcutProfile(null), mealScenes: MEAL_SCENES, mealScene: '全部', mealBatchCursor: 0, mealBatchSize: MEAL_BATCH_SIZE, mealCanShuffle: !IS_CLOUD_MODE, mealIdeaCountText: IS_CLOUD_MODE ? '' : `${MEAL_IDEAS.length} 道`, mealIdeasStatus: IS_CLOUD_MODE ? 'loading' : 'ready', mealIdeasErrorText: '', mealIdeas: buildMealIdeaRows(IS_CLOUD_MODE ? [] : PRODUCTS), mealIdeaRows: mealIdeaBatch(buildMealIdeaRows(IS_CLOUD_MODE ? [] : PRODUCTS), 0), selectedMealIdea: null,
     products: IS_CLOUD_MODE ? [] : PRODUCTS, homeCategories: IS_CLOUD_MODE ? [] : fixedHomeCategories(HOME_CATEGORIES), homeCategorySkeletons: HOME_CATEGORY_SKELETONS, categoryGroups: IS_CLOUD_MODE ? [] : CATEGORY_GROUPS, bannerItems: IS_CLOUD_MODE ? [] : BANNER_ITEMS, specials: IS_CLOUD_MODE ? [] : PRODUCTS.slice(0, 8), frequent: IS_CLOUD_MODE ? [] : [PRODUCTS[1], PRODUCTS[0], PRODUCTS[2], PRODUCTS[6]], frequentHasMultiSku: IS_CLOUD_MODE ? false : hasMultiSku([PRODUCTS[1], PRODUCTS[0], PRODUCTS[2], PRODUCTS[6]]), groupDeals: IS_CLOUD_MODE ? [] : GROUP_DEALS, freightRule: FREIGHT_RULE, warehouseAreaText: IS_CLOUD_MODE ? '' : WAREHOUSE_AREAS[WAREHOUSES[0].name].join('、'),
     warehouse: IS_CLOUD_MODE ? EMPTY_WAREHOUSE : WAREHOUSES[0], warehouses: IS_CLOUD_MODE ? [] : WAREHOUSES, address: { ...EMPTY_ADDRESS },
     cartItems: IS_CLOUD_MODE ? [] : [{ ...PRODUCTS[1], selected: true, selectedSpec: PRODUCTS[1].specLabel || PRODUCTS[1].unit, qty: 2 }, { ...PRODUCTS[3], selected: true, selectedSpec: PRODUCTS[3].specLabel || PRODUCTS[3].unit, qty: 1 }], cartCount: IS_CLOUD_MODE ? 0 : 3, selectedCartCount: IS_CLOUD_MODE ? 0 : 3, selectedCartPriceReady: false, selectedCartAmountCompact: false, cartTotal: '\u4ef7\u683c\u5f85\u8865\u5145', selectedCartTotal: '\u4ef7\u683c\u5f85\u8865\u5145', freightTotal: '\u5f85\u5546\u54c1\u5b9a\u4ef7', orderTotal: '\u4ef7\u683c\u5f85\u8865\u5145',
-    selectedProduct: null, selectedGroup: null, selectedSpec: '', detailDraftQty: 1, detailReturnPage: 'home', detailImageSrc: '', detailImagePreviewable: false, detailImageLoading: false, detailImageError: false, detailStatus: 'idle', detailErrorText: '', detailLimited: false, productReviews: [], productReviewsStatus: 'idle', productReviewsError: '', quantityPickerVisible: false, quantityPickerProduct: null, quantityPickerSpec: '', quantityPickerQty: 1, demoPaymentOrder: null, checkoutQuoteState: 'idle', catalogStatus: IS_CLOUD_MODE ? 'loading' : 'ready', catalogErrorTitle: '商品目录加载失败', catalogErrorText: '请检查网络后点击重试', priceFallback: '登录后查看价格', motionReduced: serviceConfig.motionEnabled === false, loggedIn: false, agreed: false, showLogin: false, loginMounted: false, loginVisible: false, cartFeedbackId: '', cartPulse: false, userType: '', businessStatus: '', organizationId: '', userStatus: '', canApplyBusiness: false, profileTitle: '梦食鲜顾客', profileSub: '微信用户 · 普通会员', couponCount: IS_CLOUD_MODE ? 0 : 2, points: IS_CLOUD_MODE ? 0 : 268, checkedIn: false,
+    selectedProduct: null, selectedGroup: null, selectedSpec: '', detailDraftQty: 1, detailReturnPage: 'home', detailImageSrc: '', detailImagePreviewable: false, detailImageLoading: false, detailImageError: false, detailStatus: 'idle', detailErrorText: '', detailLimited: false, productReviews: [], productReviewsStatus: 'idle', productReviewsError: '', quantityPickerVisible: false, quantityPickerProduct: null, quantityPickerSpec: '', quantityPickerQty: 1, demoPaymentOrder: null, checkoutQuoteState: 'idle', catalogStatus: IS_CLOUD_MODE ? 'loading' : 'ready', catalogErrorTitle: '商品目录加载失败', catalogErrorText: '请检查网络后点击重试', contentJumpLoadingId: '', priceFallback: '登录后查看价格', motionReduced: serviceConfig.motionEnabled === false, loggedIn: false, agreed: false, showLogin: false, loginMounted: false, loginVisible: false, cartFeedbackId: '', cartPulse: false, userType: '', businessStatus: '', organizationId: '', userStatus: '', canApplyBusiness: false, profileTitle: '梦食鲜顾客', profileSub: '微信用户 · 普通会员', couponCount: IS_CLOUD_MODE ? 0 : 2, points: IS_CLOUD_MODE ? 0 : 268, checkedIn: false,
     utilityType: '', utilityTitle: '', utilitySub: '', orderFilter: '全部订单', showAddressForm: false, lastOrder: null, orderRows: [], allOrderRows: [], orderEmptyTitle: '暂无订单记录', orderEmptyHint: '下单后会在这里显示订单状态和预计送达时间', pendingReceiptCount: 0, orderActionBusyId: '', cloudModeEnabled: IS_CLOUD_MODE, businessSubmitting: false
   },
 
   onLoad(query = {}) {
     if (['home', 'category', 'cart', 'mine'].includes(query.tab)) this.setData({ page: query.tab, activeTab: query.tab });
+    this.updateLayoutMetrics(currentLayoutInfo());
     this.syncCategory();
     this.refreshRemoteContent();
     if (IS_CLOUD_MODE) this.restoreRemoteSession();
-    this.updateLayoutMetrics(currentLayoutInfo());
   },
   onResize(res) {
     this.updateLayoutMetrics(currentLayoutInfo(res && res.size));
@@ -641,21 +741,25 @@ Page({
     }
     return tasks.length ? Promise.all(tasks) : undefined;
   },
-  refreshRemoteContent() {
+  refreshRemoteContent(options = {}) {
     if (!IS_CLOUD_MODE) return Promise.resolve();
     if (this._contentRefresh) return this._contentRefresh;
+    const loaderOptions = options.force ? {} : { maxAgeMs: PUBLIC_CONTENT_MAX_AGE_MS };
     const loaders = [
-      () => this.loadRemoteCatalog(), () => this.loadRemoteBanners(),
-      () => this.loadRemoteHomeSections(), () => this.loadRemoteDeliveryOptions()
+      () => this.loadRemoteCatalog(loaderOptions), () => this.loadRemoteBanners(loaderOptions),
+      () => this.loadRemoteHomeSections(loaderOptions), () => this.loadRemoteMealIdeas(loaderOptions), () => this.loadRemoteDeliveryOptions(loaderOptions)
     ];
     this._contentRefresh = Promise.all(loaders.map(load => Promise.resolve().then(load).catch(() => null)))
       .finally(() => { this._contentRefreshedAt = Date.now(); this._contentRefresh = null; });
     return this._contentRefresh;
   },
-  async loadRemoteHomeSections() {
-    const result = await contentApi.getHomeSections({ platform: 'miniapp', page: 1, pageSize: 30 });
-    if (!result || !result.ok || !result.data || !Array.isArray(result.data.rows)) return;
-    const rows = result.data.rows;
+  async loadRemoteHomeSections(options = {}) {
+    let rows = readPublicContentCache('homeSections', options.maxAgeMs);
+    if (!rows) {
+      const result = await contentApi.getHomeSections({ platform: 'miniapp', page: 1, pageSize: 30 });
+      if (!result || !result.ok || !result.data || !Array.isArray(result.data.rows)) return;
+      rows = writePublicContentCache('homeSections', result.data.rows);
+    }
     if (!rows.length) {
       if (IS_CLOUD_MODE) this.setData({ homeSections: [], activityTitle: '活动头条', activityCopy: '速冻面点、火锅食材、海鲜水产陆续上新', activityMoreText: '更多', specialTitle: '特价专区', specialSubtitle: '家庭囤货好价', specialMoreText: '更多' });
       return;
@@ -679,6 +783,27 @@ Page({
     }
     this.setData(patch);
   },
+  async loadRemoteMealIdeas(options = {}) {
+    if (!contentApi || typeof contentApi.getMealIdeas !== 'function') return;
+    const cached = readPublicContentCache('mealIdeas', options.maxAgeMs);
+    if (cached) {
+      this._mealIdeas = cached;
+      this.syncMealIdeas(this.data.products || []);
+      return;
+    }
+    const result = await contentApi.getMealIdeas({ page: 1, pageSize: 100 });
+    const rows = result && result.ok && result.data && Array.isArray(result.data.rows) ? result.data.rows : [];
+    if (!rows.length) return;
+    const coverIds = [...new Set(rows.map((row) => row.coverMediaId).filter(Boolean))];
+    let coverFiles = {};
+    if (coverIds.length) {
+      const mediaResult = await contentApi.resolveMedia(coverIds).catch(() => null);
+      const mediaRows = mediaResult && mediaResult.ok && mediaResult.data && Array.isArray(mediaResult.data.rows) ? mediaResult.data.rows : [];
+      coverFiles = Object.fromEntries(mediaRows.map((item) => [item._id, item.fileId || item.url || '']));
+    }
+    this._mealIdeas = writePublicContentCache('mealIdeas', rows.map((row) => ({ ...row, id: row.contentKey || row._id, cover: coverFiles[row.coverMediaId] || '', coverFallback: '/assets/icons/meal-card.svg' })));
+    this.syncMealIdeas(this.data.products || []);
+  },
   async resolveMediaFileMap(ids) {
     const fileMap = {};
     const mediaChunks = chunkUnique(ids, 50);
@@ -698,95 +823,287 @@ Page({
     }
     return fileMap;
   },
-  async loadRemoteBanners() {
+  async loadRemoteBanners(options = {}) {
+    const cached = readPublicContentCache('banners', options.maxAgeMs);
+    if (cached) {
+      this.setData({ bannerItems: cached });
+      return;
+    }
     const result = await contentApi.getBanners({ platform: 'miniapp', page: 1, pageSize: 10 });
     if (!result || !result.ok || !result.data || !Array.isArray(result.data.rows)) return;
     const rows = result.data.rows;
     if (!rows.length) {
-      if (IS_CLOUD_MODE) this.setData({ bannerItems: [] });
+      if (IS_CLOUD_MODE) this.setData({ bannerItems: writePublicContentCache('banners', []) });
       return;
     }
     const fileMap = await this.resolveMediaFileMap(rows.map((item) => item.mediaAssetId));
-    const bannerItems = rows.map((item) => ({ image: fileMap[item.mediaAssetId] || '/assets/products/frozen-hero-v2.jpg', eyebrow: '梦食鲜冷链商城', headline: item.title || '鲜冻好物', subline: '冷链配送，安心送到家', jumpType: item.jumpType || 'none', jumpTarget: item.jumpTarget || '' }));
+    const bannerItems = writePublicContentCache('banners', rows.map((item) => ({ image: fileMap[item.mediaAssetId] || '/assets/products/frozen-hero-v2.jpg', eyebrow: '梦食鲜冷链商城', headline: item.title || '鲜冻好物', subline: '冷链配送，安心送到家', jumpType: item.jumpType || 'none', jumpTarget: item.jumpTarget || '' })));
     this.setData({ bannerItems });
   },
-  async loadRemoteDeliveryOptions() {
+  async loadRemoteDeliveryOptions(options = {}) {
+    const cached = readPublicContentCache('deliveryOptions', options.maxAgeMs);
+    if (cached) {
+      this.setData(cached);
+      return;
+    }
     const result = await deliveryApi.options();
     if (!result || !result.ok || !result.data || !Array.isArray(result.data.warehouses)) return;
     if (!result.data.warehouses.length) {
-      if (IS_CLOUD_MODE) this.setData({ warehouses: [], warehouse: { ...EMPTY_WAREHOUSE }, warehouseAreaText: '' });
+      if (IS_CLOUD_MODE) this.setData(writePublicContentCache('deliveryOptions', { warehouses: [], warehouse: { ...EMPTY_WAREHOUSE }, warehouseAreaText: '' }));
       return;
     }
     const areas = Array.isArray(result.data.areas) ? result.data.areas : [];
     const warehouses = result.data.warehouses.map((item) => ({ ...item, id: item._id, name: customerWarehouseName(item.name), eta: '预计送达时间以订单确认页为准', areas: areas.filter((area) => !area.warehouseIds || !area.warehouseIds.length || area.warehouseIds.includes(item._id)).flatMap((area) => area.regionCodes || []) }));
     const warehouse = warehouses[0];
-    this.setData({ warehouses, warehouse, warehouseAreaText: warehouse.areas.join('、') || '配送区域以订单确认页为准' });
+    this.setData(writePublicContentCache('deliveryOptions', { warehouses, warehouse, warehouseAreaText: warehouse.areas.join('、') || '配送区域以订单确认页为准' }));
   },
-  async loadRemoteCatalog() {
+  async loadRemoteCatalog(options = {}) {
     if (!IS_CLOUD_MODE) return;
+    if (options.maxAgeMs && this._catalogRefreshedAt && Date.now() - this._catalogRefreshedAt < options.maxAgeMs) return;
+    if (this._catalogExpandTimer) {
+      clearTimeout(this._catalogExpandTimer);
+      this._catalogExpandTimer = null;
+    }
     const requestToken = (this._catalogLoadSeq || 0) + 1;
     this._catalogLoadSeq = requestToken;
+    this._catalogMetadataReady = false;
+    this._pendingCatalogViewOptions = null;
+    this._activeCatalogSliceKey = '';
+    this._catalogSliceStates = {};
+    this._catalogExpansionStopped = false;
+    this._catalogExpansionRetryAt = 0;
+    // 同一轮浏览内价格只取一次；到了全目录刷新周期再重新核价，避免内存结果长期过期。
+    if (this.data.loggedIn || this._remoteUser) this._remotePriceResolvedSkuIds = new Set();
     const searching = Boolean(String(this.data.query || '').trim());
-    this.setData({ catalogStatus: 'loading', mealIdeasStatus: 'loading', mealIdeasErrorText: '', mealIdeaCountText: '', catalogErrorTitle: searching ? '商品搜索失败' : '商品目录加载失败', catalogErrorText: searching ? '未能完成本次搜索，请检查网络后重试' : '请检查网络后点击重试' });
-    const catalogResults = await Promise.all([
-      (typeof catalogApi.listAllProducts === 'function' ? catalogApi.listAllProducts() : fetchRemotePages((params) => catalogApi.listProducts(params), { pageSize: 100, maxPages: 50 })).catch(() => ({ ok: false })),
-      (typeof catalogApi.listAllCategories === 'function' ? catalogApi.listAllCategories() : fetchRemotePages((params) => catalogApi.listCategories(params), { pageSize: 100, maxPages: 20 })).catch(() => ({ ok: false }))
-    ]);
+    const hasVisibleCatalog = Array.isArray(this.data.products) && this.data.products.length > 0;
+    this.setData({ catalogStatus: hasVisibleCatalog ? 'ready' : 'loading', catalogBrowseLoading: false, catalogBrowseError: '', mealIdeasStatus: hasVisibleCatalog ? 'ready' : 'loading', mealIdeasErrorText: '', mealIdeaCountText: hasVisibleCatalog ? this.data.mealIdeaCountText : '', catalogErrorTitle: searching ? '商品搜索失败' : '商品目录加载失败', catalogErrorText: searching ? '未能完成本次搜索，请检查网络后重试' : '请检查网络后点击重试' });
+    // 商品与分类并行请求，但商品先到就先显示，不再被分类或图片接口拖住。
+    const categoryPromise = loadInitialCategoryPage().catch(() => ({ ok: false }));
+    const result = await loadInitialProductPage().catch(() => ({ ok: false }));
     if (requestToken !== this._catalogLoadSeq) return;
-    const result = catalogResults[0];
-    const categoryResult = catalogResults[1];
     if (!result || !result.ok) {
       const errorText = searching ? '未能完成本次搜索，请检查网络后重试' : '商品暂时无法加载，请点击重试';
-      this.setData({ catalogStatus: 'error', catalogErrorText: errorText, mealIdeasStatus: 'error', mealIdeasErrorText: errorText, mealIdeaCountText: '' });
-      return;
+      this._catalogMetadataReady = hasVisibleCatalog;
+      if (hasVisibleCatalog) {
+        this.setData({ catalogStatus: 'ready', catalogBrowseLoading: false, catalogBrowseError: '', mealIdeasStatus: 'ready' });
+        if (options.userInitiated && typeof wx !== 'undefined' && typeof wx.showToast === 'function') wx.showToast({ title: '刷新失败，已保留当前商品', icon: 'none' });
+        return false;
+      }
+      this.setData({ catalogStatus: 'error', catalogBrowseLoading: false, catalogErrorText: errorText, mealIdeasStatus: 'error', mealIdeasErrorText: errorText, mealIdeaCountText: '' });
+      return false;
     }
-    const productRows = result.data && Array.isArray(result.data.rows) ? result.data.rows : result.rows;
-    let categoryRows = categoryResult && categoryResult.ok ? (categoryResult.data && Array.isArray(categoryResult.data.rows) ? categoryResult.data.rows : categoryResult.rows) : [];
-    const derivedCategories = [...new Set((productRows || []).map((item) => String(item.categoryName || '').trim()).filter(Boolean))]
-      .map((name, index) => ({ _id: `derived-category-${index}`, name, imageMediaId: '', sort: index }));
-    if (!Array.isArray(categoryRows) || !categoryRows.length) categoryRows = derivedCategories;
-    const remoteCategories = orderCategoriesForHome(categoryRows);
-    const categoryById = new Map(remoteCategories.map(item => [item._id, item]));
-    let products = productRows.map((item) => {
-      const skuOptions = Array.isArray(item.skus) ? item.skus.map((sku) => ({ id: sku._id, label: sku.specName || sku.packageUnit || sku.netWeight || '标准规格', packageUnit: sku.packageUnit || '', minOrderQuantity: positiveInteger(sku.minOrderQuantity, 1), orderMultiple: positiveInteger(sku.orderMultiple, 1) })) : [];
-      const specs = skuOptions.map((sku) => sku.label);
-      const categoryName = (categoryById.get(item.categoryId) || {}).name || item.categoryName || '其他冻品';
-      return {
-      id: item._id,
-      name: item.name || '商品信息暂不可用',
-      category: categoryName,
-      unit: skuOptions[0] && skuOptions[0].packageUnit ? skuOptions[0].packageUnit : '规格信息暂不可用',
-      priceUnitLabel: displayUnitLabel(skuOptions[0] && skuOptions[0].packageUnit),
-      specLabel: specs[0] || '',
-      specs,
-      skuOptions,
-      sales: 0,
-      tag: '',
-      img: '/assets/products/placeholder.svg',
-      coverMediaId: item.coverMediaId || '',
-      benefit: '冷链配送 · 家庭囤货'
-      };
+    const productRows = result.data && Array.isArray(result.data.rows) ? result.data.rows : (Array.isArray(result.rows) ? result.rows : []);
+    const derivedCategories = deriveRemoteCategories(productRows);
+    let remoteCategories = orderCategoriesForHome(derivedCategories);
+    this._remoteCategoryRows = remoteCategories;
+    this._remoteProductCategoryIds = new Map(productRows.map((item) => [String(item._id), String(item.categoryId || '')]));
+    this._catalogPageSize = Number(result.data && result.data.pageSize) || CATALOG_INITIAL_PAGE_SIZE;
+    this._catalogPage = Number(result.data && result.data.page) || 1;
+    this._catalogTotal = Number(result.data && result.data.total);
+    this._catalogHasMore = Number.isFinite(this._catalogTotal) ? productRows.length < this._catalogTotal : productRows.length >= this._catalogPageSize;
+    this._catalogRefreshedAt = Date.now();
+    let products = normalizeRemoteProducts(productRows, remoteCategories);
+    const metadataNavigation = remoteCategoryPresentation(remoteCategories, products);
+    const metadataGroups = metadataNavigation.categoryGroups;
+    const metadataHomeCategories = metadataNavigation.homeCategories;
+    const metadataCategoryGroup = metadataGroups.some((item) => item.id === this.data.categoryGroup) ? this.data.categoryGroup : '全部';
+    const metadataCategory = remoteCategories.some((item) => item.name === this.data.category) ? this.data.category : '全部';
+    const metadataFrequent = products.slice(0, 4);
+    // 商品名称、规格和目录结构先首显；媒体请求失败或较慢时不再留下空白页。
+    let resolveMetadataReady;
+    const metadataReady = new Promise((resolve) => { resolveMetadataReady = resolve; });
+    this.setData({ products, specials: products.slice(0, 8), frequent: metadataFrequent, frequentHasMultiSku: hasMultiSku(metadataFrequent), categoryGroups: metadataGroups, homeCategories: metadataHomeCategories, categoryGroup: metadataCategoryGroup, category: metadataCategory, catalogStatus: 'ready', catalogBrowseLoading: false, catalogBrowseError: '', catalogErrorText: '', mealIdeasStatus: 'ready', mealIdeasErrorText: '' }, () => {
+      this._catalogMetadataReady = true;
+      this.syncCategory();
+      this.syncMealIdeas(products);
+      const pendingView = this._pendingCatalogViewOptions;
+      this._pendingCatalogViewOptions = null;
+      if (pendingView) this.ensureRemoteCatalogForCurrentView(pendingView);
+      else if (['category', 'mealIdeas', 'mealIdea'].includes(this.data.page)) this.ensureRemoteCatalogForCurrentView({ userInitiated: true });
+      resolveMetadataReady();
     });
     const mediaIds = products.map((item) => item.coverMediaId).filter(Boolean);
-    if (mediaIds.length) {
-      const fileMap = await this.resolveMediaFileMap(mediaIds);
+    const mediaTask = metadataReady.then(() => mediaIds.length ? this.resolveMediaFileMap(mediaIds) : {}).then((productFiles) => {
       if (requestToken !== this._catalogLoadSeq) return;
-      products = products.map((item) => ({ ...item, img: fileMap[item.coverMediaId] || item.img }));
-    }
-    const categoryFiles = await this.resolveMediaFileMap(remoteCategories.map(item => item.imageMediaId));
-    if (requestToken !== this._catalogLoadSeq) return;
-    const categoryGroups = remoteCategories.map(item => ({
-      id: item._id, label: item.name, categories: [item.name],
-      image: categoryFiles[item.imageMediaId] || '/assets/products/placeholder.svg'
-    }));
-    const homeCategories = fixedHomeCategories(categoryGroups.map(({ label, image }) => ({ label, image })));
-    categoryGroups.push({ id: '全部', label: '全部分类', image: '/assets/products/placeholder.svg', categories: [...new Set(products.map(item => item.category))] });
-    const categoryGroup = categoryGroups.some(item => item.id === this.data.categoryGroup) ? this.data.categoryGroup : '全部';
-    const category = remoteCategories.some(item => item.name === this.data.category) ? this.data.category : '全部';
+      const hydratedProducts = (this.data.products || []).map((item) => ({ ...item, img: productFiles[item.coverMediaId] || item.img }));
+      const frequent = hydratedProducts.slice(0, 4);
+      this.setData({ products: hydratedProducts, specials: hydratedProducts.slice(0, 8), frequent, frequentHasMultiSku: hasMultiSku(frequent) }, () => {
+        this.syncCategory();
+        this.syncMealIdeas(hydratedProducts);
+        this.syncRemoteGroupCampaigns();
+      });
+    }).catch(() => null);
+    const categoryTask = Promise.all([metadataReady, categoryPromise]).then(async ([, categoryResult]) => {
+      if (requestToken !== this._catalogLoadSeq) return;
+      let categoryRows = categoryResult && categoryResult.ok ? (categoryResult.data && Array.isArray(categoryResult.data.rows) ? categoryResult.data.rows : categoryResult.rows) : [];
+      if (!Array.isArray(categoryRows) || !categoryRows.length) categoryRows = derivedCategories;
+      remoteCategories = orderCategoriesForHome(categoryRows);
+      this._remoteCategoryRows = remoteCategories;
+      const categoryById = new Map(remoteCategories.map((item) => [String(item._id), item.name]));
+      products = (this.data.products || []).map((item) => {
+        const categoryName = categoryById.get((this._remoteProductCategoryIds || new Map()).get(String(item.id)));
+        return categoryName ? { ...item, category: categoryName } : item;
+      });
+      const navigation = remoteCategoryPresentation(remoteCategories, products);
+      const categoryGroup = navigation.categoryGroups.some((item) => item.id === this.data.categoryGroup) ? this.data.categoryGroup : '全部';
+      const category = remoteCategories.some((item) => item.name === this.data.category) ? this.data.category : '全部';
+      this.setData({ products, specials: products.slice(0, 8), categoryGroups: navigation.categoryGroups, homeCategories: navigation.homeCategories, categoryGroup, category }, () => {
+        this.syncCategory();
+        this.syncMealIdeas(products);
+      });
+      const categoryFiles = await this.resolveMediaFileMap(remoteCategories.map((item) => item.imageMediaId));
+      if (requestToken !== this._catalogLoadSeq) return;
+      const hydratedNavigation = remoteCategoryPresentation(remoteCategories, this.data.products || [], categoryFiles);
+      this.setData({ categoryGroups: hydratedNavigation.categoryGroups, homeCategories: hydratedNavigation.homeCategories });
+    }).catch(() => null);
+    // 价格、拼团和媒体互不等待；图片解析失败不再阻断可购买信息。
+    const priceTask = metadataReady.then(async () => {
+      if (this.data.loggedIn || this._remoteUser) await this.loadRemoteCatalogPrices(products);
+      else this._pricesWaitingLogin = true;
+    }).catch(() => false);
+    const groupTask = metadataReady.then(() => this.loadRemoteGroupCampaigns()).catch(() => false);
+    await Promise.all([mediaTask, categoryTask, priceTask, groupTask]);
+    return true;
+  },
+  mergeRemoteCatalogRows(rows) {
+    this._remoteProductCategoryIds = this._remoteProductCategoryIds || new Map();
+    (Array.isArray(rows) ? rows : []).forEach((item) => this._remoteProductCategoryIds.set(String(item._id), String(item.categoryId || '')));
+    const incoming = normalizeRemoteProducts(rows, this._remoteCategoryRows || []);
+    const products = mergeProducts(this.data.products || [], incoming);
     const frequent = products.slice(0, 4);
-    this.setData({ products, specials: products.slice(0, 8), frequent, frequentHasMultiSku: hasMultiSku(frequent), categoryGroups, homeCategories, categoryGroup, category, catalogStatus: 'ready', catalogErrorText: '', mealIdeasStatus: 'ready', mealIdeasErrorText: '' }, () => { this.syncCategory(); this.syncMealIdeas(products); this.loadRemoteGroupCampaigns(); });
-    if (this.data.loggedIn || this._remoteUser) await this.loadRemoteCatalogPrices(products);
-    else this._pricesWaitingLogin = true;
+    this.setData({ products, specials: products.slice(0, 8), frequent, frequentHasMultiSku: hasMultiSku(frequent) }, () => {
+      this.syncCategory();
+      this.syncMealIdeas(products);
+      this.syncRemoteGroupCampaigns();
+    });
+    return { incoming, products };
+  },
+  async hydrateAdditionalProductMedia(products, requestToken) {
+    const fileMap = await this.resolveMediaFileMap((products || []).map((item) => item.coverMediaId));
+    if (requestToken !== this._catalogLoadSeq || !Object.keys(fileMap).length) return;
+    const hydrated = (this.data.products || []).map((item) => ({ ...item, img: fileMap[item.coverMediaId] || item.img }));
+    const frequent = hydrated.slice(0, 4);
+    this.setData({ products: hydrated, specials: hydrated.slice(0, 8), frequent, frequentHasMultiSku: hasMultiSku(frequent) }, () => {
+      this.syncCategory();
+      this.syncMealIdeas(hydrated);
+      this.syncRemoteGroupCampaigns();
+    });
+  },
+  async loadRemoteCatalogSlice(payload = {}) {
+    if (!IS_CLOUD_MODE || typeof catalogApi.listProducts !== 'function') return;
+    const key = JSON.stringify(payload);
+    if (!this._catalogMetadataReady) {
+      this._pendingCatalogViewOptions = { ...payload };
+      if (this.data.page === 'category') this.setData({ catalogBrowseLoading: true, catalogBrowseError: '' });
+      return false;
+    }
+    const requestToken = this._catalogLoadSeq;
+    const requestKey = `${requestToken}:${key}`;
+    this._catalogSliceStates = this._catalogSliceStates || {};
+    const completed = this._catalogSliceStates[key];
+    this._activeCatalogSliceKey = requestKey;
+    if (completed && !completed.failed && !completed.hasMore) {
+      if (this._activeCatalogSliceKey === requestKey) this.setData({ catalogBrowseLoading: false, catalogBrowseError: '' });
+      return true;
+    }
+    if (this.data.page === 'category') this.setData({ catalogBrowseLoading: true, catalogBrowseError: '' });
+    this._catalogSliceRequests = this._catalogSliceRequests || {};
+    if (this._catalogSliceRequests[requestKey]) return this._catalogSliceRequests[requestKey];
+    const request = (async () => {
+      let page = 1;
+      let total = null;
+      const seenIds = new Set();
+      const sideTasks = [];
+      this._catalogSliceStates[key] = { page: 0, total: null, hasMore: true, failed: false };
+      while (requestToken === this._catalogLoadSeq && this._activeCatalogSliceKey === requestKey) {
+        const result = await catalogApi.listProducts({ ...payload, page, pageSize: CATALOG_BROWSE_PAGE_SIZE });
+        if (requestToken !== this._catalogLoadSeq || this._activeCatalogSliceKey !== requestKey) return false;
+        if (!result || !result.ok || !result.data || !Array.isArray(result.data.rows)) {
+          this._catalogSliceStates[key] = { page: page - 1, total, hasMore: true, failed: true };
+          this.setData({ catalogBrowseError: '商品加载失败，请重试' });
+          return false;
+        }
+        const rows = result.data.rows;
+        const before = seenIds.size;
+        rows.forEach((item) => seenIds.add(String(item._id)));
+        const merged = this.mergeRemoteCatalogRows(rows);
+        const reportedTotal = Number(result.data.total);
+        if (Number.isFinite(reportedTotal)) total = reportedTotal;
+        const hasMore = rows.length > 0 && (Number.isFinite(total) ? seenIds.size < total : rows.length >= CATALOG_BROWSE_PAGE_SIZE);
+        this._catalogSliceStates[key] = { page, total, hasMore, failed: false };
+        sideTasks.push(this.hydrateAdditionalProductMedia(merged.incoming, requestToken).catch(() => null));
+        if (this.data.loggedIn || this._remoteUser) sideTasks.push(this.loadRemoteCatalogPrices(merged.incoming).catch(() => false));
+        if (!hasMore || seenIds.size === before) break;
+        page += 1;
+      }
+      await Promise.all(sideTasks);
+      return requestToken === this._catalogLoadSeq && this._activeCatalogSliceKey === requestKey;
+    })();
+    this._catalogSliceRequests[requestKey] = request;
+    try {
+      return await request;
+    } finally {
+      if (this._catalogSliceRequests[requestKey] === request) delete this._catalogSliceRequests[requestKey];
+      if (requestToken === this._catalogLoadSeq && this._activeCatalogSliceKey === requestKey) this.setData({ catalogBrowseLoading: false });
+    }
+  },
+  async loadNextRemoteCatalogPage() {
+    if (!IS_CLOUD_MODE || !this._catalogHasMore || this._catalogNextRequest || typeof catalogApi.listProducts !== 'function') return this._catalogNextRequest;
+    const requestToken = this._catalogLoadSeq;
+    const page = Number(this._catalogPage || 1) + 1;
+    const pageSize = Number(this._catalogPageSize || CATALOG_INITIAL_PAGE_SIZE);
+    const request = (async () => {
+      const result = await catalogApi.listProducts({ page, pageSize });
+      if (requestToken !== this._catalogLoadSeq) return false;
+      if (!result || !result.ok || !result.data || !Array.isArray(result.data.rows)) {
+        this._catalogExpansionFailures = Number(this._catalogExpansionFailures || 0) + 1;
+        this._catalogExpansionStopped = true;
+        this._catalogExpansionRetryAt = Date.now() + Math.min(30000, 1000 * (2 ** (this._catalogExpansionFailures - 1)));
+        return false;
+      }
+      const rows = result.data.rows;
+      const beforeCount = (this.data.products || []).length;
+      const merged = this.mergeRemoteCatalogRows(rows);
+      this._catalogPage = page;
+      const madeProgress = merged.products.length > beforeCount;
+      this._catalogHasMore = madeProgress && rows.length > 0 && (Number.isFinite(this._catalogTotal) ? merged.products.length < this._catalogTotal : rows.length >= pageSize);
+      this._catalogExpansionFailures = 0;
+      this._catalogExpansionStopped = false;
+      this._catalogExpansionRetryAt = 0;
+      this.hydrateAdditionalProductMedia(merged.incoming, requestToken).catch(() => null);
+      if (this.data.loggedIn || this._remoteUser) this.loadRemoteCatalogPrices(merged.incoming).catch(() => false);
+      return true;
+    })();
+    this._catalogNextRequest = request;
+    try { return await request; } finally { if (this._catalogNextRequest === request) this._catalogNextRequest = null; }
+  },
+  scheduleRemoteCatalogExpansion(options = {}) {
+    const userInitiated = Boolean(options.userInitiated);
+    if (this._catalogExpansionStopped) {
+      if (!userInitiated || Date.now() < Number(this._catalogExpansionRetryAt || 0)) return;
+      this._catalogExpansionStopped = false;
+    }
+    if (!this._catalogHasMore || this._catalogExpandTimer || this._catalogNextRequest) return;
+    this._catalogExpandTimer = setTimeout(async () => {
+      this._catalogExpandTimer = null;
+      const succeeded = await this.loadNextRemoteCatalogPage().catch(() => false);
+      if (succeeded && this._catalogHasMore && ['category', 'mealIdeas', 'mealIdea'].includes(this.data.page)) this.scheduleRemoteCatalogExpansion();
+    }, 120);
+  },
+  ensureRemoteCatalogForCurrentView(options = {}) {
+    if (!IS_CLOUD_MODE) return;
+    const keyword = String(options.keyword === undefined ? this.data.query || '' : options.keyword).trim();
+    const categoryId = options.categoryId || '';
+    if (!this._catalogMetadataReady) {
+      this._pendingCatalogViewOptions = { keyword, categoryId, userInitiated: Boolean(options.userInitiated) };
+      if (this.data.page === 'category' && (keyword || categoryId && categoryId !== '全部')) this.setData({ catalogBrowseLoading: true, catalogBrowseError: '' });
+      return;
+    }
+    if (keyword) return this.loadRemoteCatalogSlice({ keyword });
+    if (categoryId && categoryId !== '全部') return this.loadRemoteCatalogSlice({ categoryId });
+    this._activeCatalogSliceKey = '';
+    if (this.data.catalogBrowseLoading || this.data.catalogBrowseError) this.setData({ catalogBrowseLoading: false, catalogBrowseError: '' });
+    this.scheduleRemoteCatalogExpansion({ userInitiated: Boolean(options.userInitiated) });
   },
   async loadRemoteCatalogPrices(products = this.data.products || []) {
     if (!IS_CLOUD_MODE || !(this.data.loggedIn || this._remoteUser)) {
@@ -801,23 +1118,49 @@ Page({
       this._remotePriceScope = priceScope;
       this.applyRemotePriceLabels();
     }
-    if (this._remotePricesRequest) return this._remotePricesRequest;
     const skuIds = [...new Set(products.flatMap((item) => (item.skuOptions || []).map((sku) => sku.id)).filter(Boolean))];
-    if (!skuIds.length) return;
+    this._remotePricePendingSkuIds = this._remotePricePendingSkuIds || new Set();
+    this._remotePriceActiveSkuIds = this._remotePriceActiveSkuIds || new Set();
+    this._remotePriceResolvedSkuIds = this._remotePriceResolvedSkuIds || new Set();
+    skuIds.forEach((skuId) => {
+      const id = String(skuId);
+      if (!this._remotePriceResolvedSkuIds.has(id) && !this._remotePriceActiveSkuIds.has(id)) this._remotePricePendingSkuIds.add(id);
+    });
+    if (this._remotePricesRequest) {
+      const activeRequest = this._remotePricesRequest;
+      const activeResult = await activeRequest.catch(() => false);
+      if (priceScope !== remotePriceScope(this) || !(this.data.loggedIn || this._remoteUser)) return false;
+      if (this._remotePricePendingSkuIds.size && !this._remotePricesRequest) return this.loadRemoteCatalogPrices([]);
+      return activeResult;
+    }
+    if (!this._remotePricePendingSkuIds.size) return true;
     // 只保留当前身份、当前登录会话的内存价格，不跨会话持久化。
     const request = (async () => {
-      const result = await catalogApi.listPrices(skuIds);
-      if (this._remotePricesRequest !== request || priceScope !== remotePriceScope(this) || !(this.data.loggedIn || this._remoteUser)) return false;
-      if (!result || !result.ok || !result.data || !Array.isArray(result.data.rows)) return false;
-      this._remotePriceBySku = result.data.rows.reduce((output, item) => ({ ...output, [item.skuId]: item }), {});
-      this.applyRemotePriceLabels();
-      return true;
+      let succeeded = false;
+      while (this._remotePricePendingSkuIds.size) {
+        const batch = [...this._remotePricePendingSkuIds];
+        this._remotePricePendingSkuIds.clear();
+        this._remotePriceActiveSkuIds = new Set(batch);
+        const result = await catalogApi.listPrices(batch);
+        if (this._remotePricesRequest !== request || priceScope !== remotePriceScope(this) || !(this.data.loggedIn || this._remoteUser)) return false;
+        this._remotePriceActiveSkuIds.clear();
+        if (!result || !result.ok || !result.data || !Array.isArray(result.data.rows)) return false;
+        batch.forEach((skuId) => this._remotePriceResolvedSkuIds.add(String(skuId)));
+        this._remotePriceBySku = result.data.rows.reduce((output, item) => ({ ...output, [item.skuId]: item }), { ...(this._remotePriceBySku || {}) });
+        this.applyRemotePriceLabels();
+        succeeded = true;
+      }
+      return succeeded;
     })();
     this._remotePricesRequest = request;
     try { return await request; } finally {
       if (this._remotePricesRequest === request) {
         this._remotePricesRequest = null;
+        this._remotePriceActiveSkuIds.clear();
         this.setData({ priceFallback: this.data.loggedIn || this._remoteUser ? '暂未定价' : '登录后查看价格' });
+        if (this._remotePricePendingSkuIds.size && priceScope === remotePriceScope(this) && (this.data.loggedIn || this._remoteUser)) {
+          Promise.resolve().then(() => this.loadRemoteCatalogPrices([])).catch(() => false);
+        }
       }
     }
   },
@@ -834,22 +1177,57 @@ Page({
     const selectedProduct = pricedSelected ? { ...pricedSelected, cartQty: cartQuantityFor(pricedSelected, cartItems, this.data.selectedSpec) } : null;
     const quantityPickerProduct = this.data.quantityPickerProduct ? productWithPrice(this.data.quantityPickerProduct, priceBySku, this.data.quantityPickerSpec, this.data.quantityPickerQty) : null;
     const frequent = products.slice(0, 4);
-    this.setData({ products, specials: products.slice(0, 8), frequent, frequentHasMultiSku: hasMultiSku(frequent), cartItems, selectedProduct, quantityPickerProduct, ...calculateTotals(cartItems), ...selectedCartSummary(cartItems) }, () => { this.syncCategory(); this.syncMealIdeas(products); });
+    this.setData({ products, specials: products.slice(0, 8), frequent, frequentHasMultiSku: hasMultiSku(frequent), cartItems, selectedProduct, quantityPickerProduct, ...calculateTotals(cartItems), ...selectedCartSummary(cartItems) }, () => {
+      this.syncCategory();
+      this.syncMealIdeas(products);
+      this.syncRemoteGroupCampaigns();
+    });
   },
-  async loadRemoteGroupCampaigns() {
-    const result = await groupsApi.campaigns({ page: 1, pageSize: 20 });
-    if (!result || !result.ok || !result.data || !Array.isArray(result.data.rows)) return;
+  syncRemoteGroupCampaigns() {
+    if (!Array.isArray(this._remoteGroupCampaignRows)) return;
     const products = this.data.products || [];
-    const groupDeals = result.data.rows.map((item) => {
+    const groupDeals = this._remoteGroupCampaignRows.map((item) => {
       const product = products.find((row) => String(row.id) === String(item.productId));
       return { campaignId: item._id, skuId: item.skuId, productId: item.productId, size: Number(item.groupSize || 0), joined: 0, ends: item.endAt ? item.endAt.replace('T', ' ').slice(0, 16) : '活动进行中', product };
     }).filter((item) => item.product);
     this.setData({ groupDeals });
   },
+  async loadRemoteGroupCampaigns() {
+    const result = await groupsApi.campaigns({ page: 1, pageSize: 20 });
+    if (!result || !result.ok || !result.data || !Array.isArray(result.data.rows)) return false;
+    this._remoteGroupCampaignRows = result.data.rows;
+    this.syncRemoteGroupCampaigns();
+    const missingIds = result.data.rows.map((item) => item.productId).filter((id) => id && !this.findProduct(id));
+    if (missingIds.length) this.ensureRemoteProductsById(missingIds).catch(() => null);
+    return true;
+  },
+  async ensureRemoteProductsById(ids) {
+    if (!IS_CLOUD_MODE || typeof catalogApi.getProduct !== 'function') return [];
+    this._remoteProductRequests = this._remoteProductRequests || {};
+    const missingIds = [...new Set((ids || []).map(String).filter((id) => id && !this.findProduct(id)))];
+    const requests = missingIds.map((id) => {
+      if (!this._remoteProductRequests[id]) {
+        const request = catalogApi.getProduct(id).catch(() => null).finally(() => {
+          if (this._remoteProductRequests[id] === request) delete this._remoteProductRequests[id];
+        });
+        this._remoteProductRequests[id] = request;
+      }
+      return this._remoteProductRequests[id];
+    });
+    const results = await Promise.all(requests);
+    const rows = results.map((result) => result && result.ok && result.data && result.data.product
+      ? { ...result.data.product, skus: Array.isArray(result.data.skus) ? result.data.skus : [] }
+      : null).filter(Boolean);
+    if (!rows.length) return [];
+    const merged = this.mergeRemoteCatalogRows(rows);
+    this.hydrateAdditionalProductMedia(merged.incoming, this._catalogLoadSeq).catch(() => null);
+    if (this.data.loggedIn || this._remoteUser) this.loadRemoteCatalogPrices(merged.incoming).catch(() => false);
+    return merged.incoming;
+  },
   findProduct(id) {
     return (this.data.products || PRODUCTS).find((item) => String(item.id) === String(id));
   },
-  syncCategory(next = {}, options = {}) {
+  buildCategoryPatch(next = {}) {
     const categoryGroup = next.categoryGroup || this.data.categoryGroup;
     const category = next.category || this.data.category;
     const query = next.query === undefined ? this.data.query : next.query;
@@ -859,18 +1237,25 @@ Page({
     const validCategories = activeGroup ? activeGroup.categories : [];
     const categoryProducts = products.filter(product => (category === '全部' ? validCategories.includes(product.category) : product.category === category) && (!query || product.name.includes(query) || product.category.includes(query)));
     const subCategories = ['全部', ...new Set(IS_CLOUD_MODE ? groups.filter(group => group.id !== '全部').map(group => group.label) : products.map((product) => product.category))];
-    const patch = { ...next, categoryGroup, category, query, activeGroup, subCategories, categoryProducts };
-    if (!options.resetCatalogScroll) return this.setData(patch);
-    this.setData({ ...patch, catalogResultsScrollTop: 1 }, () => this.setData({ catalogResultsScrollTop: 0 }));
+    return { ...next, categoryGroup, category, query, activeGroup, subCategories, categoryProducts };
   },
-  syncMealIdeas(products = this.data.products || []) {
-    const mealIdeas = buildMealIdeaRows(products, this._mealCoverErrorIds || new Set());
+  syncCategory(next = {}, options = {}) {
+    const patch = this.buildCategoryPatch(next);
+    if (!options.resetCatalogScroll) return this.setData(patch);
+    const catalogResultsScrollTop = Number(this.data.catalogResultsScrollTop || 0) === 0 ? 1 : 0;
+    this.setData({ ...patch, catalogResultsScrollTop });
+  },
+  buildMealIdeaPatch(products = this.data.products || []) {
+    const mealIdeas = buildMealIdeaRows(products, this._mealCoverErrorIds || new Set(), this._mealIdeas || MEAL_IDEAS);
     const mealScene = this.data.mealScene || '全部';
     const pool = mealIdeaPool(mealIdeas, mealScene);
     const mealBatchCursor = pool.length ? Number(this.data.mealBatchCursor || 0) % pool.length : 0;
     const mealIdeaRows = mealIdeaBatch(pool, mealBatchCursor);
     const selectedMealIdea = this.data.selectedMealIdea ? mealIdeas.find((item) => item.id === this.data.selectedMealIdea.id) || null : null;
-    this.setData({ mealIdeas, mealIdeaRows, selectedMealIdea, mealBatchCursor, mealCanShuffle: pool.length > MEAL_BATCH_SIZE, mealIdeaCountText: `${pool.length} 道` });
+    return { mealIdeas, mealIdeaRows, selectedMealIdea, mealBatchCursor, mealCanShuffle: pool.length > MEAL_BATCH_SIZE, mealIdeaCountText: `${pool.length} 道` };
+  },
+  syncMealIdeas(products = this.data.products || []) {
+    this.setData(this.buildMealIdeaPatch(products));
   },
   handleMealCoverError(event) {
     const id = event.currentTarget.dataset.id;
@@ -881,11 +1266,9 @@ Page({
   },
   triggerPageMotion(patch, callback) {
     if (this._pageMotionTimer) clearTimeout(this._pageMotionTimer);
-    this.setData({ ...patch, pageMotion: true, pageScrollTop: 1 }, () => this.setData({ pageScrollTop: 0 }, callback));
-    this._pageMotionTimer = setTimeout(() => {
-      this._pageMotionTimer = null;
-      this.setData({ pageMotion: false });
-    }, 220);
+    this._pageMotionTimer = null;
+    const scrollResetPatch = Number(this.data.pageScrollTop || 0) === 0 ? { pageScrollTop: 1 } : { pageScrollTop: 0 };
+    this.setData({ ...patch, pageMotion: false, ...scrollResetPatch }, callback);
   },
   switchTab(event) {
     const tab = event.currentTarget.dataset.tab;
@@ -896,11 +1279,22 @@ Page({
     }
     if (tab === 'frequent' && this.data.customerMealIdeasEnabled) {
       if (this.data.page === 'mealIdeas' && !this.data.showAddressForm && !this.data.quantityPickerVisible) return;
-      return this.triggerPageMotion({ page: 'mealIdeas', activeTab: 'frequent', showAddressForm: false, quantityPickerVisible: false, quantityPickerProduct: null, quantityPickerSpec: '', quantityPickerQty: 1 }, () => this.syncMealIdeas());
+      this._activeCatalogSliceKey = '';
+      const patch = { page: 'mealIdeas', activeTab: 'frequent', showAddressForm: false, quantityPickerVisible: false, quantityPickerProduct: null, quantityPickerSpec: '', quantityPickerQty: 1, ...this.buildMealIdeaPatch() };
+      this.triggerPageMotion(patch);
+      this.ensureRemoteCatalogForCurrentView();
+      return;
     }
     if (tab === this.data.page && !this.data.showAddressForm && !this.data.quantityPickerVisible) return;
-    this.triggerPageMotion({ page: tab, activeTab: tab, showAddressForm: false, quantityPickerVisible: false, quantityPickerProduct: null, quantityPickerSpec: '', quantityPickerQty: 1 });
-    if (tab === 'category') this.syncCategory({ page: tab, activeTab: tab, query: '' });
+    if (tab !== 'category') this._activeCatalogSliceKey = '';
+    if (!['category', 'frequent'].includes(tab) && this._catalogExpandTimer) {
+      clearTimeout(this._catalogExpandTimer);
+      this._catalogExpandTimer = null;
+    }
+    const basePatch = { page: tab, activeTab: tab, showAddressForm: false, quantityPickerVisible: false, quantityPickerProduct: null, quantityPickerSpec: '', quantityPickerQty: 1, ...(tab === 'category' ? { catalogBrowseError: '' } : { catalogBrowseLoading: false, catalogBrowseError: '' }) };
+    const patch = tab === 'category' ? this.buildCategoryPatch({ ...basePatch, query: '' }) : basePatch;
+    this.triggerPageMotion(patch);
+    if (tab === 'category') this.ensureRemoteCatalogForCurrentView({ keyword: '' });
   },
   selectMealScene(event) {
     const requested = event.currentTarget.dataset.scene || '全部';
@@ -929,25 +1323,29 @@ Page({
     const category = !rawLabel || rawLabel === '全部分类' ? '全部' : rawLabel;
     const groups = this.data.categoryGroups || CATEGORY_GROUPS;
     const group = groups.find(item => item.categories.includes(category)) || groups.find(item => item.id === '全部') || groups[0];
-    const patch = { page: 'category', activeTab: 'category', category, categoryGroup: group ? group.id : '全部', query: '' };
-    this.triggerPageMotion(patch, () => this.syncCategory(patch));
+    const patch = this.buildCategoryPatch({ page: 'category', activeTab: 'category', category, categoryGroup: group ? group.id : '全部', query: '' });
+    this.triggerPageMotion(patch);
+    this.ensureRemoteCatalogForCurrentView({ keyword: '', categoryId: group && group.id });
   },
   selectGroup(event) {
-    this.syncCategory({ categoryGroup: event.currentTarget.dataset.group, category: '全部', catalogResultsScrollTop: 1 }, { resetCatalogScroll: true });
+    const categoryGroup = event.currentTarget.dataset.group;
+    this.syncCategory({ categoryGroup, category: '全部' }, { resetCatalogScroll: true });
+    this.ensureRemoteCatalogForCurrentView({ keyword: '', categoryId: categoryGroup });
   },
   selectCategory(event) {
     const category = event.currentTarget.dataset.category || '全部';
     const groups = this.data.categoryGroups || CATEGORY_GROUPS;
     const group = groups.find(item => item.categories.includes(category)) || groups.find(item => item.id === '全部') || groups[0];
-    this.syncCategory({ category, categoryGroup: group.id, catalogResultsScrollTop: 1 }, { resetCatalogScroll: true });
+    this.syncCategory({ category, categoryGroup: group.id }, { resetCatalogScroll: true });
+    this.ensureRemoteCatalogForCurrentView({ keyword: '', categoryId: group.id });
   },
   onSearchInput(event) { this.setData({ query: event.detail.value.trim() }); },
   startSearch() {
-    const patch = { page: 'category', activeTab: 'category', categoryGroup: '全部', category: '全部', query: this.data.query };
+    const patch = this.buildCategoryPatch({ page: 'category', activeTab: 'category', categoryGroup: '全部', category: '全部', query: this.data.query });
     this.triggerPageMotion(patch, () => {
-      this.syncCategory(patch);
       if (IS_CLOUD_MODE && this.data.catalogStatus === 'error') this.loadRemoteCatalog();
     });
+    this.ensureRemoteCatalogForCurrentView({ keyword: this.data.query });
   },
 
   openProduct(event) {
@@ -1045,7 +1443,11 @@ Page({
   handleDetailVideoError() {
     this.setData({ detailVideoSrc: '', detailVideoError: true });
   },
-  retryRemoteCatalog() { return this.loadRemoteCatalog(); },
+  retryRemoteCatalog() { return this.loadRemoteCatalog({ force: true, userInitiated: true }); },
+  retryCatalogBrowse() {
+    this.setData({ catalogBrowseError: '' });
+    return this.ensureRemoteCatalogForCurrentView({ keyword: this.data.query || '', categoryId: this.data.categoryGroup || '', userInitiated: true });
+  },
   openHomeSection(event) {
     const sectionType = String(event.currentTarget.dataset.sectionType || '').trim();
     const fallbackType = sectionType === 'news' ? 'activity' : sectionType;
@@ -1060,10 +1462,34 @@ Page({
   consumeContentJump(item) {
     const jumpType = String(item.jumpType || 'none');
     const jumpTarget = String(item.jumpTarget || '').trim();
+    if (jumpType === 'product' && jumpTarget && this._contentJumpLoadingTarget === jumpTarget) return true;
+    // 每一个新跳转意图都使上一个远程商品跳转失效，防止迟到响应抢回页面。
+    const jumpToken = Number(this._contentJumpSeq || 0) + 1;
+    this._contentJumpSeq = jumpToken;
+    if (this._contentJumpLoadingTarget) {
+      this._contentJumpLoadingTarget = '';
+      this.setData({ contentJumpLoadingId: '' });
+      if (typeof wx !== 'undefined' && typeof wx.hideLoading === 'function') wx.hideLoading();
+    }
     if (jumpType === 'product' && jumpTarget) {
       const product = this.findProduct(jumpTarget);
       if (!product) {
-        wx.showToast({ title: '该商品暂时不可查看', icon: 'none' });
+        this._contentJumpLoadingTarget = jumpTarget;
+        this.setData({ contentJumpLoadingId: jumpTarget });
+        if (typeof wx !== 'undefined' && typeof wx.showLoading === 'function') wx.showLoading({ title: '正在打开商品', mask: true });
+        this.ensureRemoteProductsById([jumpTarget]).then(() => {
+          if (jumpToken !== this._contentJumpSeq || this._contentJumpLoadingTarget !== jumpTarget) return;
+          const loaded = this.findProduct(jumpTarget);
+          if (loaded) this.openProductById(loaded.id);
+          else wx.showToast({ title: '该商品暂时不可查看', icon: 'none' });
+        }).catch(() => {
+          if (jumpToken === this._contentJumpSeq && this._contentJumpLoadingTarget === jumpTarget) wx.showToast({ title: '该商品暂时不可查看', icon: 'none' });
+        }).finally(() => {
+          if (jumpToken !== this._contentJumpSeq || this._contentJumpLoadingTarget !== jumpTarget) return;
+          this._contentJumpLoadingTarget = '';
+          this.setData({ contentJumpLoadingId: '' });
+          if (typeof wx !== 'undefined' && typeof wx.hideLoading === 'function') wx.hideLoading();
+        });
         return true;
       }
       this.openProductById(product.id);
@@ -1523,13 +1949,12 @@ Page({
       clearRemotePriceCache(this);
       this.applyRemotePriceLabels();
       this._remoteUser = user || null;
-      await this.loadRemoteCatalogPrices();
-      if (!isCurrentLogin()) return;
-      await this.loadRemoteAddress();
-      if (!isCurrentLogin()) return;
-      await this.loadRemoteCart();
-      if (!isCurrentLogin()) return;
-      await this.loadRemoteOrders();
+      await Promise.all([
+        this.loadRemoteCatalogPrices().catch(() => false),
+        this.loadRemoteAddress().catch(() => null),
+        this.loadRemoteCart().catch(() => null),
+        this.loadRemoteOrders().catch(() => null)
+      ]);
       if (!isCurrentLogin()) return;
     }
     const user = this._remoteUser || (IS_CLOUD_MODE ? null : { userType: 'c', status: 'active' });
@@ -1581,15 +2006,14 @@ Page({
     if (!IS_CLOUD_MODE || typeof wx === 'undefined' || typeof wx.getStorageSync !== 'function' || !wx.getStorageSync(LOGIN_AGREED_STORAGE_KEY)) return;
     const user = await this.refreshRemoteIdentity();
     if (!user) return;
-    // 目录加载先于登录恢复完成时：目录尾部会标记等待登录，这里补一次价格加载
-    await this.loadRemoteCatalogPrices();
-    if (this._pricesWaitingLogin) {
-      this._pricesWaitingLogin = false;
-      await this.loadRemoteCatalogPrices();
-    }
-    await this.loadRemoteAddress();
-    await this.loadRemoteCart();
-    await this.loadRemoteOrders();
+    this._pricesWaitingLogin = false;
+    // 身份确认后并行恢复独立数据，避免四个云请求串行累加等待时间。
+    await Promise.all([
+      this.loadRemoteCatalogPrices(),
+      this.loadRemoteAddress(),
+      this.loadRemoteCart(),
+      this.loadRemoteOrders()
+    ]);
   },
   confirmAction(options, onConfirm) {
     if (typeof wx === 'undefined' || typeof wx.showModal !== 'function') return onConfirm();
@@ -1695,17 +2119,30 @@ Page({
       ...pricingForQuantity(this._remotePriceBySku && this._remotePriceBySku[item.skuId], item.sku, item.quantity)
       };
     });
+    // 购物车可能包含首屏 40 件之外的 SKU：先显示购物车，再独立补取这些 SKU 的价格。
+    this.syncCart(remoteItems);
+    const cartPriceTargets = remoteItems
+      .filter((item) => !(this._remotePriceBySku || {})[item.skuId])
+      .map((item) => ({ skuOptions: [{ id: item.skuId }] }));
+    const priceTask = cartPriceTargets.length
+      ? this.loadRemoteCatalogPrices(cartPriceTargets).catch(() => false)
+      : Promise.resolve();
     // 临时图片 URL 会过期：购物车渲染前按最新 coverMediaId 重新解析临时链接
     const coverIds = [...new Set(remoteItems.map((item) => item.coverMediaId).filter(Boolean))];
+    let mediaTask = Promise.resolve();
     if (coverIds.length) {
-      const fileMap = await this.resolveMediaFileMap(coverIds);
-      if (identityScope !== remotePriceScope(this)) return;
-      for (const item of remoteItems) {
-        const url = item.coverMediaId && fileMap[item.coverMediaId];
-        if (url) item.img = url;
-      }
+      mediaTask = this.resolveMediaFileMap(coverIds).then((fileMap) => {
+        if (identityScope !== remotePriceScope(this)) return;
+        const currentByKey = new Map((this.data.cartItems || []).map((item) => [`${item.remoteCartItemId || ''}:${item.skuId || ''}`, item]));
+        const hydrated = remoteItems.map((item) => {
+          const current = currentByKey.get(`${item.remoteCartItemId || ''}:${item.skuId || ''}`) || item;
+          const url = item.coverMediaId && fileMap[item.coverMediaId];
+          return url ? { ...current, img: url } : current;
+        });
+        this.syncCart(hydrated);
+      }).catch(() => null);
     }
-    this.syncCart(remoteItems);
+    await Promise.all([priceTask, mediaTask]);
   },
 
   async loadRemoteOrders() {

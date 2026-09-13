@@ -78,7 +78,7 @@ async function run() {
   catalogFailure = true;
   page.data.query = '大虾';
   await page.loadRemoteCatalog();
-  assert.equal(page.data.catalogStatus, 'error');
+  assert.equal(page.data.catalogStatus, 'ready', 'a failed background refresh must keep the last valid catalog browsable');
   assert.equal(page.data.catalogErrorTitle, '商品搜索失败');
   assert.equal(page.data.catalogErrorText, '未能完成本次搜索，请检查网络后重试', 'raw service errors must not be rendered in the customer-facing catalog');
   assert.equal(page.data.products.length, 125, 'a failed refresh must preserve the last complete catalog');

@@ -166,15 +166,14 @@ test('fresh login discards the previous session price even when the user id is u
   assert.equal(page.data.products[0].priceText, '¥11.00');
 });
 
-test('same identity refresh retains only its own memory price if a later request fails', async () => {
+test('same identity refresh reuses its resolved memory price without another request', async () => {
   const { page, harness } = makePage();
   const first = page.loadRemoteCatalogPrices();
   harness.requests[0].resolve(prices(1000));
   await first;
   page.applyRemoteIdentity({ ...business });
   assert.equal(page.data.products[0].priceText, '¥10.00');
-  const retry = page.loadRemoteCatalogPrices();
-  harness.requests[1].resolve({ ok: false, error: { code: 'NETWORK_ERROR' } });
-  await retry;
+  await page.loadRemoteCatalogPrices();
+  assert.equal(harness.requests.length, 1);
   assert.equal(page.data.products[0].priceText, '¥10.00');
 });

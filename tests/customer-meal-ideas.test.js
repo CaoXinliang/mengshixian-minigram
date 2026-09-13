@@ -6,6 +6,7 @@ const path = require('path');
 const pagePath = path.resolve(__dirname, '../miniapp/pages/index/index.js');
 const wxmlPath = path.resolve(__dirname, '../miniapp/pages/index/index.wxml');
 const mealIdeas = require(path.resolve(__dirname, '../miniapp/config/meal-ideas.js'));
+const contentServiceSource = fs.readFileSync(path.resolve(__dirname, '../miniapp/services/content.js'), 'utf8');
 
 function loadPage(customerMealIdeasEnabled) {
   const originalLoad = Module._load;
@@ -45,6 +46,7 @@ try {
   assert.equal(mealIdeas.length, 10, 'C 端首批菜品必须固定为十个');
   ['佛跳墙', '盐焗虾', '关东煮'].forEach(title => assert(mealIdeas.some(item => item.title === title)));
   assert(mealIdeas.every(item => item.source === 'ai_generated' && item.temporary === true), '预置内容必须标明 AI 临时来源');
+  assert.match(contentServiceSource, /request\('content\.mealIdeas'/, '小程序必须提供后台菜品读取接口');
 
   const customerPage = loadPage(true);
   customerPage.switchTab({ currentTarget: { dataset: { tab: 'frequent' } } });
@@ -126,6 +128,8 @@ try {
   assert(wxml.includes('class="meal-scene-filter"') && wxml.includes('按用餐场景筛选') && !wxml.includes('class="meal-scene-scroll"'), '场景筛选必须完整展示，不能用右侧截断的横向滚动条');
   assert(wxml.includes('<button catchtap="openMealIdea" data-id="{{item.id}}">查看搭配</button>'), '菜谱卡按钮本身必须可以点击，不能只依赖整张卡片冒泡');
   assert(wxml.includes('<button catchtap="openProduct" data-id="{{item.id}}">查看商品</button>'), '关联商品按钮本身必须可以点击，不能只依赖外层容器冒泡');
+  const pageSource = fs.readFileSync(pagePath, 'utf8');
+  assert.match(pageSource, /this\._mealIdeas \|\| MEAL_IDEAS/, '后台菜品为空或失败时必须保留当前本地菜品兜底');
   console.log('customer meal ideas and B/C navigation test: passed');
 } finally {
   delete global.wx;

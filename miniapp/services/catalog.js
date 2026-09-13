@@ -51,6 +51,7 @@ async function listPrices(skuIds) {
 }
 
 module.exports = {
+  supportsPagedCatalog: true,
   getHome: (payload) => request('content.home', payload),
   listCategories: (payload) => request('catalog.categories', payload),
   listAllCategories: (payload) => listAll('catalog.categories', payload),

@@ -148,6 +148,14 @@ assert(
     indexWxss.includes('.quantity-picker-actions button,.detail-actions button{width:100%;min-width:0;'),
   'quantity and detail action sheets must stay scrollable and keep both actions inside their grid'
 );
+const quantityPickerActionButton = effectiveRule(indexWxss, '.quantity-picker-actions button');
+assert(
+  quantityPickerActionButton.display === 'flex' &&
+    quantityPickerActionButton['align-items'] === 'center' &&
+    quantityPickerActionButton['justify-content'] === 'center' &&
+    quantityPickerActionButton.height === '48px',
+  'quantity picker action labels must stay centered without changing the approved 48px button height'
+);
 const catalogBaseSpace = safeAreaBasePx(indexWxss, '.catalog-bottom-space');
 const catalogStackedSpace = safeAreaBasePx(indexWxss, '.catalog-bottom-space.has-quick-checkout');
 assert(

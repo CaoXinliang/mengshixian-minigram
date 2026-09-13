@@ -61,7 +61,7 @@ function makePage(stage) {
 }
 
 for (const stage of stages) {
-  test(`logout while awaiting ${stage} cannot restore login or run later stages`, async () => {
+  test(`logout while awaiting ${stage} cannot restore login or stale session data`, async () => {
     const { page, state } = makePage(stage);
     const pending = page.completeLogin();
     await state.reached;
@@ -74,7 +74,7 @@ for (const stage of stages) {
     assert.deepEqual(page.data.cartItems, [], 'late cart data must stay cleared after logout');
     assert.deepEqual(page.data.orderRows, [], 'late order data must stay cleared after logout');
     assert.equal(state.storage.mengshixian_login_agreed, undefined);
-    assert.deepEqual(state.calls, stages.slice(0, stages.indexOf(stage) + 1));
+    assert.deepEqual(state.calls, stage === 'login' ? ['login'] : stages, 'post-login resources start together, while generation guards still reject every late response');
     assert.equal(state.toasts.some((item) => item.title === '登录成功'), false);
   });
 }
