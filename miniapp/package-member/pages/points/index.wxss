@@ -7,6 +7,8 @@
   padding-top: 44rpx;
   padding-bottom: 44rpx;
 }
+.state.error text:first-child{color:#0f1b2d;font-size:18px;font-weight:700}
+.state.error button{min-width:112px;min-height:44px;margin-top:4px;padding:0 18px;border-radius:999px;color:#fff;background:#176bd5;font-size:15px;font-weight:600}
 
 @media (min-width: 480px) {
   .hero button,

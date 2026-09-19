@@ -1,1 +1,36 @@
-<view class="page"><responsive-topbar title="{{selectMode ? '选择优惠券' : '优惠券中心'}}" subtitle="领取并管理可用优惠" bind:back="back"/><view wx:if="{{status == 'loading'}}" class="state state-loading">正在加载优惠券</view><view wx:elif="{{status == 'forbidden'}}" class="state"><text>需要登录</text><text>{{errorText}}</text></view><view wx:elif="{{status == 'error'}}" class="state error"><text>优惠券加载失败</text><text>{{errorText}}</text><button bindtap="retry">重新加载</button></view><block wx:elif="{{status == 'ready'}}"><view wx:if="{{!coupons.length}}" class="coupon-summary"><text class="summary-title">当前没有可用优惠券</text><text class="summary-copy">优惠券由活动发放，实际可用范围以券面与结算结果为准。</text><view class="summary-actions"><text>我的优惠券 {{coupons.length}} 张</text><navigator wx:if="{{!selectMode}}" class="browse-link" url="/pages/index/index?tab=home" open-type="reLaunch" hover-class="control-pressed"><text>继续选购</text></navigator></view></view><view wx:if="{{selectMode}}" class="clear" bindtap="clearSelection" aria-role="button" aria-label="不使用优惠券" hover-class="control-pressed">不使用优惠券</view><view wx:if="{{coupons.length}}" class="section"><text class="title">我的优惠券</text><view wx:for="{{coupons}}" wx:key="id" class="coupon {{item.usable ? '' : 'disabled'}}" bindtap="choose" data-id="{{item.id}}" aria-role="{{selectMode ? 'button' : 'text'}}" aria-disabled="{{selectMode && !item.usable}}" aria-label="{{selectMode ? '选择优惠券 ' : '优惠券 '}}{{item.name}}" hover-class="control-pressed"><view><text>{{item.valueText}}</text><text>{{item.thresholdText}}</text></view><view><text>{{item.name}}</text><text>{{item.validityText || '有效期以券面为准'}}</text><text>{{item.statusText}}</text></view></view><text wx:if="{{!coupons.length}}" class="empty">暂无优惠券</text></view><view wx:if="{{!selectMode && templates.length}}" class="section"><text class="title">可领取</text><view wx:for="{{templates}}" wx:key="id" class="coupon"><view><text>{{item.valueText}}</text><text>{{item.thresholdText}}</text></view><view><text>{{item.name}}</text><text>{{item.validityText || '领取后查看有效期'}}</text></view><button disabled="{{item.claimed || busyId}}" bindtap="claim" data-id="{{item.id}}"><text>{{item.claimed ? '已领取' : (busyId == item.id ? '领取中' : '领取')}}</text></button></view><text wx:if="{{!templates.length}}" class="empty">暂无可领取优惠券</text></view><view class="coupon-rules"><text class="title">使用规则</text><text>· 结算页以当前订单可用的优惠券为准</text><text>· 选择后将更新应付金额</text><text>· 门槛、范围、有效期与叠加规则以券面为准</text></view></block></view>
+<view class="page">
+  <responsive-topbar title="{{selectMode ? '选择优惠券' : '优惠券中心'}}" compact-title="{{true}}" bind:back="back"/>
+  <view wx:if="{{status == 'loading'}}" class="state state-loading">正在加载优惠券</view>
+  <view wx:elif="{{status == 'forbidden'}}" class="state"><text>需要登录</text><text>{{errorText}}</text></view>
+  <view wx:elif="{{status == 'error'}}" class="state error"><text>优惠券加载失败</text><text>{{errorText}}</text><button bindtap="retry">重新加载</button></view>
+  <view wx:elif="{{status == 'empty'}}" class="coupon-summary">
+    <text class="summary-title">当前没有可用优惠券</text>
+    <text class="summary-copy">暂时没有可领取或已持有的优惠券，实际优惠以结算结果为准。</text>
+    <view class="summary-actions"><text>可用优惠券 0 张</text><view wx:if="{{selectMode}}" class="browse-link" bindtap="clearSelection" aria-role="button" aria-label="不使用优惠券" hover-class="control-pressed"><text>不使用优惠券</text></view><navigator wx:else class="browse-link" url="/pages/index/index?tab=home" open-type="reLaunch" hover-class="control-pressed"><text>继续选购</text></navigator></view>
+  </view>
+  <block wx:elif="{{status == 'ready'}}">
+    <view wx:if="{{!coupons.length}}" class="coupon-summary">
+      <text class="summary-title">当前没有已领取优惠券</text>
+      <text class="summary-copy">优惠券由活动发放，实际可用范围以券面与结算结果为准。</text>
+      <view class="summary-actions"><text>我的优惠券 {{coupons.length}} 张</text><navigator wx:if="{{!selectMode}}" class="browse-link" url="/pages/index/index?tab=home" open-type="reLaunch" hover-class="control-pressed"><text>继续选购</text></navigator></view>
+    </view>
+    <view wx:if="{{selectMode}}" class="clear" bindtap="clearSelection" aria-role="button" aria-label="不使用优惠券" hover-class="control-pressed">不使用优惠券</view>
+    <view wx:if="{{coupons.length}}" class="section">
+      <text class="title">我的优惠券</text>
+      <view wx:for="{{coupons}}" wx:key="id" class="coupon {{item.usable ? '' : 'disabled'}}" bindtap="choose" data-id="{{item.id}}" aria-role="{{selectMode ? 'button' : 'text'}}" aria-disabled="{{selectMode && !item.usable}}" aria-label="{{selectMode ? '选择优惠券 ' : '优惠券 '}}{{item.name}}" hover-class="control-pressed">
+        <view class="coupon-value-column"><text class="coupon-value">{{item.valueText}}</text><text class="coupon-threshold">{{item.thresholdText}}</text></view>
+        <view class="coupon-copy"><text class="coupon-name">{{item.name}}</text><text class="coupon-validity">{{item.validityText || '有效期以券面为准'}}</text><text class="coupon-status">{{item.statusText}}</text></view>
+      </view>
+    </view>
+    <view wx:if="{{!selectMode && templates.length}}" class="section">
+      <text class="title">可领取</text>
+      <view wx:for="{{templates}}" wx:key="id" class="coupon">
+        <view class="coupon-value-column"><text class="coupon-value">{{item.valueText}}</text><text class="coupon-threshold">{{item.thresholdText}}</text></view>
+        <view class="coupon-copy"><text class="coupon-name">{{item.name}}</text><text class="coupon-validity">{{item.validityText || '领取后查看有效期'}}</text></view>
+        <button class="coupon-claim" disabled="{{!item.canClaim || busyId}}" bindtap="claim" data-id="{{item.id}}"><text>{{busyId == item.id ? (claimState == 'checking' ? '核对中' : '领取中') : item.claimText}}</text></button>
+      </view>
+    </view>
+    <view wx:if="{{claimText}}" class="claim-feedback {{claimState}}"><text>{{claimText}}</text></view>
+  </block>
+  <view wx:if="{{status == 'empty' || status == 'ready'}}" class="coupon-rules"><text class="title">使用规则</text><text>· 结算页只显示当前订单可用的优惠券</text><text>· 选择后由服务端重新计算应付金额</text><text>· 门槛、范围、有效期与叠加规则以券面为准</text></view>
+</view>

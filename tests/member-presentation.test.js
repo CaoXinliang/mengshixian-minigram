@@ -59,14 +59,19 @@ test('only a complete active approved B-side identity can open procurement', () 
   assert(model.businessPermissions.every((item) => item.enabled === true));
 });
 
-test('account model exposes safe identity facts without inventing editable profile fields', () => {
+test('account model displays UTC login time in Shanghai without inventing editable profile fields', () => {
   const model = deriveAccountModel({ ...customer, lastLoginAt: '2026-09-18T09:30:00.000Z' });
   assert.equal(model.identityLabel, 'C端客户');
-  assert.equal(model.lastLoginText, '2026-09-18 09:30');
+  assert.equal(model.lastLoginText, '2026-09-18 17:30');
   assert.equal(model.canApplyBusiness, true);
   assert.equal(model.canOpenProcurement, false);
   assert.equal(Object.prototype.hasOwnProperty.call(model, 'phone'), false);
   assert.equal(Object.prototype.hasOwnProperty.call(model, 'nickname'), false);
+});
+
+test('account login time rolls into the next Shanghai calendar day', () => {
+  const model = deriveAccountModel({ ...customer, lastLoginAt: '2026-09-18T20:30:00.000Z' });
+  assert.equal(model.lastLoginText, '2026-09-19 04:30');
 });
 
 test('membership model never turns a missing level or growth fact into a default membership', () => {
@@ -85,4 +90,31 @@ test('membership model never turns a missing level or growth fact into a default
   assert.equal(configured.levelName, '银卡会员');
   assert.equal(configured.growthValue, 120);
   assert.deepEqual(configured.benefits, ['专属活动']);
+});
+
+test('membership model does not invent an upgrade gap when current growth is missing', () => {
+  const model = deriveMembershipModel({
+    profile: {},
+    level: { code: 'silver', name: '银卡会员', minPoints: 100 },
+    nextLevel: { code: 'gold', name: '金卡会员', minPoints: 400 }
+  });
+  assert.equal(model.nextLevelHint, '升级条件暂未配置');
+});
+
+test('membership model does not invent an upgrade gap when the next threshold is missing', () => {
+  const model = deriveMembershipModel({
+    profile: { lifetimePoints: 120 },
+    level: { code: 'silver', name: '银卡会员', minPoints: 100 },
+    nextLevel: { code: 'gold', name: '金卡会员', minPoints: null }
+  });
+  assert.equal(model.nextLevelHint, '升级条件暂未配置');
+});
+
+test('membership model shows a real upgrade gap when both values exist', () => {
+  const model = deriveMembershipModel({
+    profile: { lifetimePoints: 120 },
+    level: { code: 'silver', name: '银卡会员', minPoints: 100 },
+    nextLevel: { code: 'gold', name: '金卡会员', minPoints: 400 }
+  });
+  assert.equal(model.nextLevelHint, '距离金卡会员还需280成长值');
 });

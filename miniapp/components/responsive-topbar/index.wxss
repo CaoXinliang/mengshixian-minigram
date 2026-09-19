@@ -89,6 +89,12 @@
   line-height: 1.2;
 }
 
+.topbar__content.compact-title .topbar__title {
+  font-size: var(--font-large-title);
+  font-weight: 400;
+  letter-spacing: .5px;
+}
+
 .topbar__subtitle {
   margin-top: 3rpx;
   color: var(--color-text-secondary);

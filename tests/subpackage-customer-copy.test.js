@@ -2,6 +2,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
+const { createCouponWallet } = require('../miniapp/modules/coupon-wallet');
 
 const root = path.resolve(__dirname, '../miniapp');
 const ok = data => ({ ok: true, data });
@@ -28,16 +29,45 @@ function page(relative, services) {
 }
 
 async function run() {
-  const couponRows = [9000, 8500, 1000, 1250, 10000, 0, null, undefined, -1, 'invalid'].map((rate, index) => ({ _id: `c${index}`, discountRateBps: rate, status: 'available' }));
-  couponRows.push({ _id: 'fixed', discountCent: 500, status: 'used' }, { _id: 'unknown', status: 'future_internal_code' });
-  const coupons = page('package-marketing/pages/coupons/index.js', {
-    auth: loggedIn,
-    coupons: { templates: async () => rows([]), list: async () => rows(couponRows) }
-  });
-  await coupons.load();
-  assert.deepEqual(Array.from(coupons.data.coupons, item => item.valueText), ['减90%', '减85%', '减10%', '减12.5%', '减100%', '优惠', '优惠', '优惠', '优惠', '优惠', '¥5.00', '优惠']);
-  assert.equal(coupons.data.coupons[11].statusText, '暂不可使用');
-  assert.equal(coupons.data.coupons[11].usable, false, 'unknown display fallback must not enable a coupon');
+  const validTemplate = {
+    _id: 'template-percent', name: '九折券', type: 'percent', discountRateBps: 9000,
+    minSpendCent: 1000, maxDiscountCent: null, scopeType: 'all', scopeIds: [],
+    validFrom: '2026-09-01T00:00:00.000Z', validTo: '2026-10-01T00:00:00.000Z',
+    perUserLimit: 1, version: 1
+  };
+  const createWallet = (templateRows, couponRows) => {
+    let state;
+    const wallet = createCouponWallet({
+      coupons: {
+        templatesAll: async () => rows(templateRows),
+        listAll: async () => rows(couponRows),
+        resolveClaim: async () => ok({ found: false })
+      },
+      intentStore: { get() { return null; }, set() {}, remove() {} },
+      createKey: () => 'copy-test-key',
+      onChange(next) { state = next; }
+    });
+    return { wallet, state: () => state };
+  };
+  const safeCoupons = createWallet([validTemplate], [
+    {
+      _id: 'available', templateId: validTemplate._id, status: 'available', snapshot: validTemplate,
+      validFrom: validTemplate.validFrom, validTo: validTemplate.validTo
+    },
+    { _id: 'historical', templateId: 'removed-template', status: 'used', snapshot: null }
+  ]);
+  await safeCoupons.wallet.load({ userId: 'customer' });
+  assert.equal(safeCoupons.state().status, 'ready');
+  assert.deepEqual(Array.from(safeCoupons.state().coupons, item => item.valueText), ['减90%', '优惠待确认']);
+  assert.equal(safeCoupons.state().coupons[1].name, '券面信息已失效');
+  assert.equal(safeCoupons.state().coupons[1].usable, false, 'damaged historical coupons stay visible but cannot become usable');
+
+  const unsafeCoupons = createWallet([validTemplate], [
+    { _id: 'unknown', templateId: validTemplate._id, status: 'future_internal_code', snapshot: validTemplate }
+  ]);
+  await unsafeCoupons.wallet.load({ userId: 'customer' });
+  assert.equal(unsafeCoupons.state().status, 'error', 'unknown coupon statuses must fail safely instead of becoming customer copy');
+  assert.deepEqual(unsafeCoupons.state().coupons, []);
   const bundles = page('package-marketing/pages/bundles/index.js', {
     auth: { getMe: async () => ok({ user: null }) },
     bundles: { list: async () => rows([{ _id: 'bundle' }]) }

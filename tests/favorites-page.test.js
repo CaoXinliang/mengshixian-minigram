@@ -1,7 +1,11 @@
 const assert = require('assert/strict');
+const fs = require('fs');
 const Module = require('module');
 const path = require('path');
 const { createFavoritesLifecycle } = require('../miniapp/modules/favorites-lifecycle');
+
+const favoritesWxml = fs.readFileSync(path.resolve(__dirname, '../miniapp/package-member/pages/favorites/index.wxml'), 'utf8');
+assert(favoritesWxml.includes('收藏数量 0'), 'empty favorites must show the factual zero count beside its browse action');
 
 const favoriteRow = (id, patch = {}) => ({
   _id: id,

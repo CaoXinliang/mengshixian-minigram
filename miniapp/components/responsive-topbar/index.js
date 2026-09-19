@@ -11,6 +11,10 @@ Component({
     actionLabel: {
       type: String,
       value: ''
+    },
+    compactTitle: {
+      type: Boolean,
+      value: false
     }
   },
 

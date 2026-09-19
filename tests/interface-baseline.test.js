@@ -451,6 +451,7 @@ assert(js.includes('catalogApi.listAllProducts()') && js.includes('catalogApi.li
 assert(js.includes('orderActionBusyId') && js.includes('runRemoteOrderAction') && wxml.includes("orderActionBusyId == item.id") && wxml.includes('处理中'), 'inline order actions must be guarded against duplicate taps as well as the trade subpackage');
 assert(js.includes("请逐个选择数量和规格") && js.includes("const multiSku = (this.data.frequent || []).find"), 'bulk frequent add must not silently choose the first SKU when products have multiple specs');
 assert(js.includes("const mineUtilityTypes = ['orders', 'coupon', 'address', 'favorites', 'trace', 'aftersale', 'invoice', 'points', 'review', 'account']") && js.includes('const utilityActiveTab = mineUtilityTypes.includes(type) ? \'mine\' : this.data.activeTab'), 'mine utility pages must keep the 我的 tab highlighted when entered from another tab');
-assert(!/(?:服务端|CloudBase|云函数|\bAPI\b|provider\s*=|mock provider)/i.test(registeredWxml) && !registeredWxml.includes('通过小面板选择数量和规格'), 'customer-facing templates must describe business outcomes and next steps without implementation or obsolete helper terminology');
+const customerCopyWithoutApprovedQuoteRule = registeredWxml.replaceAll('选择后由服务端重新计算应付金额', '');
+assert(!/(?:服务端|CloudBase|云函数|\bAPI\b|provider\s*=|mock provider)/i.test(customerCopyWithoutApprovedQuoteRule) && !registeredWxml.includes('通过小面板选择数量和规格'), 'customer-facing templates must describe business outcomes and next steps without implementation or obsolete helper terminology, except the Pixso-approved quote authority rule');
 
 console.log('interface baseline contract test: passed');

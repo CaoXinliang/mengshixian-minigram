@@ -263,7 +263,7 @@ Page({
     const quotePatch = this.invalidateQuote();
     this.setData({
       couponId: data && data.couponId || '',
-      coupon: data && data.coupon || null,
+      coupon: null,
       ...quotePatch
     }, () => this.loadQuote());
   },

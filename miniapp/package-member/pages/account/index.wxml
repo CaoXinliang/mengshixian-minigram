@@ -1,5 +1,5 @@
 <view class="page">
-  <responsive-topbar title="账户信息" subtitle="身份、会员与账户设置" bind:back="back" />
+  <responsive-topbar title="账户信息" compact-title="{{true}}" bind:back="back" />
   <view wx:if="{{status == 'loading'}}" class="state"><text>正在加载账户信息</text></view>
   <view wx:elif="{{status == 'forbidden'}}" class="state"><text class="state-title">需要登录</text><text>{{errorText}}</text></view>
   <view wx:elif="{{status == 'error'}}" class="state error"><text class="state-title">账户加载失败</text><text>{{errorText}}</text><button bindtap="retry">重新加载</button></view>
@@ -8,17 +8,20 @@
       <view class="avatar">{{account.canOpenProcurement ? '商' : '鲜'}}</view>
       <view><text>{{account.identityLabel}}</text><text>{{account.identityStatusLabel}}</text></view>
     </view>
-    <view class="card">
-      <text class="card-title">账户状态</text>
+    <view class="card action-list">
+      <button wx:if="{{account.canOpenProcurement || account.canApplyBusiness}}" bindtap="openBusiness"><view class="action-icon procurement"><image src="/assets/icons/account-building2.svg" mode="aspectFit" /></view><text class="action-label">{{account.canOpenProcurement ? '企业采购中心' : '申请商家采购'}}</text><text class="action-chevron">›</text></button>
+      <button bindtap="openPoints"><view class="action-icon points"><image src="/assets/icons/account-award.svg" mode="aspectFit" /></view><text class="action-label">积分中心</text><text class="action-chevron">›</text></button>
+      <button bindtap="openLegal"><view class="action-icon legal"><image src="/assets/icons/account-filetext.svg" mode="aspectFit" /></view><text class="action-label">协议与隐私</text><text class="action-chevron">›</text></button>
+    </view>
+    <view class="card security-card">
+      <view class="action-icon security"><image src="/assets/icons/account-shieldcheck.svg" mode="aspectFit" /></view>
+      <view class="security-content"><text class="card-title">账户与数据安全</text><text class="security-note">订单、地址与会员数据仅对当前登录账户可见</text></view>
+    </view>
+    <view class="card account-extra">
+      <button bindtap="openMembership"><text>会员等级</text><text>查看正式等级与权益 ›</text></button>
       <view class="info-row"><text>组织关系</text><text>{{account.organizationLabel}}</text></view>
       <view class="info-row"><text>最近登录</text><text>{{account.lastLoginText}}</text></view>
     </view>
-    <view class="card action-list">
-      <button bindtap="openMembership"><text>会员等级</text><text>查看正式等级与权益 ›</text></button>
-      <button bindtap="openPoints"><text>积分中心</text><text>查看积分与流水 ›</text></button>
-      <button wx:if="{{account.canOpenProcurement || account.canApplyBusiness}}" bindtap="openBusiness"><text>{{account.canOpenProcurement ? '企业采购中心' : '申请商家采购'}}</text><text>›</text></button>
-      <button bindtap="openLegal"><text>协议与隐私</text><text>›</text></button>
-    </view>
-    <button class="logout" bindtap="logout">退出登录</button>
+    <view class="logout-wrap"><button class="logout" bindtap="logout">退出登录</button></view>
   </block>
 </view>

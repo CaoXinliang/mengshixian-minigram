@@ -78,6 +78,12 @@ function deriveMemberHomeModel(user) {
   };
 }
 
+function loginTimeText(value) {
+  const timestamp = Date.parse(value);
+  if (!Number.isFinite(timestamp)) return '暂无登录时间记录';
+  return new Date(timestamp + 8 * 60 * 60 * 1000).toISOString().slice(0, 16).replace('T', ' ');
+}
+
 function deriveAccountModel(user) {
   const identity = identityView(user);
   const identityLabel = identity.kind === 'business_approved' ? 'B端客户' : 'C端客户';
@@ -93,7 +99,7 @@ function deriveAccountModel(user) {
     kind: identity.kind,
     identityLabel,
     identityStatusLabel: statusLabels[identity.kind] || '顾客账户',
-    lastLoginText: user && user.lastLoginAt ? String(user.lastLoginAt).replace('T', ' ').slice(0, 16) : '暂无登录时间记录',
+    lastLoginText: user && user.lastLoginAt ? loginTimeText(user.lastLoginAt) : '暂无登录时间记录',
     organizationLabel: identity.organizationId ? '已关联组织' : '未关联组织',
     canApplyBusiness: identity.canApplyBusiness,
     canOpenProcurement: identity.isApprovedBusiness,
@@ -109,14 +115,16 @@ function deriveMembershipModel(input) {
   const source = input || {};
   const profile = source.profile || {};
   const level = source.level && source.level.name ? source.level : null;
+  const growthValue = finiteNumber(profile.lifetimePoints);
+  const nextThreshold = finiteNumber(source.nextLevel && source.nextLevel.minPoints);
   return {
     configured: Boolean(level),
     levelCode: level && level.code || '',
     levelName: level ? level.name : '等级暂未配置',
-    growthValue: finiteNumber(profile.lifetimePoints),
+    growthValue,
     threshold: level ? finiteNumber(level.minPoints) : null,
-    nextLevelHint: source.nextLevel && source.nextLevel.name
-      ? `距离${source.nextLevel.name}还需${Math.max(0, Number(source.nextLevel.minPoints || 0) - Number(profile.lifetimePoints || 0))}成长值`
+    nextLevelHint: source.nextLevel && source.nextLevel.name && growthValue !== null && nextThreshold !== null
+      ? `距离${source.nextLevel.name}还需${Math.max(0, nextThreshold - growthValue)}成长值`
       : '升级条件暂未配置',
     benefits: level && Array.isArray(level.benefits) ? level.benefits.map(String) : []
   };

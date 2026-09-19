@@ -1,5 +1,5 @@
 <view class="page">
-  <responsive-topbar title="积分中心" subtitle="查看积分与会员权益" bind:back="back"/>
+  <responsive-topbar title="积分中心" compact-title="{{true}}" bind:back="back"/>
   <view wx:if="{{status == 'loading'}}" class="state">正在加载积分账户</view>
   <view wx:elif="{{status == 'forbidden'}}" class="state"><text>需要登录</text><text>{{errorText}}</text></view>
   <view wx:elif="{{status == 'error'}}" class="state error"><text>积分加载失败</text><text>{{errorText}}</text><button bindtap="retry">重新加载</button></view>

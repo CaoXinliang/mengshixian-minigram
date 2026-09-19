@@ -64,9 +64,10 @@ async function run() {
 
   let resolveSelected;
   quoteResponder = () => new Promise(resolve => { resolveSelected = resolve; });
-  couponSelected({ couponId: 'coupon-1', coupon: { id: 'coupon-1', name: '满减券' } });
+  couponSelected({ couponId: 'coupon-1' });
   assert.equal(current.data.quoteState, 'loading', 'coupon changes must immediately hide the previous total');
   assert.equal(current.data.discountTotal, '0.00');
+  assert.equal(current.data.coupon, null, 'local coupon display must stay empty until the server confirms the quote snapshot');
   assert.equal(current.data.acceptedQuoteToken, '', 'coupon changes must invalidate an accepted quote token');
   await new Promise(resolve => setImmediate(resolve));
   assert.equal(quoteCalls.at(-1).couponId, 'coupon-1');
@@ -78,7 +79,7 @@ async function run() {
   assert.equal(current.data.coupon.name, '服务端确认券', 'coupon display must use the latest server snapshot');
 
   quoteResponder = async () => ({ ok: false, error: { code: 'COUPON_SCOPE_INVALID', message: '未达使用门槛' } });
-  couponSelected({ couponId: 'coupon-bad', coupon: { id: 'coupon-bad', name: '不可用券' } });
+  couponSelected({ couponId: 'coupon-bad' });
   await new Promise(resolve => setImmediate(resolve));
   assert.equal(current.data.couponId, '', 'a server-rejected coupon must not remain selected');
   assert.equal(current.data.coupon, null);
@@ -88,7 +89,7 @@ async function run() {
   assert.equal(current.data.quoteErrorText, '该优惠券不适用于当前订单，请重新选择');
 
   quoteResponder = async () => ({ ok: true, data: { quote: { goodsAmountCent: 5000, freightAmountCent: 800, discountAmountCent: 0, payableAmountCent: 5800, items: [{ skuId: 'sku-1', unitPriceCent: 2500, subtotalCent: 5000 }] } } });
-  couponSelected({ couponId: '', coupon: null });
+  couponSelected({ couponId: '' });
   await new Promise(resolve => setImmediate(resolve));
   assert.equal(quoteCalls.at(-1).couponId, undefined, 'choosing no coupon must requote without a coupon id');
   assert.equal(current.data.quoteState, 'ready');
@@ -96,10 +97,10 @@ async function run() {
 
   let resolveOld;
   quoteResponder = () => new Promise(resolve => { resolveOld = resolve; });
-  couponSelected({ couponId: 'coupon-old', coupon: { id: 'coupon-old', name: '旧券' } });
+  couponSelected({ couponId: 'coupon-old' });
   await new Promise(resolve => setImmediate(resolve));
   quoteResponder = async () => ({ ok: true, data: { quote: { goodsAmountCent: 5000, freightAmountCent: 800, discountAmountCent: 800, payableAmountCent: 5000, couponSnapshot: { id: 'coupon-new', name: '新券' }, items: [{ skuId: 'sku-1', unitPriceCent: 2500, subtotalCent: 5000 }] } } });
-  couponSelected({ couponId: 'coupon-new', coupon: { id: 'coupon-new', name: '新券' } });
+  couponSelected({ couponId: 'coupon-new' });
   await new Promise(resolve => setImmediate(resolve));
   resolveOld({ ok: true, data: { quote: { goodsAmountCent: 5000, freightAmountCent: 800, discountAmountCent: 100, payableAmountCent: 5700, couponSnapshot: { id: 'coupon-old', name: '旧券' }, items: [{ skuId: 'sku-1', unitPriceCent: 2500, subtotalCent: 5000 }] } } });
   await new Promise(resolve => setImmediate(resolve));

@@ -52,6 +52,7 @@ async function run() {
   await view.signIn();
   assert.equal(writes, 1);
   const markup = fs.readFileSync(path.resolve(__dirname, '../miniapp/package-member/pages/points/index.wxml'), 'utf8');
+  assert(markup.includes('compact-title="{{true}}"'), 'points states should share the approved compact Pixso header');
   assert(markup.includes('{{account.balanceText}}'), 'visible balance must use the honest display model');
   assert(markup.includes('{{ruleText}}'));
   assert(markup.includes('{{signText}}'));
