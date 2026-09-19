@@ -8,13 +8,61 @@
       "name": "trade",
       "pages": [
         "pages/checkout/index",
+        "pages/addresses/index",
         "pages/demo-payment/index",
-        "pages/orders/index"
+        "pages/orders/index",
+        "pages/order-detail/index",
+        "pages/aftersale-apply/index",
+        "pages/aftersale-detail/index"
+      ]
+    },
+    {
+      "root": "package-business",
+      "name": "business",
+      "pages": [
+        "pages/frequent/index",
+        "pages/repurchase/index",
+        "pages/center/index",
+        "pages/inquiries/index",
+        "pages/inquiry-create/index",
+        "pages/inquiry-detail/index"
+      ]
+    },
+    {
+      "root": "package-marketing",
+      "name": "marketing",
+      "pages": [
+        "pages/bundles/index",
+        "pages/bundle-detail/index",
+        "pages/groups/index",
+        "pages/group-detail/index",
+        "pages/coupons/index"
+      ]
+    },
+    {
+      "root": "package-member",
+      "name": "member",
+      "pages": [
+        "pages/account/index",
+        "pages/membership/index",
+        "pages/points/index",
+        "pages/favorites/index",
+        "pages/reviews/index",
+        "pages/invoices/index",
+        "pages/stored-value/index",
+        "pages/legal/index"
       ]
     }
   ],
+  "preloadRule": {
+    "pages/index/index": {
+      "network": "all",
+      "packages": ["trade", "member"]
+    }
+  },
   "window": {
     "navigationStyle": "custom",
+    "navigationBarTextStyle": "black",
     "backgroundTextStyle": "light",
     "backgroundColor": "#F3F7FC"
   },

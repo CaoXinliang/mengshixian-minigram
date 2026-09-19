@@ -1,0 +1,5 @@
+{
+  "usingComponents": {
+    "responsive-topbar": "/components/responsive-topbar/index"
+  }
+}

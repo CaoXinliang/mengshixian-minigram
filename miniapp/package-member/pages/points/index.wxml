@@ -1,0 +1,25 @@
+<view class="page">
+  <responsive-topbar title="积分中心" subtitle="查看积分与会员权益" bind:back="back"/>
+  <view wx:if="{{status == 'loading'}}" class="state">正在加载积分账户</view>
+  <view wx:elif="{{status == 'forbidden'}}" class="state"><text>需要登录</text><text>{{errorText}}</text></view>
+  <view wx:elif="{{status == 'error'}}" class="state error"><text>积分加载失败</text><text>{{errorText}}</text><button bindtap="retry">重新加载</button></view>
+  <block wx:elif="{{account}}">
+    <view class="hero">
+      <view class="point-summary"><text class="point-balance">{{account.balanceText}}</text><text>可用积分</text></view>
+      <button disabled="{{signing || !canSignIn}}" bindtap="signIn"><text>{{account.signedToday ? '今日已签到' : (signing ? '正在处理' : (canSignIn ? '签到' : '暂不可签到'))}}</text></button>
+    </view>
+    <view class="card"><text class="title">签到规则</text><text>{{ruleText}}</text><text wx:if="{{businessDate}}" class="empty">当前签到日 {{businessDate}}</text></view>
+    <view wx:if="{{profile.benefits.length}}" class="card"><text class="title">{{profile.levelName}} · 等级权益</text><view wx:for="{{profile.benefits}}" wx:key="*this" class="benefit">{{item}}</view></view>
+    <view class="card">
+      <text class="title">积分流水</text>
+      <view wx:for="{{ledger}}" wx:key="_id" class="row"><view><text>{{item.label}}</text><text>{{item.time}}</text></view><text class="ledger-change {{item.change > 0 ? 'is-credit' : 'is-debit'}}">{{item.amountText}}</text></view>
+      <view wx:if="{{!ledger.length}}" class="ledger-empty"><text class="title">暂无积分流水</text><text>产生积分变动后会在这里显示记录。</text></view>
+    </view>
+  </block>
+  <view wx:if="{{signText}}" class="sign-notice">
+    <text class="title">{{signState == 'confirmed' ? '签到已确认' : '签到状态'}}</text><text>{{signText}}</text>
+    <button wx:if="{{signState == 'unknown'}}" disabled="{{signing}}" bindtap="signIn"><text>核对签到结果</text></button>
+    <button wx:elif="{{signState == 'retry' && canSignIn}}" disabled="{{signing}}" bindtap="signIn"><text>重新签到</text></button>
+    <button wx:elif="{{signState == 'error'}}" bindtap="retry"><text>重新加载</text></button>
+  </view>
+</view>

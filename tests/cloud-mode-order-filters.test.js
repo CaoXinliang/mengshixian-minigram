@@ -11,7 +11,8 @@ const rows = [
   { _id: 'order-picking', orderNo: 'P2', status: 'picking', paymentStatus: 'paid', refundStatus: '', totalAmountCent: 2000 },
   { _id: 'order-delivered', orderNo: 'D1', status: 'delivered', paymentStatus: 'paid', refundStatus: '', totalAmountCent: 3000 },
   { _id: 'order-completed', orderNo: 'C1', status: 'completed', paymentStatus: 'paid', refundStatus: '', totalAmountCent: 4000 },
-  { _id: 'order-refunded', orderNo: 'R1', status: 'delivered', paymentStatus: 'paid', refundStatus: 'requested', totalAmountCent: 5000 }
+  { _id: 'order-refunded', orderNo: 'R1', status: 'delivered', paymentStatus: 'paid', refundStatus: 'requested', totalAmountCent: 5000 },
+  { _id: 'order-unknown', orderNo: 'U1', status: 'future_internal_status', paymentStatus: '', refundStatus: '', totalAmountCent: 6000 }
 ];
 
 const servicesStub = {
@@ -70,8 +71,11 @@ async function run() {
 
   page.data.orderFilter = '全部订单';
   await page.loadRemoteOrders();
-  assert.strictEqual(page.data.orderRows.length, 7);
+  assert.strictEqual(page.data.orderRows.length, 8);
   assert.strictEqual(page.data.orderEmptyTitle, '暂无订单记录');
+  assert.equal(page.data.orderRows.find((row) => row.id === 'order-pending').status, '待付款');
+  assert.equal(page.data.orderRows.find((row) => row.id === 'order-refunded').status, '售后申请中');
+  assert.equal(page.data.orderRows.find((row) => row.id === 'order-unknown').status, '处理中');
   assert.equal(page.data.orderRows.find((row) => row.id === 'order-delivered').canConfirm, true);
   assert.equal(page.data.orderRows.find((row) => row.id === 'order-refunded').canConfirm, false);
   assert.equal(page.data.orderRows.find((row) => row.id === 'order-delivered').canRefund, true);

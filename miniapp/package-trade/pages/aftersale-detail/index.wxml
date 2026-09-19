@@ -1,0 +1,13 @@
+<view class="page">
+  <responsive-topbar title="{{status == 'empty' ? '售后记录' : '售后详情'}}" bind:back="back"/>
+  <view wx:if="{{status == 'loading'}}" class="state state-loading"><text>正在加载售后进度</text></view>
+  <view wx:elif="{{status == 'error'}}" class="state error"><text>售后进度加载失败</text><text>{{errorText}}</text><button bindtap="retry">重新加载</button></view>
+  <view wx:elif="{{status == 'empty'}}" class="state"><text>暂无售后记录</text><text>{{errorText}}</text><text class="empty-help">申请与退款进度会在有对应记录后显示。</text><button bindtap="back">返回订单</button></view>
+  <block wx:elif="{{detail}}">
+    <view class="card hero {{detail.status == 'rejected' || detail.status == 'failed' ? 'is-error' : ''}}"><text>{{detail.statusText}}</text><text>{{detail.isRefundComplete ? '已退款金额' : '申请退款金额'}} ¥{{detail.amount}}</text><text>{{detail.updatedAt || detail.createdAt}}</text></view>
+    <view class="card"><text class="title">处理进度</text><view wx:for="{{detail.timeline}}" wx:key="key" class="timeline {{item.state}}"><view></view><view><text>{{item.label}}</text><text>{{item.note}}</text><text wx:if="{{item.time}}">{{item.time}}</text></view></view><text wx:if="{{detail.manualRefundRequired}}" class="channel-note">退款尚未完成，请以订单中的退款状态为准。</text></view>
+    <view class="card"><text class="title">申请信息</text><view class="row"><text>售后单号</text><text>{{detail.refundNo || detail.id}}</text></view><view class="row"><text>申请时间</text><text>{{detail.createdAt}}</text></view><view class="row"><text>申请原因</text><text>{{detail.reason || '未填写补充说明'}}</text></view><view class="row"><text>凭证数量</text><text>{{detail.mediaCount}} 个</text></view><view wx:if="{{detail.reviewNote}}" class="review-note"><text>审核说明</text><text>{{detail.reviewNote}}</text></view></view>
+    <view wx:if="{{detail.mediaCount}}" class="card"><text class="title">已提交凭证</text><view class="evidence-grid"><view wx:for="{{detail.media}}" wx:key="id" class="evidence-item"><image wx:if="{{item.type == 'image' && item.canPreview}}" src="{{item.url}}" mode="aspectFill"/><video wx:elif="{{item.type == 'video' && item.canPreview}}" src="{{item.url}}" controls object-fit="cover"/><view wx:else class="evidence-unavailable"><text>{{item.type == 'video' ? '视频凭证' : '图片凭证'}}</text><text>{{item.note}}</text></view></view></view><text wx:if="{{detail.evidenceUnavailableCount && !detail.media.length}}" class="channel-note">凭证已安全保存，当前暂无法生成预览地址。</text></view>
+    <view wx:if="{{detail.items.length}}" class="card"><text class="title">售后商品</text><view wx:for="{{detail.items}}" wx:key="orderItemId" class="item"><view><text>{{item.productNameSnapshot || '订单商品'}}</text><text>{{item.specSnapshot}} {{item.packageUnitSnapshot}}</text></view><text>×{{item.quantity}}</text></view></view>
+  </block>
+</view>

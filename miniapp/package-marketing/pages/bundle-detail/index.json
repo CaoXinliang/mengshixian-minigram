@@ -1,0 +1,6 @@
+{
+  "usingComponents": {
+    "responsive-topbar": "/components/responsive-topbar/index",
+    "quantity-stepper": "/components/quantity-stepper/index"
+  }
+}

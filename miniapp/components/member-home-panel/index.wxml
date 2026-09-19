@@ -1,0 +1,62 @@
+<view class="member-home">
+  <view class="member-head"><text>我的</text><button wx:if="{{model.showSettings}}" class="member-settings" bindtap="navigate" data-type="account" aria-label="打开账户设置">⚙</button></view>
+
+  <block wx:if="{{model.kind == 'guest'}}">
+    <view class="guest-actions">
+    <button class="guest-action" hover-class="control-pressed" bindtap="login" aria-label="微信登录">
+      <image src="/assets/icons/user.svg" mode="aspectFit" />
+      <view><text>微信登录</text><text>登录后查看订单、优惠券和收货地址</text></view>
+      <text>›</text>
+    </button>
+    <button class="guest-action guest-service" hover-class="control-pressed" bindtap="navigate" data-type="service" aria-label="联系客服">
+      <image src="/assets/icons/headset.svg" mode="aspectFit" />
+      <view><text>联系客服</text><text>咨询商品、订单与配送问题</text></view>
+      <text>›</text>
+    </button>
+    </view>
+  </block>
+
+  <block wx:else>
+    <view class="member-profile {{model.kind == 'disabled' ? 'is-disabled' : ''}}">
+      <view class="member-avatar">{{model.avatarText}}</view>
+      <view class="member-profile-copy"><text>{{model.title}}</text><text>{{model.subtitle}}</text></view>
+    </view>
+
+    <view wx:if="{{model.showCustomerOrders}}" class="member-card">
+      <view class="member-card-head"><text>我的订单</text><button bindtap="navigate" data-type="orders" data-filter="全部订单">全部订单</button></view>
+      <view class="member-order-grid">
+        <button wx:for="{{model.orderActions}}" wx:key="type" bindtap="navigate" data-type="{{item.type}}" data-filter="{{item.filter}}">
+          <image src="{{item.icon}}" mode="aspectFit" /><text>{{item.label}}</text>
+          <text wx:if="{{item.filter == '待收货' && pendingReceiptCount}}" class="order-count" aria-label="{{pendingReceiptCount}}笔订单待收货">{{pendingReceiptCount > 99 ? '99+' : pendingReceiptCount}}</text>
+        </button>
+      </view>
+    </view>
+
+    <view wx:if="{{model.showBusinessApplication}}" class="member-card">
+      <view class="member-card-head"><text>企业采购申请</text><text class="status-pill">{{model.businessStatusLabel}}</text></view>
+      <view class="business-action-grid">
+        <button wx:for="{{model.businessActions}}" wx:key="type" bindtap="businessAction" data-type="{{item.type}}"><text>{{item.label}}</text></button>
+      </view>
+    </view>
+
+    <view wx:if="{{model.businessPermissions.length}}" class="member-card">
+      <text class="member-card-title">企业权限</text>
+      <view class="member-service-grid">
+        <button wx:for="{{model.businessPermissions}}" wx:key="type" bindtap="businessPermission" data-type="{{item.type}}" data-enabled="{{item.enabled}}" disabled="{{!item.enabled}}" class="{{item.enabled ? '' : 'is-locked'}}">
+          <view class="service-icon"><image src="/assets/icons/list.svg" mode="aspectFit" /></view><text>{{item.label}}</text><text wx:if="{{!item.enabled}}" class="lock-label">审核后开放</text>
+        </button>
+      </view>
+    </view>
+
+    <view wx:if="{{model.commonServices.length}}" class="member-card">
+      <text class="member-card-title">常用服务</text>
+      <view class="member-service-grid">
+        <button wx:for="{{model.commonServices}}" wx:key="type" bindtap="navigate" data-type="{{item.type}}" aria-label="{{item.label}}">
+          <view class="service-icon"><image src="{{item.icon}}" mode="aspectFit" /></view><text>{{item.label}}</text>
+        </button>
+      </view>
+    </view>
+
+    <button class="about-row" bindtap="navigate" data-type="about"><text>关于与帮助</text><text>›</text></button>
+  </block>
+</view>

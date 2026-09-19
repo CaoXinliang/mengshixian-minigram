@@ -1,0 +1,9 @@
+<view class="payment-panel is-{{kind}}" aria-live="polite">
+  <text class="payment-panel__title">{{kind == 'paid' ? '支付已确认' : (kind == 'closed' ? '订单已关闭' : (kind == 'cancelled' ? '支付已取消' : (kind == 'failed' ? '支付未完成' : (kind == 'unavailable' ? '支付暂不可用' : (kind == 'processing' ? '正在处理支付' : (kind == 'test' ? '测试支付说明' : (kind == 'pending' ? '订单待支付' : '支付结果待确认')))))))}}</text>
+  <text class="payment-panel__message">{{text}}</text>
+  <view wx:if="{{canQuery || canRetry || showViewOrder}}" class="payment-panel__actions">
+    <button wx:if="{{canQuery}}" disabled="{{busy}}" bindtap="handleQuery"><text>{{busy ? '正在查询' : '查询支付结果'}}</text></button>
+    <button wx:if="{{canRetry}}" disabled="{{busy}}" bindtap="handleRetry"><text>重新支付</text></button>
+    <button wx:if="{{showViewOrder}}" disabled="{{busy}}" bindtap="handleViewOrder"><text>查看订单</text></button>
+  </view>
+</view>

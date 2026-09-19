@@ -1,0 +1,38 @@
+.page{min-height:100vh;background:#f5f8fc;color:#0f1b2d;font-size:14px;}.topbar{display:flex;align-items:center;gap:20rpx;padding:56rpx 28rpx 24rpx;background:#176bd5;color:#fff}.topbar>text{font-size:32px}.topbar>view{display:flex;flex-direction:column}.topbar>view text:first-child{font-size:18px;font-weight:700}.topbar>view text:last-child{color:#dcecff;font-size:13px}.list{padding:12px 16px}.card{display:flex;align-items:center;margin-bottom:10px;padding:14px;border-radius:16px;background:#fff;gap:12px;min-height:44px;}.card image{width:64px;height:64px;border-radius:12px;}.card>view{display:flex;min-width:0;flex:1;flex-direction:column;gap:7rpx}.card>view text:first-child{font-size:16px;font-weight:700}.card>view text:nth-child(2){color:#667085;font-size:13px}.card>view text:last-child{color:#ff4d4f;font-weight:700}.state{display:flex;align-items:center;justify-content:center;min-height:360rpx;margin:12px 16px;padding:20px 14px;border-radius:16px;background:#fff;flex-direction:column;gap:12rpx;text-align:center;padding-top:20px;padding-bottom:20px;line-height:1.6;}.state.error{background:#fff7f5}
+
+
+.control-pressed {
+  opacity: .72;
+}
+
+.state {min-height: 0;padding-top:20px;padding-bottom:20px;margin:12px 16px;padding:20px 14px;border-radius:16px;line-height:1.6;}
+
+.state-loading {
+  min-height: 320rpx;
+}
+
+
+.card image {flex: none;width:64px;height:64px;border-radius:12px;}
+
+.card > view,
+.card > view text {
+  min-width: 0;
+}
+
+.card > view text {
+  overflow-wrap: anywhere;
+}
+
+.card > text:last-child {
+  flex: none;
+}
+
+.state button {
+  width: auto;
+  min-height:44px;
+  margin: 0;
+  padding: 0 22rpx;
+  box-sizing: border-box;
+  font-size:14px;
+  line-height: 1.25;
+}

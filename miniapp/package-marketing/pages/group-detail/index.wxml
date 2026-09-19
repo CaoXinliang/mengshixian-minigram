@@ -1,0 +1,13 @@
+<view class="page">
+  <responsive-topbar title="拼团详情" subtitle="查看进度并参与拼团" bind:back="back"/>
+  <view wx:if="{{status == 'loading'}}" class="state state-loading">正在加载拼团详情</view>
+  <view wx:elif="{{status == 'empty'}}" class="state"><text>活动不可用</text><text>{{errorText}}</text></view>
+  <view wx:elif="{{status == 'error'}}" class="state error"><text>拼团详情加载失败</text><text>{{errorText}}</text><button bindtap="retry">重新加载</button></view>
+  <block wx:elif="{{status == 'ready'}}">
+    <view class="hero"><text>{{campaign.name || '我的拼团'}}</text><text wx:if="{{campaign}}">{{campaign.groupSize}} 人成团 · 截止 {{campaign.endText}}</text><text wx:if="{{group}}">已参与 {{group.joined}}/{{group.target}} · {{group.statusText}}</text><text wx:if="{{group.expiryText}}">本团截止 {{group.expiryText}}</text></view>
+    <view wx:if="{{errorText}}" class="notice">{{errorText}}</view>
+    <view class="card total"><text>拼团价格</text><text>{{quote ? '结算时确认' : '--'}}</text></view>
+    <view wx:if="{{group && group.status == 'failed'}}" class="notice">拼团未成功，退款结果请以订单状态为准。</view>
+    <view class="bottom"><button wx:if="{{!group}}" disabled="{{busy || !quote}}" bindtap="submit" data-action="create">{{busy ? '提交中' : '发起拼团'}}</button><button wx:elif="{{group.status == 'open'}}" disabled="{{busy || !quote}}" bindtap="submit" data-action="join">{{busy ? '提交中' : '参与此团'}}</button></view>
+  </block>
+</view>

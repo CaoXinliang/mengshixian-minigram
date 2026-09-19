@@ -11,6 +11,7 @@ const rows = [
 
 const servicesStub = {
   orders: { list: async () => ({ ok: true, data: { rows } }), cancel: async () => ({ ok: true }), confirm: async () => ({ ok: true }) },
+  aftersales: { listAll: async () => ({ ok: true, data: { rows: [{ _id: 'refund-1', orderId: 'order-refunded', status: 'requested' }] } }) },
   refunds: { request: async () => ({ ok: true }) }
 };
 

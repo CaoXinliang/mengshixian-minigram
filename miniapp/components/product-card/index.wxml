@@ -1,0 +1,31 @@
+<view class="product-card {{widePrice ? 'has-wide-price' : ''}}">
+  <view class="product-card__media" aria-role="button" aria-label="查看商品：{{name}}" hover-class="control-pressed" bindtap="openProduct">
+    <image class="product-card__image" src="{{imageSrc || '/assets/products/placeholder.svg'}}" mode="aspectFit" binderror="mediaError" />
+    <text class="product-card__tag" wx:if="{{tag && tag != '待补充'}}">{{tag}}</text>
+  </view>
+  <view class="product-card__copy" aria-role="button" aria-label="查看商品：{{name}}" hover-class="control-pressed" bindtap="openProduct">
+    <text class="product-card__name">{{name}}</text>
+    <text class="product-card__spec">{{specLabel}}</text>
+    <text wx:if="{{statusText}}" class="product-card__status">{{statusText}}</text>
+    <view class="product-card__price {{priceState == 'locked' ? 'is-locked' : (priceState == 'temporary' ? 'is-temporary' : '')}}">
+      <text wx:if="{{priceText}}" class="product-card__price-amount">{{priceText}}</text>
+      <text wx:if="{{priceText && priceUnitLabel}}" class="product-card__price-unit">/{{priceUnitLabel}}</text>
+      <text wx:if="{{!priceText}}" class="product-card__price-label">{{priceLabel}}</text>
+    </view>
+  </view>
+  <view class="product-card__action">
+    <product-purchase-action
+      mode="{{actionMode}}"
+      product-id="{{productId}}"
+      spec-label="{{specLabel}}"
+      action-label="{{actionLabel}}"
+      quantity="{{quantity}}"
+      minimum="{{minimum}}"
+      maximum="{{maximum}}"
+      multiple="{{multiple}}"
+      disabled="{{actionDisabled}}"
+      bind:choose="chooseSpec"
+      bind:change="forwardQuantity"
+    />
+  </view>
+</view>

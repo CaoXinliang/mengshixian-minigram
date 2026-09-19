@@ -1,0 +1,1 @@
+<view class="page"><responsive-topbar title="电子发票" subtitle="开票服务状态" bind:back="back"/><view class="state"><text>电子发票暂未开放</text></view></view>

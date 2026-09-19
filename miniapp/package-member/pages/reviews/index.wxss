@@ -1,0 +1,74 @@
+.page{min-height:100vh;background:#f5f8fc;color:#0f1b2d;font-size:14px;}.topbar{display:flex;align-items:center;gap:20rpx;padding:56rpx 28rpx 24rpx;background:#176bd5;color:#fff}.topbar>text{font-size:32px}.topbar>view{display:flex;flex-direction:column}.topbar>view text:first-child{font-size:18px;font-weight:700}.topbar>view text:last-child{color:#dcecff;font-size:13px}.card{display:flex;margin:12px 16px;padding:16px 14px;border-radius:16px;background:#fff;flex-direction:column;gap:12px}.title{font-size:16px;font-weight:700}.row,.check{display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-top:1rpx solid #edf1f4;min-width:0;gap:12px;flex-wrap:wrap;width:100%;max-width:100%;margin:0;background:transparent;color:inherit;text-align:left;line-height:1.6;white-space:normal;}.row>view{display:flex;flex-direction:column;gap:5rpx;min-width:0;flex:1;overflow-wrap:anywhere;}.row>view text:last-child,.empty{color:#667085;font-size:13px}.check{justify-content:flex-start;gap:12rpx;width:100%;max-width:100%;margin:0;padding:8px 0;background:transparent;color:inherit;text-align:left;line-height:1.6;white-space:normal;}.rating{display:flex;gap:4px;flex-wrap:wrap;}.rating button{color:#176bd5;font-size:28px;width:44px;min-width:44px;height:44px;min-height:44px;padding:0;margin:0;background:transparent;line-height:44px;}.rating .active{color:#176bd5}.card textarea{width:100%;min-height:132px;padding:12px;border:1rpx solid #d4e0eb;border-radius:12px;box-sizing:border-box;height:132px;background:#f7faff;line-height:1.6;}.media{display:flex;gap:8px;flex-wrap:wrap;grid-template-columns:repeat(auto-fill, minmax(120px, 1fr));}.media>view{display:flex;width:130rpx;flex-direction:column}.media image{width:130rpx;height:130rpx}.media button{margin:4rpx 0 0;padding:5rpx;font-size:12px}.state{display:flex;align-items:center;justify-content:center;min-height:360rpx;margin:12px 16px;padding:20px 14px;border-radius:16px;background:#fff;flex-direction:column;gap:12rpx;text-align:center;padding-top:20px;padding-bottom:20px;line-height:1.6;}.state.error{background:#fff7f5}
+.order-label{color:#667085;font-size:13px}.check{min-height:44px;box-sizing:border-box;width:100%;max-width:100%;margin:0;padding:8px 0;background:transparent;color:inherit;text-align:left;line-height:1.6;white-space:normal;}.check-icon{display:flex;align-items:center;justify-content:center;width:36rpx;height:36rpx;border:2rpx solid #9fb0bf;border-radius:50%;box-sizing:border-box;flex-shrink:0;}.check.is-selected .check-icon{border-color:#176bd5;background:#176bd5}.check-icon-mark{width:14rpx;height:8rpx;margin-top:-4rpx;border-bottom:3rpx solid #fff;border-left:3rpx solid #fff;transform:rotate(-45deg)}.media-item{gap:4rpx}.media-actions{display:grid!important;width:100%!important;grid-template-columns:repeat(auto-fit, minmax(48px, 1fr));gap:6px}.media button{display:flex;align-items:center;justify-content:center;min-height:44px;box-sizing:border-box}.media-add{width:130rpx;min-width:130rpx;margin:0;color:#176bd5;background:#eaf2fd}.media-retry,.media-remove{width:100%;min-width:0}.media-retry{color:#176bd5;background:#eaf2fd}.media-remove{color:#a33c31;background:#fff1ef}.review-submit{display:flex;align-items:center;justify-content:center;width:100%;min-width:0;min-height:44px;margin:0;color:#fff;background:#176bd5;box-sizing:border-box;border-radius:999px;padding:8px 20px;}
+.page{font-size:14px}.title{font-size:16px}.order-label,.row>view text:last-child,.empty,.media-item>text{font-size:13px}.state button{min-height:44px;font-size:14px}.review-submit{min-height:44px;font-size:14px;border-radius:999px;padding:8px 20px;}.media button{min-height:44px;font-size:12px}.rating button{min-width:44px;min-height:44px;line-height:44px;text-align:center;width:44px;height:44px;padding:0;margin:0;background:transparent;font-size:28px;color:#176bd5;}.card textarea{min-height:132px;font-size:14px;height:132px;padding:12px;border-radius:12px;background:#f7faff;line-height:1.6;}
+
+/* 普通空态不再占据近半屏高度。 */
+.state {
+  min-height: 0;
+  padding-top: 44rpx;
+  padding-bottom: 44rpx;
+}
+
+/* 媒体格按文字所需宽度换列，不把两个操作塞进窄屏的 130rpx。 */
+.media {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220rpx, 1fr));
+  gap: 16rpx;
+  align-items: start;
+}
+
+.media > view,
+.media > .media-add {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  margin: 0;
+}
+
+.media image {
+  width: 100%;
+  height: 180rpx;
+  border-radius: 8rpx;
+}
+
+.media-actions {grid-template-columns:repeat(auto-fit, minmax(48px, 1fr));gap:6px;
+}
+
+.media-actions > button,
+.media > .media-add {max-width: 100%;
+  margin: 0;padding:6px 4px;
+  white-space: normal;
+  line-height: 1.4;min-height:44px;font-size:14px;}
+
+@media (min-width: 480px) {
+  .state button,
+  .review-submit,
+  .media button {min-height:44px;border-radius:999px;padding:8px 20px;}
+  .page {font-size:14px; }
+  .title { font-size: 16px; }
+  .order-label,
+  .row > view text:last-child,
+  .empty,
+  .media-item > text { font-size: 13px; }
+  .state button,
+  .review-submit {font-size: 14px;min-height:44px;border-radius:999px;padding:8px 20px;}
+  .media button { font-size: 12px; }
+  .card textarea {font-size: 14px;min-height:132px;height:132px;padding:12px;border-radius:12px;background:#f7faff;line-height:1.6;}
+  .media {grid-template-columns:repeat(auto-fill, minmax(120px, 1fr));gap:8px; }
+  .media image { height: 96px; }
+  .media-actions {gap:6px;grid-template-columns:repeat(auto-fit, minmax(48px, 1fr));}
+  .media-actions > button,
+  .media > .media-add {padding:6px 4px;min-height:44px;font-size:14px;}
+}
+
+.review-summary{display:flex;flex-direction:column;gap:12px;margin:12px 16px;padding:18px 16px;border-radius:16px;background:#eaf2fd;color:#176bd5;font-size:14px;line-height:1.6}
+.summary-title{color:#0f1b2d;font-size:20px;line-height:1.4}
+.review-order{min-height:44px}
+.review-order-action{display:flex;align-items:center;min-height:34px;padding:6px 16px;border:1px solid #176bd5;border-radius:999px;color:#176bd5;font-size:14px;line-height:1.4}
+.content-count{align-self:flex-end;font-size:12px;color:#667085}
+.submit-status{display:flex;flex-direction:column;gap:8px;padding:14px;border-radius:14px;background:#eaf2fd;color:#667085;font-size:14px;line-height:1.6}
+.review-rules{font-size:14px;line-height:1.6;color:#667085}
+.review-rules .title{color:#0f1b2d}
+.check>text{min-width:0;overflow-wrap:anywhere}
+.submission-ok{margin-left:auto;color:#23805a;font-size:13px;font-weight:600}
+.submission-error{width:100%;padding-left:48rpx;color:#c95042;font-size:13px}

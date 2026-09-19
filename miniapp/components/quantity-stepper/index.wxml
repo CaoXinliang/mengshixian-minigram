@@ -1,5 +1,5 @@
-<view class="quantity-stepper {{compact ? 'is-compact' : ''}}">
-  <button class="step-control is-minus" disabled="{{quantity <= 0}}" hover-class="is-pressed" catchtap="subtract" aria-label="减少数量">−</button>
-  <text class="quantity-value">{{quantity}}</text>
-  <button class="step-control is-plus" hover-class="is-pressed" catchtap="add" aria-label="增加数量">+</button>
+<view class="quantity-stepper {{compact ? 'is-compact' : ''}}" catchtap="stopTapPropagation">
+  <button class="step-control is-minus {{disabled || quantity < min || (quantity == min && !allowZero) ? 'is-disabled' : ''}}" disabled="{{disabled || quantity < min || (quantity == min && !allowZero)}}" hover-class="is-pressed" catchtap="subtract" aria-label="减少数量"><text class="step-face" aria-hidden="true">−</text></button>
+  <input class="quantity-value {{editing ? 'is-editing' : ''}} {{invalid ? 'is-invalid' : ''}}" type="number" inputmode="numeric" value="{{draftValue}}" disabled="{{disabled}}" maxlength="3" confirm-type="done" adjust-position="{{true}}" cursor-spacing="16" hold-keyboard="{{false}}" catchtap="stopTapPropagation" bindinput="editQuantity" bindconfirm="confirmQuantity" bindblur="blurQuantity" aria-label="购买数量" />
+  <button class="step-control is-plus {{disabled || quantity >= max ? 'is-disabled' : ''}}" disabled="{{disabled || quantity >= max}}" hover-class="is-pressed" catchtap="add" aria-label="增加数量"><text class="step-face" aria-hidden="true">+</text></button>
 </view>

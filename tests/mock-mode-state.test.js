@@ -26,7 +26,7 @@ assert(initial, 'mock mode should register a page definition');
 assert(initial.products.length > 0, 'mock mode must keep the approved demo product data source');
 assert(initial.bannerItems.length > 0, 'mock mode must keep the approved demo banner data source');
 assert(initial.homeCategories.length > 0, 'mock mode must keep the approved home category icons');
-assert.strictEqual(initial.homeCategories.length, 5, 'home shortcuts must show exactly five categories');
+assert.strictEqual(initial.homeCategories.length, 10, 'home shortcuts must show exactly ten categories');
 assert(initial.categoryGroups.length > 0, 'mock mode must keep the approved category group shell');
 assert.strictEqual(initial.warehouses.length, 2, 'mock mode must keep the two demo warehouses');
 assert.strictEqual(initial.cartItems.length, 2, 'mock mode must keep the approved demo cart seed');

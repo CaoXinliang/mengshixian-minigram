@@ -49,6 +49,7 @@ async function run() {
   page.data.warehouse = { id: 'warehouse-1', name: '南山仓', eta: '预计送达' };
   page.data.cartItems = [{ id: 'cart-1', skuId: 'sku-1', name: '测试冻品', unit: '500g装', qty: 1 }];
   page.data.quoteState = 'ready';
+  page.data.paymentCapabilities = { demoOrder: true };
 
   const first = page.submitOrder();
   const second = page.submitOrder();

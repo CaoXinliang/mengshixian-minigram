@@ -1,0 +1,55 @@
+/* Pixso 顾客端展示：信息随内容展开，字号与触控尺寸不随屏宽缩小。 */
+.page{min-height:100vh;padding-bottom:24px;background:#f5f8fc;color:#0f1b2d;font-size:14px;line-height:1.5}
+button{display:flex;align-items:center;justify-content:center;width:auto;min-width:44px;min-height:44px;max-width:100%;margin:0;padding:0 16px;box-sizing:border-box;border:0;border-radius:22px;color:#176bd5;background:#eaf2fd;font-size:14px;font-weight:600;line-height:1.35;white-space:normal;overflow-wrap:anywhere}
+button::after{border:0}
+button[disabled]{opacity:1;color:#667085;background:#dce7f5}
+.control-pressed{opacity:.72}
+.card{display:flex;min-width:0;margin:12px 16px;padding:16px;border-radius:16px;background:#fff;flex-direction:column;gap:12px}
+.title{color:#0f1b2d;font-size:16px;font-weight:700;line-height:1.4}
+.state{display:flex;min-height:0;margin:12px 16px;padding:24px 16px;border-radius:16px;background:#fff;flex-direction:column;align-items:flex-start;gap:12px;text-align:left}
+.state text:first-child{color:#0f1b2d;font-size:18px;font-weight:700}
+.state text:nth-child(2){color:#667085;font-size:14px;overflow-wrap:anywhere}
+.state button{align-self:center;margin-top:8px}
+.state-loading{min-height:160px;justify-content:center}
+.state.error{background:#fff4f2}
+.state.error text:first-child{color:#c95042}
+input,textarea,picker{min-width:0;min-height:44px;box-sizing:border-box;font-size:14px;color:#0f1b2d}
+
+.hero{color:#fff;background:#176bd5}
+.hero.is-error{background:#74879f}
+.hero>text:first-child{font-size:20px;font-weight:700}
+.hero>text:nth-child(2){font-size:16px}
+.hero>text:last-child{color:#eaf2fd;font-size:13px}
+.timeline{display:grid;grid-template-columns:12px minmax(0,1fr);align-items:flex-start;gap:10px;padding:8px 0;color:#8292a3}
+.timeline>view:first-child{width:10px;height:10px;margin-top:6px;border-radius:50%;background:#d7e2ef}
+.timeline>view:last-child{display:flex;min-width:0;flex-direction:column;gap:4px}
+.timeline>view:last-child>text:first-child{font-size:16px;font-weight:600}
+.timeline>view:last-child>text:last-child{font-size:14px;overflow-wrap:anywhere}
+.timeline.done{color:#43566d}
+.timeline.done>view:first-child{background:#64b489}
+.timeline.current{color:#176bd5}
+.timeline.current>view:first-child{background:#176bd5;box-shadow:0 0 0 4px #eaf2fd}
+.timeline.error{color:#c95042}
+.timeline.error>view:first-child{background:#e56858}
+.channel-note,.source-note,.empty-help{padding:12px;border-radius:12px;color:#43566d;background:#eaf2fd;font-size:14px;line-height:1.5}
+.row{display:grid;min-width:0;grid-template-columns:72px minmax(0,1fr);gap:12px;align-items:flex-start;font-size:14px}
+.row>text:first-child{color:#667085}
+.row>text:last-child{min-width:0;color:#0f1b2d;text-align:right;overflow-wrap:anywhere}
+.review-note{display:flex;padding:12px;border-radius:12px;color:#70501f;background:#fff7e8;flex-direction:column;gap:6px;font-size:14px}
+.review-note>text:first-child{font-weight:600}
+.item{display:flex;min-width:0;align-items:center;justify-content:space-between;gap:12px;padding:12px 0;border-top:1px solid #e6edf5}
+.item>view{display:flex;min-width:0;flex:1;flex-direction:column;gap:5px}
+.item>view>text:first-child{font-size:16px;font-weight:600;overflow-wrap:anywhere}
+.item>view>text:last-child,.item>text{color:#667085;font-size:14px;overflow-wrap:anywhere}
+.evidence-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.evidence-item{min-width:0;aspect-ratio:1;border-radius:12px;background:#eef3f8;overflow:hidden}
+.evidence-item image,.evidence-item video{display:block;width:100%;height:100%}
+.evidence-unavailable{display:flex;height:100%;padding:10px;box-sizing:border-box;color:#526175;flex-direction:column;justify-content:center;gap:4px;text-align:center}
+.evidence-unavailable text:first-child{font-weight:600}
+.evidence-unavailable text:last-child{font-size:12px;line-height:1.4}
+
+/* S4: preserve every status and note; expand rather than clip long values. */
+.hero>text{min-width:0;overflow-wrap:anywhere;line-height:1.5}
+.hero>text:last-child{font-size:15px}
+.row,.review-note,.timeline>view:last-child>text:last-child,.channel-note,.empty-help,.item>view>text:last-child,.item>text{font-size:16px;line-height:1.5;overflow-wrap:anywhere}
+.timeline{color:#526175}

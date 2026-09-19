@@ -1,0 +1,149 @@
+.page{min-height:100vh;padding-bottom:140rpx;background:#f3f7fc;color:#203a53}.topbar{display:flex;align-items:center;gap:20rpx;padding:56rpx 28rpx 24rpx;background:#0a69e9;color:#fff}.topbar>text{font-size:52rpx}.topbar>view{display:flex;flex-direction:column}.topbar>view text:first-child{font-size:32rpx;font-weight:700}.topbar>view text:last-child{color:#dcecff;font-size:20rpx}.search{box-sizing:border-box;margin:18rpx;width:calc(100% - 36rpx);padding:18rpx 22rpx;border-radius:10rpx;background:#fff;font-size:22rpx}.item{display:flex;align-items:center;margin:12rpx 18rpx;padding:20rpx;border-radius:10rpx;background:#fff;gap:12rpx}.check{display:flex;align-items:center;justify-content:center;width:34rpx;height:34rpx;border:2rpx solid #a9bed2;border-radius:50%;color:#fff;background:#0a69e9}.info{display:flex;min-width:0;flex:1;flex-direction:column;gap:5rpx}.info text:first-child{font-size:22rpx;font-weight:700}.info text:last-child{color:#60768c;font-size:18rpx}.qty{display:flex;align-items:center;gap:6rpx}.qty button{width:40rpx;height:40rpx;margin:0;padding:0;color:#0a69e9;background:#edf5ff;line-height:40rpx}.qty text{min-width:28rpx;text-align:center}.note{display:flex;margin:18rpx;padding:18rpx;border-radius:10rpx;background:#fff;flex-direction:column}.note textarea{width:100%;height:150rpx;font-size:21rpx}.note text{align-self:flex-end;color:#8292a3;font-size:18rpx}.error{display:block;margin:18rpx;padding:12rpx;color:#c95042;background:#fff1ef}.bar{position:fixed;right:0;bottom:0;left:0;padding:15rpx 18rpx calc(15rpx + env(safe-area-inset-bottom));background:#fff}.bar button{margin:0;color:#fff;background:#0a69e9}.state{display:flex;align-items:center;justify-content:center;min-height:350rpx;margin:18rpx;background:#fff;flex-direction:column;gap:12rpx}
+
+
+.control-pressed {
+  opacity: .72;
+}
+
+.state {
+  min-height: 0;
+  padding-top: 44rpx;
+  padding-bottom: 44rpx;
+}
+
+.state-loading {
+  min-height: 320rpx;
+}
+
+.check,
+.qty button {
+  width: 44px;
+  min-width: 44px;
+  height: 44px;
+  min-height: 44px;
+  padding: 0;
+}
+
+
+/* 底部内容占位与固定操作栏高度使用同一组安全区计算。 */
+.page {
+  padding-bottom: calc(44px + 30rpx + constant(safe-area-inset-bottom));
+  padding-bottom: calc(44px + 30rpx + env(safe-area-inset-bottom));
+}
+
+.bar {
+  padding: 15rpx 18rpx calc(15rpx + constant(safe-area-inset-bottom));
+  padding: 15rpx 18rpx calc(15rpx + env(safe-area-inset-bottom));
+}
+
+.bar button {
+  min-height: 44px;
+  box-sizing: border-box;
+}
+
+/* Keep hit targets accessible without enlarging their visible faces. */
+.check {
+  position: relative;
+  width: 44px;
+  min-width: 44px;
+  height: 44px;
+  border: 0;
+  background: transparent;
+}
+
+.check::before {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 34rpx;
+  max-width: 22px;
+  height: 34rpx;
+  max-height: 22px;
+  border: 1px solid #7fa7cf;
+  border-radius: 50%;
+  box-sizing: border-box;
+  background: #0a69e9;
+  transform: translate(-50%, -50%);
+  content: "";
+}
+
+.check > text {
+  position: relative;
+  z-index: 1;
+}
+
+.qty button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+.qty button::after {
+  border: 0;
+}
+
+.qty button > text {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40rpx;
+  min-width: 0;
+  max-width: 27px;
+  height: 40rpx;
+  max-height: 28px;
+  box-sizing: border-box;
+  border: 1px solid #829ab2;
+  border-radius: 50%;
+  color: #365675;
+  background: #fff;
+  line-height: 1;
+}
+
+.qty button:last-child > text {
+  border-color: #287ff1;
+  color: #fff;
+  background: #287ff1;
+}
+
+.qty {
+  flex: none;
+}
+
+.info text,
+.error {
+  overflow-wrap: anywhere;
+}
+
+.note textarea {
+  min-height: 150rpx;
+  box-sizing: border-box;
+}
+
+/* Input and product copy must not shrink with rpx at 320px. */
+.page { font-size: 16px; line-height: 1.5; }
+.search { min-height: 44px; font-size: 16px; }
+.info text:first-child, .qty text, .qty button, .bar button { font-size: 16px; }
+.info text:last-child, .note text { font-size: 14px; }
+.note textarea { min-height: 96px; height: 96px; font-size: 16px; line-height: 1.5; }
+.item { flex-wrap: wrap; }
+.info { flex: 1 1 120px; }
+.check { flex: none; }
+.qty { margin-left: auto; }
+.state button { min-height: 44px; font-size: 16px; }
+
+@media screen and (max-width: 360px) {
+  .item {
+    margin-right: 12rpx;
+    margin-left: 12rpx;
+    padding-right: 14rpx;
+    padding-left: 14rpx;
+    gap: 6rpx;
+  }
+
+  .qty {
+    gap: 2rpx;
+  }
+}

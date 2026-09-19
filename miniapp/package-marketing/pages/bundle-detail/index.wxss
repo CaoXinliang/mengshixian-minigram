@@ -1,0 +1,89 @@
+.page{min-height:100vh;padding-bottom:140rpx;background:#f5f8fc;color:#0f1b2d;font-size:14px;}.topbar{display:flex;align-items:center;gap:20rpx;padding:56rpx 28rpx 24rpx;background:#176bd5;color:#fff}.topbar>text{font-size:32px}.topbar>view{display:flex;flex-direction:column}.topbar>view text:first-child{font-size:18px;font-weight:700}.topbar>view text:last-child{color:#dcecff;font-size:13px}.hero,.card,.notice{display:flex;margin:12px 16px;padding:16px 14px;border-radius:16px;background:#fff;flex-direction:column;gap:12px}.hero text:first-child,.title{font-size:16px;font-weight:700}.hero text:last-child,.row>view text:last-child{color:#667085;font-size:14px}.row{display:flex;justify-content:space-between;padding:12rpx 0;border-top:1rpx solid #edf1f4;gap:12px;min-width:0;}.row>view{display:flex;flex-direction:column;gap:5rpx;min-width:0;flex:1;overflow-wrap:anywhere;}.qty{flex-direction:row;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;}.qty>view{display:flex;align-items:center;gap:18rpx}.qty button{margin:0;padding:6rpx 18rpx}.total{flex-direction:row;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;}.total text:last-child{color:#ff4d4f;font-size:16px;font-weight:700}.notice{color:#b55245;background:#fff7f5}.notice button{align-self:flex-start}.bottom{position:fixed;right:0;bottom:0;left:0;padding:16rpx 18rpx calc(16rpx + env(safe-area-inset-bottom));background:#fff}.bottom button{color:#fff;background:#176bd5;border-radius:999px;font-size:16px;}.state{display:flex;align-items:center;justify-content:center;min-height:360rpx;margin:12px 16px;padding:20px 14px;border-radius:16px;background:#fff;flex-direction:column;gap:12rpx;text-align:center;padding-top:20px;padding-bottom:20px;line-height:1.6;}.state.error{background:#fff7f5}
+
+
+/* 交付态控件层级：触控尺寸使用 px，避免窄屏被 rpx 继续缩小。 */
+button {
+  min-height: 44px;
+  box-sizing: border-box;
+  white-space: nowrap;
+  line-height: 1.25;
+}
+
+.control-pressed {
+  opacity: .72;
+}
+
+.state {min-height: 0;padding-top:20px;padding-bottom:20px;margin:12px 16px;padding:20px 14px;border-radius:16px;line-height:1.6;}
+
+.state-loading {
+  min-height: 320rpx;
+}
+
+.qty button {
+  width: 44px;
+  min-width: 44px;
+  height: 44px;
+  min-height: 44px;
+  padding: 0;
+}
+
+
+input,
+textarea,
+picker {
+  min-height: 44px;
+  box-sizing: border-box;
+  font-size: 14px;
+}
+
+/* 底部内容占位与固定操作栏高度使用同一组安全区计算。 */
+.page {
+  padding-bottom: calc(44px + 32rpx + constant(safe-area-inset-bottom));
+  padding-bottom: calc(44px + 32rpx + env(safe-area-inset-bottom));
+}
+
+.bottom {
+  padding: 16rpx 18rpx calc(16rpx + constant(safe-area-inset-bottom));
+  padding: 16rpx 18rpx calc(16rpx + env(safe-area-inset-bottom));
+}
+
+/* The 44px box is only the hit target; the visible control stays compact. */
+.qty button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+.qty button::after {
+  border: 0;
+}
+
+.qty button > text {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 46rpx;
+  min-width: 0;
+  max-width: 30px;
+  height: 46rpx;
+  max-height: 30px;
+  box-sizing: border-box;
+  border: 1px solid #829ab2;
+  border-radius: 50%;
+  color: #365675;
+  background: #fff;
+  line-height: 1;
+}
+
+.qty button:last-child > text {
+  border-color: #287ff1;
+  color: #fff;
+  background: #287ff1;
+}
+
+.hero text,.notice{min-width:0;overflow-wrap:anywhere;line-height:1.6}
+.total text:last-child{max-width:100%;overflow-wrap:anywhere}
+.bottom button[disabled]{color:#69849f;background:#dbe7f5;opacity:1}

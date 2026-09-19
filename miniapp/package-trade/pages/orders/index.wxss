@@ -1,1 +1,49 @@
-.page{min-height:100vh;background:#f3f7fc;color:#203a53}.topbar{display:flex;align-items:center;gap:20rpx;padding:56rpx 28rpx 24rpx;background:#0a69e9;color:#fff}.topbar text:first-child{font-size:52rpx;line-height:1}.topbar text:last-child{font-size:32rpx;font-weight:700}.filters{box-sizing:border-box;padding:18rpx;background:#fff}.filter-track{display:flex;gap:10rpx}.filters button{display:flex;align-items:center;justify-content:center;min-width:0;margin:0;padding:12rpx 8rpx;border-radius:28rpx;color:#687d91;background:#eef2f6;font-size:20rpx;line-height:1.25;flex:1}.filters button.active{color:#fff;background:#0a69e9}.order{display:flex;margin:18rpx;padding:24rpx;border-radius:12rpx;background:#fff;flex-direction:column;gap:10rpx}.order>view:first-child{display:flex;justify-content:space-between}.order>view:first-child text:first-child{font-size:25rpx;font-weight:700}.order>view:first-child text:last-child{color:#0a69e9;font-size:22rpx}.order-number{color:#203a53;font-size:24rpx;font-weight:600;line-height:1.35}.order-items{color:#2f5577;font-size:22rpx;line-height:1.5;overflow-wrap:anywhere}.order-delivery{color:#60768c;font-size:22rpx}.order-total{color:#e35d36;font-size:25rpx;font-weight:700}.actions{display:flex;justify-content:flex-end;gap:12rpx;padding-top:14rpx;border-top:1rpx solid #edf1f4}.actions button{margin:0;padding:10rpx 18rpx;border:1rpx solid #b7d4f1;border-radius:6rpx;color:#0a69e9;background:#fff;font-size:21rpx}.actions button:last-child{border-color:#0a69e9;color:#fff;background:#0a69e9}.empty{display:flex;padding:120rpx 36rpx;color:#60768c;flex-direction:column;gap:12rpx;text-align:center}.empty text:first-child{color:#203a53;font-size:27rpx;font-weight:700}.load-more{display:block;margin:8rpx 18rpx 36rpx;padding:16rpx;border:1rpx solid #b7d4f1;border-radius:8rpx;color:#0a69e9;background:#fff;font-size:22rpx}.refund-mask{position:fixed;inset:0;z-index:20;display:flex;align-items:flex-end;background:rgba(11,28,48,.45)}.refund-card{box-sizing:border-box;width:100%;padding:32rpx 28rpx 44rpx;border-radius:24rpx 24rpx 0 0;background:#fff}.refund-title{display:block;color:#203a53;font-size:32rpx;font-weight:700}.refund-copy{display:block;margin-top:12rpx;color:#60768c;font-size:23rpx}.refund-input{box-sizing:border-box;width:100%;height:180rpx;margin-top:24rpx;padding:16rpx;border:1rpx solid #b7d4f1;border-radius:8rpx;color:#203a53;font-size:25rpx}.refund-actions{display:flex;gap:16rpx;margin-top:24rpx}.refund-actions button{flex:1;margin:0;padding:16rpx;border:1rpx solid #b7d4f1;border-radius:8rpx;color:#0a69e9;background:#fff;font-size:25rpx}.refund-actions button:last-child{border-color:#0a69e9;color:#fff;background:#0a69e9}
+/* Pixso 顾客端展示：信息随内容展开，字号与触控尺寸不随屏宽缩小。 */
+.page{min-height:100vh;padding-bottom:24px;background:#f5f8fc;color:#0f1b2d;font-size:14px;line-height:1.5}
+button{display:flex;align-items:center;justify-content:center;width:auto;min-width:44px;min-height:44px;max-width:100%;margin:0;padding:0 16px;box-sizing:border-box;border:0;border-radius:22px;color:#176bd5;background:#eaf2fd;font-size:14px;font-weight:600;line-height:1.35;white-space:normal;overflow-wrap:anywhere}
+button::after{border:0}
+button[disabled]{opacity:1;color:#667085;background:#dce7f5}
+.control-pressed{opacity:.72}
+.card{display:flex;min-width:0;margin:12px 16px;padding:16px;border-radius:16px;background:#fff;flex-direction:column;gap:12px}
+.title{color:#0f1b2d;font-size:16px;font-weight:700;line-height:1.4}
+.state{display:flex;min-height:0;margin:12px 16px;padding:24px 16px;border-radius:16px;background:#fff;flex-direction:column;align-items:flex-start;gap:12px;text-align:left}
+.state text:first-child{color:#0f1b2d;font-size:18px;font-weight:700}
+.state text:nth-child(2){color:#667085;font-size:14px;overflow-wrap:anywhere}
+.state button{align-self:center;margin-top:8px}
+.state-loading{min-height:160px;justify-content:center}
+.state.error{background:#fff4f2}
+.state.error text:first-child{color:#c95042}
+input,textarea,picker{min-width:0;min-height:44px;box-sizing:border-box;font-size:14px;color:#0f1b2d}
+
+.filters{margin:12px 16px;padding:0 4px;border-radius:16px;background:#fff}
+.filter-track{display:flex;min-width:0;gap:0}
+.filters button{position:relative;display:flex;align-items:center;justify-content:center;width:auto;min-width:0;max-width:100%;min-height:48px;margin:0;padding:0 2px;border-radius:0;color:#667085;background:transparent;font-size:14px;font-weight:400;line-height:1.3;white-space:nowrap;flex:1}
+.filters button.active{color:#176bd5;font-weight:600}
+.filters button.active::before{position:absolute;bottom:1px;left:25%;width:50%;height:3px;border-radius:2px;background:#176bd5;content:""}
+.order{display:flex;min-width:0;margin:12px 16px;padding:14px;border-radius:16px;background:#fff;flex-direction:column;gap:10px}
+.order>view:first-child{display:flex;min-width:0;align-items:flex-start;justify-content:space-between;gap:12px}
+.order>view:first-child>text:first-child{font-size:16px;font-weight:700}
+.order>view:first-child>text:last-child{color:#667085;font-size:14px;text-align:right;overflow-wrap:anywhere}
+.order-number{padding-bottom:10px;border-bottom:1px solid #e6edf5;color:#73859d;font-size:12px;overflow-wrap:anywhere}
+.order-product{display:grid;min-width:0;grid-template-columns:64px minmax(0,1fr);gap:12px;align-items:center}
+.order-product>image{width:64px;height:64px;padding:18px;border-radius:12px;background:#f0f6ff}
+.order-product>view{display:flex;min-width:0;flex-direction:column;gap:8px}
+.order-items{display:-webkit-box;overflow:hidden;color:#0f1b2d;font-size:16px;font-weight:600;line-height:1.4;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow-wrap:anywhere}
+.order-delivery{color:#73859d;font-size:12px;line-height:1.45;overflow-wrap:anywhere}
+.order-total{color:#ef5b45;font-size:16px;font-weight:700;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.actions{display:flex;min-width:0;align-items:center;justify-content:flex-end;gap:8px;flex-wrap:wrap}
+.actions button{display:flex;align-items:center;justify-content:center;width:auto;min-width:0;max-width:100%;min-height:44px;margin:0;padding:0;border:0;background:transparent;flex:0 1 auto}
+.order-action-face{display:flex;min-height:34px;max-width:100%;padding:5px 14px;align-items:center;justify-content:center;border:1px solid #bfd0e6;border-radius:18px;color:#176bd5;background:#fff;font-size:14px;line-height:1.35}
+.detail-action .order-action-face{border-color:transparent;background:#eaf2fd}
+.actions button[disabled] .order-action-face{color:#667085;border-color:#d7e2ef;background:#edf2f7}
+.empty{display:flex;margin:12px 16px;padding:24px 16px;border-radius:16px;background:#fff;color:#667085;flex-direction:column;align-items:center;gap:12px;text-align:center}
+.empty text:first-child{color:#0f1b2d;font-size:18px;font-weight:600}
+.empty.state-loading{min-height:160px;justify-content:center}
+.load-more{margin:16px auto 24px}
+.refund-actions button{width:100%;min-width:0;max-width:100%}
+
+/* S4: order identifiers and fulfillment states stay readable and wrap. */
+.order-number,.order-delivery{color:#46566b;font-size:16px;line-height:1.5}
+.order>view:first-child>text:last-child,.filters button,.order-action-face{font-size:16px}
+.order-items{display:block;overflow:visible;-webkit-line-clamp:unset}
+.order-total{font-size:20px;line-height:1.5}

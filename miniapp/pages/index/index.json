@@ -1,8 +1,18 @@
 {
   "navigationStyle": "custom",
+  "navigationBarTextStyle": "black",
   "enablePullDownRefresh": false,
   "disableScroll": true,
   "usingComponents": {
-    "quantity-stepper": "/components/quantity-stepper/index"
+    "app-tabbar": "/components/app-tabbar/index",
+    "content-state": "/components/content-state/index",
+    "cart-panel": "/components/cart-panel/index",
+    "member-home-panel": "/components/member-home-panel/index",
+    "meal-experience-panel": "/components/meal-experience-panel/index",
+    "product-card": "/components/product-card/index",
+    "product-purchase-action": "/components/product-purchase-action/index",
+    "purchase-purpose": "/components/purchase-purpose/index",
+    "quantity-stepper": "/components/quantity-stepper/index",
+    "service-info-panel": "/components/service-info-panel/index"
   }
 }

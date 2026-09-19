@@ -1,0 +1,120 @@
+/* PC 端专用布局。移动端和小程序视觉基线不受此文件影响。 */
+.desktop-nav { display: none; }
+
+@media (min-width: 900px) {
+  html, body { min-width: 900px; background: #edf5fa; }
+  body { padding: 24px 0; }
+  .phone {
+    --fixed-bottom-offset: 0px;
+    width: min(1180px, calc(100vw - 64px));
+    min-height: calc(100dvh - 48px);
+    overflow: hidden;
+    border: 1px solid rgba(37, 112, 164, .12);
+    border-radius: 18px;
+    box-shadow: 0 24px 70px rgba(38, 96, 132, .15);
+  }
+  .desktop-nav {
+    position: sticky;
+    top: 0;
+    z-index: 25;
+    display: grid;
+    grid-template-columns: 220px 1fr auto;
+    align-items: center;
+    min-height: 70px;
+    padding: 0 28px;
+    border-bottom: 1px solid #e4edf4;
+    background: rgba(255, 255, 255, .97);
+    backdrop-filter: blur(16px);
+  }
+  .desktop-brand { display: flex; align-items: center; gap: 10px; color: #173652; text-align: left; background: transparent; }
+  .desktop-brand img { width: 38px; height: 38px; border-radius: 50%; object-fit: cover; }
+  .desktop-brand span, .desktop-brand b, .desktop-brand small { display: block; }
+  .desktop-brand b { font-size: 18px; letter-spacing: 1px; }
+  .desktop-brand small { margin-top: 2px; color: #7a8da0; font-size: 10px; font-weight: 500; }
+  .desktop-nav-links { display: flex; align-self: stretch; justify-content: center; gap: 4px; }
+  .desktop-nav-links button { position: relative; min-width: 96px; padding: 0 18px; color: #536a7f; background: transparent; font-size: 14px; }
+  .desktop-nav-links button:hover { color: var(--blue); background: #f5f9fd; }
+  .desktop-nav-links button.is-active { color: var(--blue); font-weight: 700; }
+  .desktop-nav-links button.is-active::after { position: absolute; right: 22px; bottom: 0; left: 22px; height: 3px; border-radius: 3px 3px 0 0; background: var(--blue); content: ""; }
+  .desktop-nav-links i { display: inline-flex; min-width: 18px; height: 18px; margin-left: 3px; align-items: center; justify-content: center; border-radius: 9px; color: #fff; background: #ef6552; font-size: 10px; font-style: normal; }
+  .desktop-login { padding: 10px 16px; border: 1px solid #c8ddf3; border-radius: 7px; color: var(--blue); background: #f6faff; font-size: 12px; font-weight: 700; }
+  .tabbar { display: none !important; }
+  .page-spacer { height: 28px; }
+  .content-page, .phone.has-quick-checkout .content-page.is-active:not(.utility-page):not(.detail-page), .utility-page {
+    min-height: calc(100dvh - 118px);
+    padding: 0 32px 40px;
+  }
+  .app-header { display: grid; grid-template-columns: auto minmax(360px, 620px); justify-content: space-between; align-items: center; gap: 28px; padding: 18px 32px; }
+  .status-row, .capsule { display: none; }
+  .title-row { height: auto; padding: 0; }
+  .app-header .brand { display: none; }
+  .brand { position: static; margin-right: 20px; transform: none; }
+  .brand img { width: 40px; height: 40px; }
+  .brand span { font-size: 18px; }
+  .location-button { order: 2; }
+  .search-row { height: 44px; margin: 0; }
+  .banner { height: 330px; }
+  .banner-slide .banner-copy { left: 70px; top: 62px; }
+  .banner-copy small { font-size: 13px; }
+  .banner-copy h1 { margin: 16px 0 10px; font-size: 42px; }
+  .banner-copy p { font-size: 14px; }
+  .category-grid { grid-template-columns: repeat(10, 1fr); padding: 18px 28px 14px; }
+  .category-grid button { min-height: 88px; }
+  .category-grid img { width: 58px; height: 58px; }
+  .category-grid span { margin-top: 7px; font-size: 12px; }
+  .news-strip { width: calc(100% - 56px); height: 44px; margin: 12px 28px; padding: 0 18px; border-radius: 8px; }
+  .deal-section { padding: 0 28px; }
+  .section-title { height: 64px; }
+  .section-title h2 { font-size: 22px; }
+  #dealList { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; }
+  .deal-card { display: block; min-height: 340px; margin: 0; border-radius: 10px; transition: transform .18s ease, box-shadow .18s ease; }
+  .deal-card:hover, .catalog-row:hover, .simple-item:hover { transform: translateY(-2px); box-shadow: 0 10px 24px rgba(45, 94, 128, .11); }
+  .deal-image { width: 100%; height: 190px; min-height: 190px; }
+  .deal-copy { padding: 15px; }
+  .deal-copy h3 { overflow: hidden; font-size: 16px; text-overflow: ellipsis; white-space: nowrap; }
+  .deal-copy p { min-height: 34px; line-height: 1.55; }
+  .subpage-head { min-height: 92px; padding-top: 10px; }
+  .subpage-head h2 { font-size: 26px; }
+  .subpage-head small { font-size: 12px; }
+  .back-home { display: none; }
+  .major-category-strip { display: grid; grid-template-columns: repeat(8, minmax(72px, 1fr)); gap: 8px; padding: 16px; border-radius: 10px 10px 0 0; }
+  .major-category-strip button { min-width: 0; }
+  .catalog-layout { grid-template-columns: 160px minmax(0, 1fr); min-height: 620px; margin: 0; border-radius: 10px; overflow: hidden; }
+  .catalog-side button { min-height: 54px; padding: 10px 18px; text-align: left; font-size: 13px; }
+  .catalog-results { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); align-content: start; gap: 12px; padding: 18px 20px 32px; }
+  .catalog-result-head { grid-column: 1 / -1; }
+  .catalog-row { min-width: 0; min-height: 116px; padding: 10px; border: 1px solid #edf1f5; border-radius: 8px; }
+  .catalog-row > img { width: 82px; height: 82px; }
+  .catalog-row h3 { font-size: 14px; }
+  .frequent-banner, .delivery-note { padding: 18px 20px; }
+  .simple-list, .cart-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+  .simple-item, .cart-item { min-height: 92px; padding: 14px; }
+  .simple-item img, .cart-item > img { width: 72px; height: 72px; }
+  .cart-total { padding: 18px 20px; }
+  .guest-profile, .profile-card, .consumer-profile { padding: 22px; }
+  .service-list { display: grid; grid-template-columns: repeat(2, 1fr); }
+  .tool-panel, .order-card, .customer-panel { padding: 20px; }
+  .consumer-tools { grid-template-columns: repeat(7, 1fr); row-gap: 24px; }
+  .consumer-tools button { font-size: 12px; }
+  .consumer-tools img { width: 30px; height: 30px; }
+  .two-tools { grid-template-columns: repeat(2, 120px); max-width: none; }
+  .quick-checkout, .catalog-checkout { position: sticky; left: auto; bottom: 0; width: 100%; margin-top: 12px; transform: none; }
+  .sheet-card, .login-sheet .sheet-card { left: 50%; top: 50%; bottom: auto; width: min(520px, calc(100vw - 48px)); padding: 30px; border-radius: 14px; transform: translate(-50%, -50%); }
+  #webLoginForm { display: grid; gap: 12px; margin-top: 20px; text-align: left; }
+  #webLoginForm label { display: grid; gap: 7px; width: 100%; margin: 0; color: #526b82; font-size: 12px; }
+  #webLoginForm input:not([type="checkbox"]) { box-sizing: border-box; width: 100%; height: 42px; padding: 0 12px; border: 1px solid #d7e2ec; border-radius: 6px; color: #1f3850; background: #fff; font-size: 14px; }
+  #webLoginForm label:last-of-type { display: flex; align-items: center; justify-content: center; flex-direction: row; gap: 7px; color: #74879a; }
+  #webLoginForm label:last-of-type input { margin: 0; }
+  #webLoginForm .role-btn { margin-top: 2px; }
+  .detail-page { padding: 0 32px 40px; background: #f4f7fb; }
+  .detail-head { margin: 0 -32px; padding: 0 32px; }
+  .detail-product { display: grid; grid-template-columns: minmax(360px, .95fr) 1.05fr; gap: 36px; padding: 28px; border-radius: 10px; }
+  .detail-photo { height: 420px; }
+  .detail-summary { align-self: center; padding-right: 24px; }
+  .detail-summary h1 { margin-top: 0; font-size: 30px; }
+  .detail-panel { padding: 22px 24px; border-radius: 10px; }
+  .detail-actions { position: sticky; left: auto; bottom: 0; width: 100%; height: 72px; margin-top: 10px; border-radius: 10px; transform: none; }
+  .detail-media-gallery { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .utility-page .place-order { position: static; width: min(680px, 100%); margin: 18px auto; transform: none; }
+  .toast { bottom: 28px; }
+}

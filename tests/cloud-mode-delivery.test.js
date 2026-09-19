@@ -1,10 +1,12 @@
 const assert = require('assert/strict');
+const fs = require('fs');
 const Module = require('module');
 const path = require('path');
 
 const originalLoad = Module._load;
+const pageWxml = fs.readFileSync(path.resolve(__dirname, '../miniapp/pages/index/index.wxml'), 'utf8');
 const pageDefinition = {};
-const quoteCalls = [];
+let deliveryFails = false;
 
 const servicesStub = {
   config: { provider: 'cloudbase', cloudFunctionName: 'api', cloudEnvId: 'test-env', priceFieldsNeverFallback: true },
@@ -14,22 +16,14 @@ const servicesStub = {
   address: { list: async () => ({ ok: true, data: { rows: [] } }), save: async () => ({ ok: true, data: {} }), remove: async () => ({ ok: true, data: {} }) },
   cart: { get: async () => ({ ok: true, data: { rows: [] } }), addItem: async () => ({ ok: true, data: { item: {} } }), updateItem: async () => ({ ok: true, data: { item: {} } }), removeItem: async () => ({ ok: true, data: {} }) },
   delivery: {
-    options: async () => ({
+    options: async () => deliveryFails ? { ok: false, error: { code: 'DELIVERY_FAILED' } } : ({
       ok: true,
       data: {
-        warehouses: [{ _id: 'wh-remote-1', code: 'WH-1', name: '测试仓', sort: 1 }],
-        areas: [],
+        warehouses: [{ _id: 'wh-remote-1', code: 'WH-1', name: '测试仓', sort: 1 }, { _id: 'wh-remote-2', code: 'WH-2', name: '南山仓', sort: 2 }],
+        areas: [{ warehouseIds: ['wh-remote-2'], regionCodes: ['深圳市/南山区'] }],
         slots: []
       }
     })
-  },
-  checkout: {
-    quote: async (payload) => {
-      quoteCalls.push(payload);
-      return { ok: true, data: { quote: { goodsAmountCent: 5000, freightAmountCent: 800, totalAmountCent: 5800 } } };
-    },
-    createOrder: async () => ({ ok: true, data: {} }),
-    preparePayment: async () => ({ ok: true, data: {} })
   },
   orders: { list: async () => ({ ok: true, data: { rows: [] } }), get: async () => ({ ok: true, data: {} }), cancel: async () => ({ ok: true, data: {} }), confirm: async () => ({ ok: true, data: {} }) },
   refunds: { request: async () => ({ ok: true, data: {} }) },
@@ -54,6 +48,7 @@ try {
 }
 
 async function run() {
+  assert(pageWxml.includes('bindtap="retryWarehouses"') && pageWxml.includes('重新读取配送仓'), 'recoverable warehouse failures must expose an explicit retry action');
   const page = Object.assign({}, pageDefinition.value, {
     data: JSON.parse(JSON.stringify(pageDefinition.value.data)),
     setData(patch, callback) {
@@ -64,18 +59,15 @@ async function run() {
   await page.loadRemoteDeliveryOptions();
   assert.equal(page.data.warehouse.id, 'wh-remote-1', 'remote delivery options must expose the server warehouse id');
   assert.equal(page.data.warehouses[0].id, 'wh-remote-1');
-  page.data.address = { id: 'address-remote-1', detail: '测试路 1 号', regionCode: '440300' };
-  page.data.cartItems = [{ id: 'product-1', skuId: 'sku-1', qty: 1 }];
-  await page.loadRemoteQuote();
-  assert.equal(quoteCalls.length, 1);
-  assert.equal(page.data.cartTotal, '50');
-  assert.equal(page.data.freightTotal, '8');
-  assert.equal(page.data.orderTotal, '58', 'checkout total must use the backend payableAmountCent field');
-  assert.deepStrictEqual(quoteCalls[0], {
-    addressId: 'address-remote-1',
-    warehouseId: 'wh-remote-1',
-    items: [{ skuId: 'sku-1', quantity: 1 }]
-  });
+  assert.equal(typeof page.loadRemoteQuote, 'undefined', 'the main page must not retain a duplicate checkout quote implementation');
+  page.triggerPageMotion = function (patch, callback) { this.setData(patch, callback); };
+  await page.selectWarehouse({ currentTarget: { dataset: { id: 'wh-remote-2' } } });
+  assert.equal(page.data.warehouse.id, 'wh-remote-2', 'warehouse switch must use the server id instead of a display name');
+  assert.equal(page.data.warehouseAreaText, '深圳市/南山区');
+  assert.equal(Object.hasOwn(page.data, 'checkoutQuoteState'), false, 'warehouse switching must not own trade-page quote state');
+  deliveryFails = true;
+  await page.selectWarehouse({ currentTarget: { dataset: { id: 'wh-remote-1' } } });
+  assert.equal(page.data.warehouse.id, 'wh-remote-2', 'failed server revalidation must retain the current warehouse');
   console.log('cloud mode delivery test: passed');
 }
 

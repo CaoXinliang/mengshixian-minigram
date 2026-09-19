@@ -1,0 +1,52 @@
+<view class="page">
+  <responsive-topbar title="协议与隐私" subtitle="阅读当前版本" bind:back="back" />
+
+  <view class="document-tabs" aria-role="tablist">
+    <button class="{{activeType == 'terms' ? 'is-active' : ''}}" data-type="terms" bindtap="switchDocument" aria-role="tab" aria-selected="{{activeType == 'terms'}}">用户服务协议</button>
+    <button class="{{activeType == 'privacy' ? 'is-active' : ''}}" data-type="privacy" bindtap="switchDocument" aria-role="tab" aria-selected="{{activeType == 'privacy'}}">隐私政策</button>
+  </view>
+
+  <view wx:if="{{document.requiresOperatorReview || document.temporary}}" class="draft-notice"><text>当前显示：{{document.title}}（待核验）</text><text>版本状态：待法务与运营核验，不可发布</text><text>当前阅读不会被记录为正式版本的接受或撤回。</text></view>
+
+  <view class="legal-document">
+    <view class="document-heading">
+      <text class="document-title">{{document.title}}</text>
+      <text class="document-subtitle">{{document.subtitle}}</text>
+      <view class="document-meta">
+        <text>版本 {{document.version}}</text>
+        <text>{{document.requiresOperatorReview || document.temporary ? '拟生效日期' : '生效日期'}} {{document.effectiveDate}}</text>
+      </view>
+    </view>
+
+    <view
+      wx:for="{{document.sections}}"
+      wx:key="title"
+      wx:for-item="section"
+      wx:for-index="sectionIndex"
+      class="legal-section"
+    >
+      <text class="section-title">{{sectionIndex + 1}}. {{section.title}}</text>
+      <text
+        wx:for="{{section.paragraphs}}"
+        wx:key="*this"
+        wx:for-item="paragraph"
+        class="section-paragraph"
+      >{{paragraph}}</text>
+    </view>
+
+    <view class="contact-card">
+      <text>运营者</text>
+      <text>{{document.operatorName}}</text>
+      <text>联系方式</text>
+      <text>{{document.contactMethod}}</text>
+      <button wx:if="{{contactAvailable}}" open-type="contact" session-from="梦食鲜协议咨询">联系微信客服</button>
+      <button wx:else bindtap="contact">微信客服暂不可用</button>
+    </view>
+
+    <button
+      wx:if="{{activeType == 'privacy'}}"
+      class="wechat-contract"
+      bindtap="openWechatPrivacyContract"
+    >查看微信平台隐私保护指引</button>
+  </view>
+</view>

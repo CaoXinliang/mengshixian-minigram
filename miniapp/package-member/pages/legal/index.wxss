@@ -1,0 +1,162 @@
+.page {min-height: 100vh;
+  padding-bottom: calc(40rpx + env(safe-area-inset-bottom));
+  color: #0f1b2d;
+  background: #f5f8fc;font-size:14px;}
+
+.document-tabs {
+  display: flex;margin:12px 16px 0;padding:0;border-radius:0;background:transparent;gap:10px;
+}
+
+.document-tabs button {display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;min-height:44px;
+  margin: 0;padding:8px 12px;
+  flex: 1;border-radius:999px;color:#176bd5;background:#fff;font-size:14px;
+  font-weight: 600;
+  line-height: 1.3;border:1px solid #b8cdea;white-space:normal;}
+
+.document-tabs button.is-active {color:#fff;background:#176bd5;box-shadow:none;border-color:#176bd5;}
+
+.legal-document {margin:12px 16px 0;padding:18px 16px;border-radius:16px;
+  background: #fff;box-shadow:none;
+}
+
+.document-heading,
+.legal-section,
+.contact-card {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+}
+
+.document-title {
+  color: #102f4d;
+  font-size:20px;
+  font-weight: 800;
+  line-height: 1.3;
+}
+
+.document-subtitle {
+  margin-top: 8rpx;
+  color: #667085;
+  font-size:14px;
+  line-height: 1.55;
+}
+
+.document-meta {
+  display: flex;
+  margin-top: 18rpx;
+  flex-wrap: wrap;
+  gap: 10rpx 22rpx;
+  color: #7c8fa2;
+  font-size:13px;
+  line-height: 1.5;
+}
+
+.draft-notice {margin-top: 24rpx;padding:14px;border:0;border-radius:16px;color:#176bd5;background:#eaf2fd;font-size:14px;
+  line-height: 1.65;display:flex;flex-direction:column;gap:6px;margin:12px 16px 0;}
+
+.legal-section {
+  margin-top: 30rpx;
+  gap: 14rpx;
+}
+
+.section-title {color:#0f1b2d;font-size:16px;
+  font-weight: 700;
+  line-height: 1.45;
+}
+
+.section-paragraph {
+  color: #455e75;font-size:14px;line-height:1.8;
+  text-align: left;overflow-wrap:anywhere;
+}
+
+.contact-card {
+  margin-top: 34rpx;
+  padding: 22rpx;
+  border-radius: 12rpx;
+  background: #f5f8fc;
+  gap: 8rpx;
+}
+
+.contact-card text:nth-child(odd) {
+  margin-top: 8rpx;
+  color: #183e62;
+  font-size:14px;
+  font-weight: 700;
+}
+
+.contact-card text:nth-child(even) {
+  color: #5b7187;
+  font-size:14px;
+  line-height: 1.6;
+}
+
+.contact-card button,
+.wechat-contract {display: flex;
+  align-items: center;
+  justify-content: center;width:auto;
+  min-width: 0;
+  min-height:44px;
+  margin: 18rpx 0 0;padding:8px 18px;border-radius:999px;
+  color: #fff;
+  background: #176bd5;
+  font-size:14px;
+  font-weight: 600;
+  line-height: 1.35;align-self:flex-start;max-width:100%;white-space:normal;}
+
+.wechat-contract {color: #176bd5;
+  background: #eaf3ff;width:auto;max-width:100%;align-self:flex-start;padding:8px 18px;border-radius:999px;white-space:normal;}
+
+@media (min-width: 700px) {
+  .document-tabs,
+  .legal-document {width: calc(100% - 48rpx);
+    max-width: 980rpx;
+    margin-right: auto;
+    margin-left: auto;margin:12px 16px 0;padding:18px 16px;gap:10px;background:transparent;border-radius:16px;box-shadow:none;}
+
+  .legal-document {padding:18px 16px;margin:12px 16px 0;border-radius:16px;box-shadow:none;}
+}
+
+
+/* 正文字号与触控热区使用 px，容器随视口收缩。 */
+button {
+  min-height:44px;
+  box-sizing: border-box;
+  white-space: nowrap;
+  line-height: 1.25;
+}
+
+.control-pressed {
+  opacity: .72;
+}
+
+
+input,
+textarea,
+picker {
+  min-height:44px;
+  box-sizing: border-box;
+  font-size:14px;
+}
+
+@media (min-width: 480px) {
+  button,
+  input,
+  textarea,
+  picker { min-height: 44px; }
+  .document-tabs button {font-size:14px;min-height:44px;padding:8px 12px;border-radius:999px;border:1px solid #b8cdea;color:#176bd5;background:#fff;white-space:normal;}
+  .document-meta { font-size: 13px; }
+  .section-title {font-size:16px;color:#0f1b2d;}
+  input,
+  textarea,
+  picker { font-size: 14px; }
+}
+
+.draft-notice>text:last-child{color:#667085;font-size:13px}
+.document-heading text,.contact-card text{overflow-wrap:anywhere}
+
+/* S4: legal prose remains prose at every width; only actions use button faces. */
+.section-paragraph,.contact-card text:nth-child(odd),.contact-card text:nth-child(even){font-size:16px;line-height:1.8}
+.document-meta{color:#526175;font-size:15px}

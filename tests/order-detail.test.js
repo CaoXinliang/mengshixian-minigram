@@ -1,0 +1,111 @@
+const assert = require('assert/strict');
+const fs = require('fs');
+const Module = require('module');
+const path = require('path');
+
+const originalLoad = Module._load;
+const holder = {};
+const calls = { cancel: [], confirm: [], pay: [] };
+let getMode = 'error';
+let currentUser = null;
+const order = { _id: 'order-1', orderNo: 'M001', status: 'delivered', paymentStatus: 'paid', paymentMethod: 'wechat', fulfillmentType: 'delivery', addressSnapshot: { name: '张三', phoneMasked: '138****0000', detail: '科技园 1 号' }, deliverySlotSnapshot: { name: '明日上午' }, pricingSnapshot: { goodsAmountCent: 3200 }, freightSnapshot: { amountCent: 500 }, totalAmountCent: 3700, createdAt: '2026-09-12T08:00:00.000Z', updatedAt: '2026-09-12T10:00:00.000Z' };
+const services = {
+  auth: { getMe: async () => currentUser ? { ok: true, data: { user: currentUser } } : { ok: false, error: { code: 'AUTH_REQUIRED' } } },
+  orders: {
+    get: async () => getMode === 'error' ? { ok: false, error: { code: 'REQUEST_FAILED', message: '订单网络错误' } } : getMode === 'empty' ? { ok: false, error: { code: 'ORDER_NOT_FOUND', message: '订单不存在' } } : { ok: true, data: { order, items: [{ _id: 'item-1', skuId: 'sku-1', productNameSnapshot: '鱼丸', specSnapshot: '500g', quantity: 2, unitPriceCent: 1600, subtotalCent: 3200 }] } },
+    cancel: async payload => { calls.cancel.push(payload); return { ok: true }; },
+    confirm: async payload => { calls.confirm.push(payload); return { ok: true }; }
+  },
+  aftersales: { listAll: async () => ({ ok: true, data: { rows: [], total: 0 } }) },
+  checkout: { preparePayment: async payload => { calls.pay.push(payload); return { ok: false, error: { code: 'PAYMENT_NOT_CONFIGURED', message: '微信支付预下单尚未配置。' } }; } }
+};
+Module._load = function (request, parent, isMain) {
+  if (request === '../../../services/index' || request === '../../../services') return services;
+  return originalLoad.call(this, request, parent, isMain);
+};
+global.Page = definition => { holder.value = definition; };
+const toasts = [];
+const navs = [];
+global.wx = { showToast: payload => toasts.push(payload), showModal: payload => payload.success({ confirm: true }), navigateTo: payload => navs.push(payload), navigateBack: () => {} };
+try { require(path.resolve(__dirname, '../miniapp/package-trade/pages/order-detail/index.js')); } finally { Module._load = originalLoad; delete global.Page; }
+
+function makePage() { return Object.assign({}, holder.value, { data: JSON.parse(JSON.stringify(holder.value.data)), setData(patch) { Object.assign(this.data, patch); } }); }
+
+async function run() {
+  const page = makePage();
+  await page.onLoad({ id: 'order-1' });
+  assert.equal(page.data.status, 'error');
+  assert.equal(page.data.errorText, '订单网络错误');
+  getMode = 'empty';
+  await page.retry();
+  assert.equal(page.data.status, 'empty');
+  getMode = 'ready';
+  await page.retry();
+  assert.equal(page.data.status, 'ready');
+  assert.equal(page.data.order.items[0].unitPrice, '16.00');
+  assert.equal(page.data.order.items[0].subtotal, '32.00');
+  assert.equal(page.data.order.total, '37.00');
+  assert.equal(page.data.order.address.phoneMasked, '138****0000');
+  assert.equal(page.data.order.address.name, '张三', '正常客户地址不应被改写');
+  assert.equal(page.data.order.canConfirm, true);
+  assert.equal(page.data.order.canRepurchase, false);
+
+  const realAddressSnapshot = order.addressSnapshot;
+  order.addressSnapshot = { name: '演示用户', phoneMasked: '138****0000', detail: '梦食鲜演示收货点（非客户地址）' };
+  await page.retry();
+  assert.equal(page.data.order.address.name, '收货人');
+  assert.equal(page.data.order.address.detail, '已保存的收货地址');
+  assert.equal(order.addressSnapshot.name, '演示用户', '历史订单快照不得被展示层修改');
+  order.addressSnapshot = realAddressSnapshot;
+  await page.retry();
+  await page.confirmReceipt();
+  await new Promise(resolve => setImmediate(resolve));
+  assert.deepEqual(calls.confirm, [{ id: 'order-1' }]);
+  page.applyAftersale();
+  assert(navs.at(-1).url.includes('aftersale-apply/index?orderId=order-1'));
+
+  page.data.order = { ...page.data.order, paymentMethod: 'wechat', canPay: true };
+  await page.preparePayment();
+  assert.deepEqual(calls.pay, [{ orderId: 'order-1' }]);
+  assert.equal(toasts.at(-1).title, '微信支付预下单尚未配置。');
+
+  const deniedUsers = [
+    null,
+    { userType: 'c', businessStatus: '', organizationId: '', status: 'active' },
+    { userType: 'b', businessStatus: 'pending', organizationId: 'org-1', status: 'active' },
+    { userType: 'b', businessStatus: 'rejected', organizationId: 'org-1', status: 'active' },
+    { userType: 'b', businessStatus: 'approved', organizationId: '', status: 'active' },
+    { userType: 'b', businessStatus: 'approved', organizationId: 'org-1', status: 'disabled' }
+  ];
+  for (const user of deniedUsers) {
+    currentUser = user;
+    await page.retry();
+    assert.equal(page.data.order.canRepurchase, false, '非法企业身份不得显示再次购买');
+    const navigationCount = navs.length;
+    await page.repurchase();
+    assert.equal(navs.length, navigationCount, '非法企业身份不得进入再次购买页面');
+  }
+  currentUser = { userType: 'b', businessStatus: 'approved', organizationId: 'org-1', status: 'active' };
+  await page.retry();
+  assert.equal(page.data.order.canRepurchase, true);
+  await page.repurchase();
+  assert(navs.at(-1).url.includes('/package-business/pages/repurchase/index?orderId=order-1'));
+
+  const wxml = fs.readFileSync(path.resolve(__dirname, '../miniapp/package-trade/pages/order-detail/index.wxml'), 'utf8');
+  assert(wxml.includes('商品清单') && wxml.includes('order.progressTitle') && wxml.includes('配送信息'));
+  const timelineCondition = wxml.match(/wx:key="key" wx:if="\{\{([^}]+)\}\}" class="timeline/);
+  assert(timelineCondition, 'cancelled orders must filter unrelated future fulfillment stages');
+  const showTimeline = new Function('order', 'item', `return (${timelineCondition[1]});`);
+  assert.equal(showTimeline({ rawStatus: 'cancelled' }, { key: 'shipping', current: false }), false);
+  assert.equal(showTimeline({ rawStatus: 'cancelled' }, { key: 'pending_payment', current: false }), true);
+  assert.equal(showTimeline({ rawStatus: 'cancelled' }, { key: 'cancelled', current: true }), true);
+  assert.equal(showTimeline({ rawStatus: 'shipping' }, { key: 'shipping', current: true }), true);
+  assert(wxml.includes('wx:if="{{order.canRepurchase}}"'), '再次购买入口必须仅向完整合法 B 身份显示');
+  assert(wxml.includes('order.canPay && !paymentRecovery') && wxml.includes('bindtap="preparePayment"'), '首次继续支付入口必须服从服务端可支付状态，恢复重试由组件语义事件承接');
+  assert(wxml.includes('wx:if="{{order.canInvoice}}"') && wxml.includes('bindtap="requestInvoice"'), '申请发票入口必须复用 canInvoice 与 requestInvoice');
+  assert(/wx:if="\{\{order\.canPay && !paymentRecovery\}\}"[^>]*disabled="\{\{actionBusy\}\}"[^>]*bindtap="preparePayment"/.test(wxml), '首次继续支付必须沿用订单操作 busy 锁');
+  assert(wxml.includes('<payment-recovery-panel') && wxml.includes('can-query="{{paymentRecovery.canQuery}}"') && wxml.includes('can-retry="{{paymentRecovery.canRetry}}"') && wxml.includes('bind:query="queryPaymentResult"') && wxml.includes('bind:retry="preparePayment"'), '支付恢复动作权限必须由业务模块产生并通过展示组件发出语义事件');
+  assert(/wx:if="\{\{order\.canInvoice\}\}"[^>]*disabled="\{\{actionBusy\}\}"[^>]*bindtap="requestInvoice"/.test(wxml), '申请发票必须沿用订单操作 busy 锁');
+  console.log('order detail test: passed');
+}
+run().catch(error => { console.error(error); process.exit(1); });

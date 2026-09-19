@@ -1,0 +1,1 @@
+<view class="page"><responsive-topbar title="储值账户" subtitle="储值服务状态" bind:back="back"/><view class="state"><text>储值与充值服务暂未开放</text></view></view>

@@ -1,0 +1,42 @@
+<block wx:if="{{mode == 'list'}}">
+  <view class="sub-head meal-head">
+    <view><text>今天吃什么</text><text>按场景挑菜，选好食材再加入购物车</text></view>
+    <button class="meal-shuffle" disabled="{{!canShuffle}}" bindtap="handleShuffle"><text class="meal-shuffle-face">换一批</text></button>
+  </view>
+  <view wx:if="{{ideas.length && status == 'error'}}" class="meal-state is-error"><text>{{errorText}}</text><button hover-class="control-pressed" bindtap="handleRetryCollection">重新加载菜品</button></view>
+  <block wx:if="{{ideas.length}}">
+    <view class="meal-scene-filter"><text class="meal-scene-label">按用餐场景筛选</text><view class="meal-scene-track"><button class="{{activeScene == item ? 'is-active' : ''}}" wx:for="{{scenes}}" wx:key="*this" bindtap="handleSelectScene" data-scene="{{item}}">{{item}}</button></view></view>
+    <view wx:if="{{rows.length}}" class="meal-grid">
+      <view class="meal-card" wx:for="{{rows}}" wx:key="id" aria-role="button" aria-label="查看菜品搭配：{{item.title}}" hover-class="control-pressed" bindtap="handleOpenIdea" data-id="{{item.id}}">
+        <view class="meal-card-cover" style="background: {{item.accent}};"><image src="{{item.cover}}" mode="aspectFill" binderror="handleMediaError" data-id="{{item.id}}" data-src="{{item.cover}}" /><text>{{item.scene}}</text></view>
+        <view class="meal-card-copy"><text>{{item.title}}</text><text>{{item.cookMinutes}} 分钟 · {{item.servings}}</text><button catchtap="handleOpenIdea" data-id="{{item.id}}"><text class="meal-card-action-face">查看搭配</text></button></view>
+      </view>
+    </view>
+    <view wx:else class="meal-state"><text>暂时没有符合条件的菜品</text><text>可切换上方场景继续挑选</text></view>
+  </block>
+  <block wx:elif="{{status == 'loading'}}"><view class="meal-grid meal-grid-skeleton {{motionReduced ? 'is-motion-reduced' : ''}}" aria-hidden="true"><view class="meal-card meal-card-skeleton" wx:for="{{[1,2,3,4]}}" wx:key="*this"><view class="meal-skeleton-cover"></view><view class="meal-skeleton-copy"><view></view><view></view><view></view></view></view></view></block>
+  <view wx:elif="{{status == 'error'}}" class="meal-state is-error"><text>菜品搭配加载失败</text><text>{{errorText}}</text><button hover-class="control-pressed" bindtap="handleRetryCollection">重新加载菜品</button></view>
+  <view wx:else class="meal-state"><text>暂时没有菜品搭配</text><text>商品与菜品配置完成后会在这里显示</text></view>
+  <view class="meal-bottom-space {{cartCount ? 'has-quick-checkout' : ''}}"></view>
+</block>
+
+<block wx:elif="{{mode == 'detail'}}">
+  <view class="detail-head meal-detail-head"><button class="back-control" aria-label="返回吃什么" bindtap="handleBack">‹</button><text>菜品搭配</text><view></view></view>
+  <block wx:if="{{selectedIdea}}">
+    <view class="meal-video-card"><view class="meal-video-stage">
+      <video wx:if="{{videoSrc}}" id="mealRecipeVideo" src="{{videoSrc}}" poster="{{videoCover}}" controls="{{videoStatus == 'playing' || videoStatus == 'paused' || videoStatus == 'buffering'}}" show-center-play-btn="{{false}}" bindplay="handleVideoPlay" bindpause="handleVideoPause" bindwaiting="handleVideoWaiting" binderror="handleVideoError" bindfullscreenchange="handleVideoFullscreen"></video>
+      <image wx:elif="{{videoCover}}" src="{{videoCover}}" mode="aspectFill" />
+      <view wx:if="{{videoStatus == 'ready' || videoStatus == 'paused'}}" class="meal-video-overlay" bindtap="handlePlayVideo"><view class="meal-video-play"></view><text>点击播放</text></view>
+      <view wx:elif="{{videoStatus == 'loading' || videoStatus == 'buffering'}}" class="meal-video-overlay is-state"><view class="meal-video-spinner"></view><text>正在加载菜谱视频</text><text>食材和做法可先查看</text></view>
+      <view wx:elif="{{videoStatus == 'error'}}" class="meal-video-overlay is-state"><text>视频暂时无法播放</text><text>{{videoErrorText}}</text><button hover-class="control-pressed" bindtap="handleRetryVideo">重试播放</button></view>
+      <view wx:elif="{{videoStatus == 'missing'}}" class="meal-video-overlay is-state"><text>该菜谱暂未配置视频</text><text>你仍可查看食材、步骤和关联商品</text></view>
+    </view><view class="meal-video-meta"><text>{{selectedIdea.title}} · 做法视频</text><text wx:if="{{videoStatus == 'ready'}}">点击播放</text><text wx:elif="{{videoStatus == 'playing'}}">正在播放</text></view></view>
+    <view class="meal-detail-hero"><image src="{{selectedIdea.cover}}" mode="aspectFill" binderror="handleMediaError" data-id="{{selectedIdea.id}}" data-src="{{selectedIdea.cover}}" /><view style="background: linear-gradient(90deg, {{selectedIdea.accent}}, transparent);"></view><text>{{selectedIdea.scene}}</text></view>
+    <view class="meal-detail-copy"><text>{{selectedIdea.title}}</text><text>{{selectedIdea.summary}}</text><view><text>约 {{selectedIdea.cookMinutes}} 分钟</text><text>{{selectedIdea.servings}}</text></view></view>
+    <view class="meal-section"><text class="meal-section-title">简单做法</text><view class="meal-step" wx:for="{{selectedIdea.steps}}" wx:key="*this" wx:for-index="stepIndex"><text>{{stepIndex + 1}}</text><text>{{item}}</text></view></view>
+    <view class="meal-section"><view class="meal-section-heading"><text class="meal-section-title">搭配食材</text></view><view wx:if="{{selectedIdea.linkedProducts.length}}" class="meal-product-list"><view class="meal-product" wx:for="{{selectedIdea.linkedProducts}}" wx:key="id" bindtap="handleOpenProduct" data-id="{{item.id}}"><image src="{{item.img || '/assets/products/placeholder.svg'}}" mode="aspectFit" /><view><text>{{item.name}}</text><text>{{item.specLabel || item.unit}}</text></view><button catchtap="handleOpenProduct" data-id="{{item.id}}"><text class="meal-product-action-face">查看商品</text></button></view></view><view wx:else class="meal-product-empty"><text>相关食材正在补充</text><text>你仍可从分类页按菜名关键词挑选商品</text></view></view>
+    <view class="meal-disclaimer">本页为选菜灵感，不构成营养、健康或烹饪安全建议；请按商品包装说明充分加热。</view>
+  </block>
+  <view wx:else class="meal-state meal-unlisted-state"><text>该菜品已下架</text><text>已从当前菜谱列表移除；相关商品和历史订单不受影响</text><button hover-class="control-pressed" bindtap="handleBack">返回菜品列表</button></view>
+  <view class="meal-bottom-space {{cartCount ? 'has-quick-checkout' : ''}}"></view>
+</block>

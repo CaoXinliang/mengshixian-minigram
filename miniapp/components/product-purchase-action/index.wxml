@@ -1,0 +1,16 @@
+<view class="purchase-action" catchtap="stopTapPropagation">
+  <button wx:if="{{mode == 'select'}}" class="purchase-action__select {{disabled ? 'is-disabled' : ''}}" disabled="{{disabled}}" hover-class="control-pressed" bindtap="chooseSpec">
+    <text class="purchase-action__face">{{actionLabel}}</text>
+  </button>
+  <quantity-stepper
+    wx:else
+    quantity="{{quantity}}"
+    min="{{minimum}}"
+    max="{{maximum}}"
+    step="{{multiple}}"
+    allow-zero="{{true}}"
+    disabled="{{disabled}}"
+    compact
+    bind:change="forwardQuantity"
+  />
+</view>
