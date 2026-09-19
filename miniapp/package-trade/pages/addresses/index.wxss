@@ -1,77 +1,65 @@
+/* Pixso 顾客端展示：信息随内容展开，字号与触控尺寸不随屏宽缩小。 */
+.page{min-height:100vh;padding-bottom:24px;background:#f5f8fc;color:#0f1b2d;font-size:14px;line-height:1.5}
+button{display:flex;align-items:center;justify-content:center;width:auto;min-width:44px;min-height:44px;max-width:100%;margin:0;padding:0 16px;box-sizing:border-box;border:0;border-radius:22px;color:#176bd5;background:#eaf2fd;font-size:14px;font-weight:600;line-height:1.35;white-space:normal;overflow-wrap:anywhere}
+button::after{border:0}
+button[disabled]{opacity:1;color:#667085;background:#dce7f5}
+.control-pressed{opacity:.72}
+.card{display:flex;min-width:0;margin:12px 16px;padding:16px;border-radius:16px;background:#fff;flex-direction:column;gap:12px}
+.title{color:#0f1b2d;font-size:16px;font-weight:700;line-height:1.4}
+.state{display:flex;min-height:0;margin:12px 16px;padding:24px 16px;border-radius:16px;background:#fff;flex-direction:column;align-items:flex-start;gap:12px;text-align:left}
+.state text:first-child{color:#0f1b2d;font-size:18px;font-weight:700}
+.state text:nth-child(2){color:#667085;font-size:14px;overflow-wrap:anywhere}
+.state button{align-self:center;margin-top:8px}
+.state-loading{min-height:160px;justify-content:center}
+.state.error{background:#fff4f2}
+.state.error text:first-child{color:#c95042}
+input,textarea,picker{min-width:0;min-height:44px;box-sizing:border-box;font-size:14px;color:#0f1b2d}
 
-.page{min-height:100vh;padding-bottom:150rpx;background:#f3f7fc;color:#203a53}.topbar{display:flex;gap:20rpx;align-items:center;padding:56rpx 28rpx 24rpx;background:#0a69e9;color:#fff}.topbar>text{font-size:52rpx;line-height:1}.topbar view{display:flex;flex-direction:column}.topbar view text:first-child{font-size:18px;font-weight:700}.topbar view text:last-child{margin-top:6rpx;color:#dcecff;font-size:13px}.state{display:flex;align-items:center;justify-content:center;min-height:300rpx;margin:18rpx;padding:28rpx;border-radius:12rpx;background:#fff;flex-direction:column;gap:12rpx;text-align:center}.state text:first-child{font-size:16px;font-weight:700}.state text:nth-child(2){color:#71879c;font-size:14px}.state button{margin-top:10rpx;padding:10rpx 24rpx;color:#0a69e9;background:#edf5ff;font-size:14px}.state.error{border:1rpx solid #ffd4cd;background:#fff7f5}.state.error text:first-child{color:#c95042}.address-list{margin:18rpx}.address-row{margin-bottom:14rpx;padding:22rpx;border:1rpx solid transparent;border-radius:12rpx;background:#fff}.address-row.is-default{border-color:#b8d7fb}.address-main{display:flex;gap:8rpx;flex-direction:column}.address-main>view{display:flex;align-items:center;gap:10rpx}.address-main>view>text:first-child{font-size:16px;font-weight:700}.address-main>view>text:nth-child(2){color:#49647d;font-size:14px}.address-main>text{color:#60768c;font-size:14px}.tag,.default-tag{padding:3rpx 8rpx;border-radius:5rpx;color:#60768c;background:#eef3f7;font-size:13px}.default-tag{color:#0a69e9;background:#eaf3ff}.address-actions{display:flex;justify-content:flex-end;margin-top:16rpx;padding-top:14rpx;border-top:1rpx solid #edf1f4;gap:10rpx}.address-actions button{margin:0;padding:8rpx 15rpx;border:1rpx solid #d5e0ea;border-radius:7rpx;color:#49647d;background:#fff;font-size:13px}.address-actions button:last-child{color:#c95042}.bottom{position:fixed;right:0;bottom:0;left:0;padding:16rpx 18rpx calc(16rpx + env(safe-area-inset-bottom));background:#fff;box-shadow:0 -4rpx 14rpx rgba(18,55,89,.1)}.bottom button{color:#fff;background:#0a69e9}.form-card{display:flex;margin:18rpx;padding:24rpx;border-radius:12rpx;background:#fff;flex-direction:column;gap:18rpx}.form-note{display:flex;flex-direction:column;gap:6rpx}.form-note text:first-child{font-size:16px;font-weight:700}.form-note text:last-child{color:#71879c;font-size:13px}.wechat-import{margin:0;padding:12rpx;color:#0a69e9;background:#edf5ff;font-size:14px}.form-card>label{display:flex;flex-direction:column;gap:9rpx}.form-card>label>text{font-size:14px;font-weight:700}.form-card input,.form-card textarea,.region-picker{box-sizing:border-box;width:100%;padding:17rpx;border:1rpx solid #d8e3ed;border-radius:8rpx;background:#fbfdff;font-size:14px}.form-card textarea{height:128rpx}.region-picker{display:flex;justify-content:space-between;color:#49647d}.default-check{display:flex;align-items:center;color:#49647d;font-size:14px}.default-check checkbox{margin-right:10rpx}.form-actions{display:grid;grid-template-columns:1fr 1.35fr;gap:12rpx}.form-actions button{margin:0;border:1rpx solid #0a69e9;color:#0a69e9;background:#fff}.form-actions button:last-child{color:#fff;background:#0a69e9}
+.list-heading{display:flex;align-items:center;justify-content:space-between;margin:12px 16px;gap:12px}
+.list-heading>text:first-child{font-size:18px}
+.list-heading>text:last-child{color:#667085;font-size:13px;flex:none}
+.address-list{margin:0 16px}
+.address-row{min-width:0;margin-bottom:12px;padding:16px;border:1px solid transparent;border-radius:16px;background:#fff}
+.address-row.is-select-mode{border-color:#d7e2ef}
+.address-row.is-select-mode.is-default{border:2px solid #176bd5}
+.address-main{display:flex;gap:8px;min-width:0;flex-direction:column}
+.address-main>view{display:flex;min-width:0;align-items:center;gap:8px;flex-wrap:wrap}
+.address-main>view>text:first-child{max-width:100%;font-size:16px;font-weight:700;overflow-wrap:anywhere}
+.address-main>view>text:nth-child(2){color:#667085;font-size:14px}
+.address-main>text{color:#43566d;font-size:14px;overflow-wrap:anywhere}
+.address-main>text:first-of-type{color:#0f1b2d;font-weight:600}
+.tag,.default-tag{padding:3px 10px;border-radius:12px;color:#176bd5;background:#eaf2fd;font-size:12px}
+.default-tag{margin-left:auto}
+.address-actions,.address-select{display:flex;min-width:0;align-items:center;justify-content:flex-end;margin-top:12px;gap:8px;flex-wrap:wrap}
+.default-copy,.address-select>text{margin-right:auto;color:#176bd5;font-size:13px}
+.address-actions button,.address-select button{width:auto;min-width:0;min-height:44px;padding:0;background:transparent;flex:0 1 auto}
+.address-action-face{display:flex;align-items:center;justify-content:center;min-height:34px;max-width:100%;padding:4px 14px;border:1px solid #bfd0e6;border-radius:18px;color:#43566d;background:#fff;font-size:14px;line-height:1.35;white-space:normal;overflow-wrap:anywhere}
+.address-actions .delete-action .address-action-face{border-color:transparent;color:#e14b3f;background:#fff4f2}
+.address-select .address-action-face{border-color:#176bd5;color:#176bd5;background:#eaf2fd}
+.form-card{display:flex;min-width:0;margin:12px 16px;flex-direction:column;gap:10px}
+.form-note{color:#667085;font-size:13px;line-height:1.5}
+.form-note:empty{display:none}
+.wechat-import{align-self:flex-start;padding:0 14px;font-size:14px}
+.import-warning{padding:10px 12px;border:1px solid #efc485;border-radius:12px;color:#8a4b08;background:#fff8eb;font-size:15px;line-height:1.5}
+.form-card>label{display:grid;min-width:0;min-height:62px;padding:9px 14px;border-radius:14px;background:#fff;grid-template-columns:72px minmax(0,1fr);align-items:center;gap:10px}
+.form-card>label>text{color:#0f1b2d;font-size:14px}
+.form-card input,.form-card textarea{width:100%;min-width:0;max-width:100%;padding:0;border:0;background:#fff;text-align:right;color:#0f1b2d;font-size:14px;line-height:1.5}
+.form-card input{height:44px}
+.form-card textarea{min-height:64px;padding:10px 0}
+.region-picker{display:flex;min-width:0;min-height:44px;align-items:center;justify-content:flex-end;gap:8px;color:#0f1b2d;text-align:right;overflow-wrap:anywhere}
+.region-picker>text{color:#176bd5;flex:none}
+.default-check{display:flex;min-height:62px;padding:9px 14px;border-radius:14px;background:#fff;align-items:center;flex-direction:row-reverse;justify-content:space-between;font-size:14px}
+.default-check checkbox{display:flex;width:44px;min-width:44px;height:44px;align-items:center;justify-content:center}
+.form-actions{position:fixed;z-index:11;right:0;bottom:0;left:0;display:grid;padding:10px 16px calc(10px + constant(safe-area-inset-bottom));padding:10px 16px calc(10px + env(safe-area-inset-bottom));background:#fff;grid-template-columns:minmax(0,1fr) minmax(0,1.35fr);gap:12px}
+.form-actions button{display:flex;align-items:center;justify-content:center;width:100%;min-width:0;max-width:100%;height:44px;padding:0 16px;font-size:16px}
+.form-actions button:last-child{color:#fff;background:#176bd5}
+.form-actions button[disabled]{color:#667085;background:#dce7f5}
+.page{padding-bottom:calc(76px + constant(safe-area-inset-bottom));padding-bottom:calc(76px + env(safe-area-inset-bottom))}
+.bottom{position:fixed;z-index:10;right:0;bottom:0;left:0;display:flex;min-height:64px;padding:10px 16px calc(10px + constant(safe-area-inset-bottom));padding:10px 16px calc(10px + env(safe-area-inset-bottom));box-sizing:border-box;background:#fff;align-items:center;justify-content:center;gap:12px}
+.page>.bottom button{width:auto;min-width:164px;max-width:100%;padding:0 24px;border-radius:22px;color:#fff;background:#176bd5;font-size:16px}
+@media screen and (max-width: 360px){.form-card>label{grid-template-columns:64px minmax(0,1fr);gap:8px}.form-actions{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}}
 
-.form-card input{height:72rpx;padding:0 17rpx;line-height:72rpx}
-.form-card textarea{padding:15rpx 17rpx;line-height:1.5}
-.region-picker{padding:17rpx}
-
-.form-card input{width:100%;min-width:0;box-sizing:border-box}
-.form-actions{width:100%;grid-template-columns:minmax(0,1fr) minmax(0,1.35fr)}
-.form-actions button{display:flex;align-items:center;justify-content:center;width:100%;min-width:0;height:80rpx;padding:0 12rpx;overflow:hidden;box-sizing:border-box;line-height:1.25;text-overflow:ellipsis;white-space:nowrap}
-
-@media screen and (max-width: 360px){
-  .form-card{margin-right:14rpx;margin-left:14rpx;padding-right:20rpx;padding-left:20rpx}
-  .form-actions{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
-}
-
-
-/* 交付态控件层级：触控尺寸使用 px，避免窄屏被 rpx 继续缩小。 */
-button {
-  min-height: 44px;
-  box-sizing: border-box;
-  white-space: nowrap;
-  line-height: 1.25;
-}
-
-.control-pressed {
-  opacity: .72;
-}
-
-.state {
-  min-height: 0;
-  padding-top: 44rpx;
-  padding-bottom: 44rpx;
-}
-
-.state-loading {
-  min-height: 320rpx;
-}
-
-.address-actions {
-  flex-wrap: wrap;
-}
-
-/* Keep these as compact text actions. The 44px hit height remains unchanged. */
-.address-actions button {
-  width: auto;
-  min-width: 0;
-  max-width: 100%;
-  flex: 0 1 auto;
-}
-
-
-input,
-textarea,
-picker {
-  min-height: 44px;
-  box-sizing: border-box;
-  font-size: 14px;
-}
-
-.region-picker,
-.default-check {
-  min-height: 44px;
-  box-sizing: border-box;
-  align-items: center;
-}
-
-/* 底部内容占位与固定操作栏高度使用同一组安全区计算。 */
-.page {
-  padding-bottom: calc(44px + 32rpx + constant(safe-area-inset-bottom));
-  padding-bottom: calc(44px + 32rpx + env(safe-area-inset-bottom));
-}
-
-.bottom {
-  padding: 16rpx 18rpx calc(16rpx + constant(safe-area-inset-bottom));
-  padding: 16rpx 18rpx calc(16rpx + env(safe-area-inset-bottom));
-}
+/* S4: readable address content without changing controls or field bindings. */
+.address-main>view>text:first-child{font-size:18px}
+.address-main>view>text:nth-child(2),.address-main>text,.form-card>label>text,.form-card input,.form-card textarea,.region-picker,.default-check,.address-action-face{font-size:16px;line-height:1.5}
+.form-note,.state text:nth-child(2){color:#46566b;font-size:15px;overflow-wrap:anywhere}

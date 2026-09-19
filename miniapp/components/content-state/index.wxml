@@ -1,0 +1,7 @@
+<view class="content-state {{compact ? 'is-compact' : ''}} {{layout == 'home-blocking' ? 'is-home-blocking' : ''}} {{tone == 'error' ? 'is-error' : (tone == 'loading' ? 'is-loading' : 'is-empty')}}" aria-live="polite">
+  <text class="content-state__title">{{title}}</text>
+  <text wx:if="{{message}}" class="content-state__message">{{message}}</text>
+  <button wx:if="{{actionLabel}}" class="content-state__action" hover-class="control-pressed" bindtap="handleAction">
+    <text class="content-state__action-face">{{actionLabel}}</text>
+  </button>
+</view>

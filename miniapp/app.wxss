@@ -1,7 +1,29 @@
 page {
+  --color-brand-primary: #176bd5;
+  --color-brand-soft: #eaf2fd;
+  --color-text-primary: #0f1b2d;
+  --color-text-secondary: #667085;
+  --color-surface-page: #f5f8fc;
+  --color-surface-card: #ffffff;
+  --color-border-default: #d7e2ef;
+  --color-state-success: #1aa76c;
+  --color-state-warning: #d98b26;
+  --color-state-danger: #e65353;
+  --space-sm: 8px;
+  --space-md: 12px;
+  --space-lg: 16px;
+  --radius-card: 14px;
+  --radius-pill: 22px;
+  --font-caption: 12px;
+  --font-support: 13px;
+  --font-body: 14px;
+  --font-title: 16px;
+  --font-large-title: 18px;
+  --control-hit: 44px;
+  --control-face: 32px;
   min-height: 100%;
-  background: #f3f7fc;
-  color: #10233f;
+  background: var(--color-surface-page);
+  color: var(--color-text-primary);
   font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
   font-size: 14px;
 }
@@ -11,7 +33,9 @@ text,
 image,
 scroll-view,
 button,
-input {
+input,
+textarea,
+picker {
   box-sizing: border-box;
 }
 
@@ -26,14 +50,9 @@ input,
 textarea,
 picker {
   min-width: 0;
+  min-height: 44px;
   box-sizing: border-box;
   font-family: inherit;
-}
-
-button,
-input,
-picker {
-  min-height: 44px;
 }
 
 textarea {
@@ -42,6 +61,20 @@ textarea {
 
 button[disabled] {
   opacity: 0.48;
+}
+
+/* Empty/error recovery actions keep a 44px target without inheriting the
+ * native button's full-row visual width. Page-specific full-width submit
+ * actions remain unaffected because they live outside .state/.empty. */
+.state > button,
+.empty > button {
+  display: inline-flex;
+  width: fit-content;
+  min-width: 44px;
+  max-width: 100%;
+  min-height: 44px;
+  align-self: center;
+  flex: none;
 }
 
 .page > .bottom,

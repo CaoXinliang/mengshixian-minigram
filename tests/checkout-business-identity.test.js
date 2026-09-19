@@ -28,7 +28,8 @@ Module._load = function (request, parent, isMain) {
   return originalLoad.call(this, request, parent, isMain);
 };
 global.Page = definition => { holder.value = definition; };
-global.wx = { showToast: () => {}, redirectTo: () => {} };
+const modals = [];
+global.wx = { showToast: () => {}, redirectTo: () => {}, showModal: payload => modals.push(payload) };
 try { require(path.resolve(__dirname, '../miniapp/package-trade/pages/checkout/index.js')); } finally { Module._load = originalLoad; delete global.Page; }
 
 function makePage() {
@@ -40,6 +41,7 @@ function makePage() {
   page.data.warehouse = { id: 'warehouse-1' };
   page.data.cartItems = [{ id: 'cart-1', skuId: 'sku-1', qty: 1 }];
   page.data.quoteState = 'ready';
+  page.data.paymentCapabilities = { demoOrder: true };
   return page;
 }
 
@@ -66,6 +68,15 @@ async function run() {
   }
   const approved = await submitAs({ userType: 'b', businessStatus: 'approved', organizationId: 'org-1', status: 'active' });
   assert.equal(approved.paymentMethod, 'offline', '完整合法 B 身份应选择线下结算');
+
+  currentIdentity = { ok: true, data: { user: { userType: 'c', status: 'active' } } };
+  const unavailablePage = makePage();
+  unavailablePage.data.paymentCapabilities = {};
+  const beforeUnavailable = createCalls.length;
+  await unavailablePage.submitOrder();
+  assert.equal(createCalls.length, beforeUnavailable, 'server未开放支付能力时不得创建订单');
+  assert.equal(unavailablePage.data.orderSubmitState, 'error');
+  assert.equal(modals.at(-1).title, '支付暂不可用');
   console.log('checkout business identity matrix test: passed');
 }
 

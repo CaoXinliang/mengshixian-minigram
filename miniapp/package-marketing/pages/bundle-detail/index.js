@@ -92,9 +92,17 @@ Page({
   },
 
   changeQty(event) {
-    const step = Number(event.currentTarget.dataset.step || 0);
+    const detail = event.detail || {};
+    if (detail.valid === false) {
+      if (typeof wx.showToast === 'function') wx.showToast({ title: detail.message || '请输入有效数量', icon: 'none' });
+      return;
+    }
+    const step = Number(detail.delta === undefined ? event.currentTarget.dataset.step || 0 : detail.delta);
     const min = Math.max(1, Number(this.data.bundle && this.data.bundle.minQuantity || 1));
-    this.setData({ quantity: Math.max(min, this.data.quantity + step), quote: null }, () => this.loadQuote());
+    const max = Math.max(min, Number(this.data.bundle && this.data.bundle.maxQuantity || 999));
+    const directQuantity = detail.source === 'input' && detail.valid === true ? Number(detail.quantity) : NaN;
+    const quantity = Number.isSafeInteger(directQuantity) ? Math.max(min, Math.min(max, directQuantity)) : Math.max(min, Math.min(max, this.data.quantity + step));
+    this.setData({ quantity, quote: null }, () => this.loadQuote());
   },
 
   async loadQuoteContext() {

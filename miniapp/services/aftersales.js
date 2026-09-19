@@ -1,5 +1,6 @@
 const refunds = require('./refunds');
 const { request: apiRequest } = require('./request');
+const { fetchRemotePages } = require('./collection');
 
 const MAX_EVIDENCE_FILES = 6;
 let localSequence = 0;
@@ -22,6 +23,11 @@ function request(payload) {
 
 function get(payload) { return apiRequest('refunds.get', payload); }
 function list(payload) { return apiRequest('refunds.list', payload); }
+async function listAll(payload = {}) {
+  const result = await fetchRemotePages(page => list({ ...payload, ...page }), { pageSize: 100, maxPages: 50 });
+  if (!result.ok) return { ok: false, data: null, error: { code: result.code || 'REFUND_SUMMARY_INCOMPLETE', message: '售后记录未能完整加载，请稍后重试。' } };
+  return { ok: true, data: { rows: result.rows, total: result.rows.length, page: 1, pageSize: result.rows.length } };
+}
 
 function mediaMetadata(item) {
   const path = String(item && item.path || '');
@@ -49,4 +55,4 @@ function uploadEvidence(item) {
   });
 }
 
-module.exports = { MAX_EVIDENCE_FILES, prepareEvidenceUploads, request, get, list, uploadEvidence, mediaMetadata };
+module.exports = { MAX_EVIDENCE_FILES, prepareEvidenceUploads, request, get, list, listAll, uploadEvidence, mediaMetadata };

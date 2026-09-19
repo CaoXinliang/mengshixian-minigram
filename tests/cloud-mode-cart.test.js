@@ -59,6 +59,7 @@ async function run() {
     }
   });
   page.data.loggedIn = true;
+  page._remotePriceBySku = { 'sku-1': { amountCent: 1000, availability: 'available' } };
   page.data.frequent = [{ id: 'product-1', name: '测试鱼丸', unit: '规格待补充' }];
   await page.addFrequent();
   assert.equal(cartCalls.length, 1, 'cloudbase addFrequent must call the server cart once');
@@ -80,6 +81,13 @@ async function run() {
   await Promise.all([page.changeQuantity(event), page.changeQuantity(event)]);
   assert.deepStrictEqual(updates, [5, 6]);
   assert.equal(page.data.cartItems[0].qty, 6);
+  const quantityErrors = [];
+  global.wx.showToast = ({ title }) => quantityErrors.push(title);
+  servicesStub.cart.updateItem = async () => ({ ok: false, error: { message: '服务暂不可用' } });
+  await page.changeQuantity({ currentTarget: { dataset: { id: 'product-1', spec: '500克' } }, detail: { valid: true, quantity: 8, source: 'input' } });
+  assert.equal(page.data.cartItems[0].qty, 6, 'a failed absolute quantity write must retain the last server-confirmed quantity');
+  assert.equal(quantityErrors.at(-1), '服务暂不可用');
+  servicesStub.cart.updateItem = async payload => { updates.push(payload.quantity); return { ok: true }; };
   const originalAdd = servicesStub.cart.addItem;
   servicesStub.cart.addItem = async () => { throw new Error('network unavailable'); };
   await page.addProduct('product-1');

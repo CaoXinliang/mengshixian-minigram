@@ -56,7 +56,17 @@ async function run() {
   assert.equal(page.data.retryable, false);
   assert.equal(page.data.order.orderNo, 'MSX-1');
   assert.equal(page.data.order.itemSummary, '雷洛滋保鲜膜 · 6卷/件 ×1');
+  assert.equal(page.data.paymentPresentation.kind, 'test');
+  assert.match(page.data.paymentPresentation.text, /非真实支付、非真实到账，不会产生扣款/);
   assert.equal(getCount, 2);
+
+  nextResult = { ok: true, data: { order: { _id: 'paid-order', orderNo: 'MSX-PAID', status: 'pending_confirmation', paymentStatus: 'paid', paymentMethod: 'wechat', totalAmountCent: 5800 }, items: [] } };
+  await page.onLoad({ id: 'paid-order' });
+  assert.equal(page.data.paymentPresentation.kind, 'paid');
+  nextResult = { ok: true, data: { order: { _id: 'closed-order', orderNo: 'MSX-CLOSED', status: 'cancelled', paymentStatus: 'closed', paymentMethod: 'wechat', totalAmountCent: 5800 }, items: [] } };
+  await page.onLoad({ id: 'closed-order' });
+  assert.equal(page.data.paymentPresentation.kind, 'closed');
+  nextResult = undefined;
 
   for (const query of [undefined, {}, { id: '' }, { id: '  ' }]) {
     await page.onLoad(query);
@@ -65,7 +75,7 @@ async function run() {
     assert.equal(page.data.retryable, false, 'missing IDs cannot be recovered by repeating the same request');
     assert.equal(page.data.order, null, 'an invalid entry must not retain the previous order');
     await page.retry();
-    assert.equal(getCount, 2, 'an invalid retry must not call the order API');
+    assert.equal(getCount, 4, 'an invalid retry must not call the order API');
   }
   page.back();
   assert.match(redirects[0].url, /^\/package-trade\/pages\/orders\/index\?/);
@@ -85,6 +95,7 @@ async function run() {
   const template = fs.readFileSync(path.resolve(__dirname, '../miniapp/package-trade/pages/demo-payment/index.wxml'), 'utf8');
   assert.match(template, /<button\s+wx:if="\{\{retryable\}\}"\s+bindtap="retry">重新加载<\/button>/);
   assert.match(template, /<button\s+bindtap="back">返回订单页<\/button>/);
+  assert.match(template, /<payment-recovery-panel[^>]+bind:vieworder="finish"/);
   console.log('demo payment retry test: passed');
 }
 

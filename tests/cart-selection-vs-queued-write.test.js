@@ -40,6 +40,7 @@ try {
 function createPage() {
   return Object.assign({}, pageDefinition.value, {
     data: JSON.parse(JSON.stringify(pageDefinition.value.data)),
+    _remotePriceBySku: { 'sku-1': { amountCent: 5000, availability: 'available' } },
     setData(patch, callback) {
       Object.assign(this.data, patch);
       if (callback) callback.call(this);

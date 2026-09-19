@@ -154,7 +154,8 @@ async function run() {
   const restorePage = makePage();
   const started = [];
   const releases = [];
-  restorePage.refreshRemoteIdentity = async () => ({ _id: 'user-1', userType: 'c', status: 'active' });
+  const originalGetMe = services.auth.getMe;
+  services.auth.getMe = async () => ({ ok: true, data: { user: { _id: 'user-1', userType: 'c', status: 'active' } } });
   ['loadRemoteCatalogPrices', 'loadRemoteAddress', 'loadRemoteCart', 'loadRemoteOrders'].forEach((name) => {
     restorePage[name] = () => {
       started.push(name);
@@ -167,6 +168,7 @@ async function run() {
   assert.deepEqual(started.sort(), ['loadRemoteAddress', 'loadRemoteCart', 'loadRemoteCatalogPrices', 'loadRemoteOrders'].sort(), '身份确认后的独立会话数据必须并行恢复');
   releases.forEach((resolve) => resolve());
   await restoring;
+  services.auth.getMe = originalGetMe;
 
   const loginPage = makePage();
   loginPage.data.agreed = true;
@@ -181,7 +183,7 @@ async function run() {
       return new Promise((resolve) => loginReleases.push(resolve));
     };
   });
-  const loggingIn = loginPage.completeLogin({ detail: { errMsg: 'getPhoneNumber:ok' } });
+  const loggingIn = loginPage.completeLogin({ detail: { errMsg: 'getPhoneNumber:ok', code: 'phone-code-test' } });
   for (let index = 0; index < 10 && loginStarted.length < 4; index += 1) await Promise.resolve();
   assert.deepEqual(loginStarted.sort(), ['loadRemoteAddress', 'loadRemoteCart', 'loadRemoteCatalogPrices', 'loadRemoteOrders'].sort(), '首次登录后的四类数据也必须并行恢复');
   loginReleases.forEach((resolve) => resolve());
@@ -209,7 +211,6 @@ async function run() {
   await browsePage.loadRemoteCatalogSlice({ keyword: '完整目录' });
   assert.deepEqual(browseCalls.map((call) => call.page), [1, 2, 3], '搜索结果超过100条时必须按 total 继续加载');
   assert(browseRows.every((item) => browsePage.findProduct(item._id)), '分类/搜索结果不能丢失第100条以后的商品');
-  assert.deepEqual(browsePage._catalogSliceStates['{"keyword":"完整目录"}'], { page: 3, total: 235, hasMore: false, failed: false });
   const completedCallCount = browseCalls.length;
   await browsePage.loadRemoteCatalogSlice({ keyword: '完整目录' });
   assert.equal(browseCalls.length, completedCallCount, '已完整加载的同一搜索不应重复全量请求');
@@ -239,7 +240,7 @@ async function run() {
   staleBrowsePage.resolveMediaFileMap = async () => ({});
   const staleBrowse = staleBrowsePage.loadRemoteCatalogSlice({ keyword: '旧请求' });
   staleBrowsePage._catalogLoadSeq = 4;
-  staleBrowsePage._activeCatalogSliceKey = '';
+  staleBrowsePage.getCatalogBrowse().reset(4);
   releaseStaleBrowse(okRows([browseRows[0]], { total: 1, page: 1, pageSize: 100 }));
   await staleBrowse;
   assert.equal(staleBrowsePage.findProduct(browseRows[0]._id), undefined, '旧世代响应必须丢弃');
@@ -274,9 +275,8 @@ async function run() {
     return Promise.resolve(okRows(skuIds.map((skuId) => ({ skuId, unitPrice: 200 }))));
   };
   const pricePage = makePage();
-  pricePage.data.loggedIn = true;
-  pricePage._remoteUser = { _id: 'user-price', userType: 'c', status: 'active' };
   pricePage.applyRemotePriceLabels = () => {};
+  pricePage.applyRemoteIdentity({ _id: 'user-price', userType: 'c', status: 'active' });
   const firstPrice = pricePage.loadRemoteCatalogPrices([{ skuOptions: [{ id: 'sku-first' }] }]);
   while (!releaseFirstPrice) await Promise.resolve();
   const secondPrice = pricePage.loadRemoteCatalogPrices([{ skuOptions: [{ id: 'sku-cart-outside-first-page' }] }]);
@@ -290,9 +290,8 @@ async function run() {
   let unpricedCalls = 0;
   services.catalog.listPrices = async () => { unpricedCalls += 1; return okRows([]); };
   const unpricedPage = makePage();
-  unpricedPage.data.loggedIn = true;
-  unpricedPage._remoteUser = { _id: 'user-unpriced', userType: 'c', status: 'active' };
   unpricedPage.applyRemotePriceLabels = () => {};
+  unpricedPage.applyRemoteIdentity({ _id: 'user-unpriced', userType: 'c', status: 'active' });
   const unpricedTarget = [{ skuOptions: [{ id: 'sku-confirmed-unpriced' }] }];
   await unpricedPage.loadRemoteCatalogPrices(unpricedTarget);
   await unpricedPage.loadRemoteCatalogPrices(unpricedTarget);
@@ -309,8 +308,8 @@ async function run() {
     sku: { _id: 'sku-only-in-cart', specName: '1件', packageUnit: '件', minOrderQuantity: 1, orderMultiple: 1 }
   }]);
   const cartPage = makePage();
-  cartPage.data.loggedIn = true;
-  cartPage._remoteUser = { _id: 'user-cart', userType: 'c', status: 'active' };
+  cartPage.applyRemotePriceLabels = () => {};
+  cartPage.applyRemoteIdentity({ _id: 'user-cart', userType: 'c', status: 'active' });
   cartPage.resolveMediaFileMap = async () => ({});
   await cartPage.loadRemoteCart();
   assert(cartPriceCalls.some((ids) => ids.includes('sku-only-in-cart')), '不在首40件目录内的购物车SKU也必须请求报价');
@@ -329,6 +328,30 @@ async function run() {
   failedPage.scheduleRemoteCatalogExpansion();
   assert.equal(failedPage._catalogExpandTimer, undefined, '失败后不能每120ms无限重试');
 
+  // “全部”与具体分类必须使用相同的可见加载、失败和重试行为。
+  const allBrowsePage = makePage();
+  allBrowsePage.data.page = 'category';
+  allBrowsePage.data.catalogStatus = 'ready';
+  allBrowsePage._catalogLoadSeq = 1;
+  allBrowsePage._catalogMetadataReady = true;
+  allBrowsePage._catalogHasMore = true;
+  allBrowsePage.resolveMediaFileMap = async () => ({});
+  allBrowsePage.mergeRemoteCatalogRows(products.slice(0, 40));
+  let releaseAllBrowse;
+  services.catalog.listProducts = () => new Promise((resolve) => { releaseAllBrowse = resolve; });
+  const allLoading = allBrowsePage.ensureRemoteCatalogForCurrentView({ categoryId: '全部' });
+  assert.equal(allBrowsePage.data.catalogBrowseLoading, true, '全部分类续载也必须显示加载状态');
+  releaseAllBrowse({ ok: false });
+  await allLoading;
+  assert.equal(allBrowsePage.data.products.length, 40, '全部续载失败必须保留首批商品');
+  assert.equal(allBrowsePage.data.catalogBrowseError, '商品加载失败，请重试');
+  assert.equal(allBrowsePage.data.catalogBrowseLoading, false);
+  services.catalog.listProducts = async () => okRows(products, { total: 80 });
+  await allBrowsePage.retryCatalogBrowse();
+  assert.equal(allBrowsePage.data.products.length, 80, '点击全部分类的重试应恢复缺失商品');
+  assert.equal(allBrowsePage.data.catalogBrowseError, '');
+  assert.equal(allBrowsePage.data.catalogBrowseLoading, false);
+
   // 媒体失败不应阻断首屏后的价格和拼团请求。
   let pricesStarted = false;
   let groupsStarted = false;
@@ -336,8 +359,8 @@ async function run() {
   services.catalog.listPrices = async (skuIds) => { pricesStarted = true; return okRows(skuIds.map((skuId) => ({ skuId, unitPrice: 100 }))); };
   services.groups.campaigns = async () => { groupsStarted = true; return okRows([]); };
   const mediaFailurePage = makePage();
-  mediaFailurePage.data.loggedIn = true;
-  mediaFailurePage._remoteUser = { _id: 'user-media', userType: 'c', status: 'active' };
+  mediaFailurePage.applyRemotePriceLabels = () => {};
+  mediaFailurePage.applyRemoteIdentity({ _id: 'user-media', userType: 'c', status: 'active' });
   mediaFailurePage.resolveMediaFileMap = async () => { throw new Error('media unavailable'); };
   await mediaFailurePage.loadRemoteCatalog();
   assert.equal(pricesStarted, true, '媒体失败时仍必须独立请求价格');

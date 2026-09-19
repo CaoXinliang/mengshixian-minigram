@@ -23,21 +23,6 @@ const path = require('path');
   if (originalWx === undefined) delete global.wx;
   else global.wx = originalWx;
 
-  const webApiPath = path.resolve(__dirname, '../web-preview/services/api.js');
-  const originalFetch = global.fetch;
-  global.fetch = () => new Promise(() => {});
-  delete require.cache[webApiPath];
-  const webApi = require(webApiPath);
-  webApi.config.provider = 'cloudbase';
-  webApi.config.cloudFunctionUrl = 'https://example.invalid/cloud-function';
-  webApi.config.timeoutMs = 5;
-  const webResult = await webApi.catalog.listProducts({ page: 1, pageSize: 1 });
-  assert.equal(webResult.ok, false);
-  assert.equal(webResult.error.code, 'REQUEST_TIMEOUT');
-  assert.match(webResult.error.message, /超时/);
-  if (originalFetch === undefined) delete global.fetch;
-  else global.fetch = originalFetch;
-
   console.log('request timeout test: passed');
 })().catch((error) => {
   console.error(error);

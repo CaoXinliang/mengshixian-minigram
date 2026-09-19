@@ -5,6 +5,45 @@ const path = require('path');
 const root = path.resolve(__dirname, '../miniapp');
 const read = relativePath => fs.readFileSync(path.join(root, relativePath), 'utf8');
 
+function effectiveRule(source, selector) {
+  source = source.replace(/\/\*[\s\S]*?\*\//g, '');
+  const declarations = {};
+  const rulePattern = /([^{}]+)\{([^{}]*)\}/g;
+  let ruleMatch;
+  while ((ruleMatch = rulePattern.exec(source))) {
+    const selectors = ruleMatch[1].split(',').map(item => item.trim().replace(/\s*>\s*/g, '>'));
+    if (!selectors.includes(selector)) continue;
+    for (const declaration of ruleMatch[2].split(';')) {
+      const separator = declaration.indexOf(':');
+      if (separator < 0) continue;
+      declarations[declaration.slice(0, separator).trim()] = declaration.slice(separator + 1).trim();
+    }
+  }
+  return declarations;
+}
+
+function px(value) {
+  const match = String(value || '').match(/^(\d+(?:\.\d+)?)px$/);
+  return match ? Number(match[1]) : NaN;
+}
+
+assert.equal(effectiveRule('/* readable baseline */ .page {font-size:16px}', '.page')['font-size'], '16px', 'CSS comments must not be treated as part of a selector');
+
+const favoritesWxss = read('package-member/pages/favorites/index.wxss');
+const favoritesJs = read('package-member/pages/favorites/index.js');
+const favoritesWxml = read('package-member/pages/favorites/index.wxml');
+const favoriteSpecRule = effectiveRule(favoritesWxss, '.product-copy text:not(:first-child)');
+for (const property of ['min-width', 'min-height', 'padding', 'border-radius']) {
+  assert.equal(favoriteSpecRule[property], undefined, `favorite specification prose must not inherit button geometry (${property}) at 480px`);
+}
+assert.equal(favoriteSpecRule['font-size'], '14px', '480px specification text keeps its readable size');
+assert.match(favoritesJs, /favorites\.listAll|createFavoritesLifecycle/, 'favorites must read the complete collection through its lifecycle module');
+assert.match(favoritesJs, /authorizeMemberPage|onShow\(\)|onUnload\(\)/, 'favorites must refresh and invalidate protected state with the member page lifecycle');
+assert.doesNotMatch(favoritesJs, /catalog|listAllProducts|recommendations/, 'favorites must not scan the product catalog or invent recommendations');
+assert.doesNotMatch(favoritesWxml, /你可能需要|recommendation-card/, 'favorites must not present arbitrary catalog rows as recommendations');
+assert.match(favoritesWxml, /item\.unavailableText/, 'unavailable favorites must explain the server-provided lifecycle state');
+assert.match(favoritesWxml, /item\.removeText/, 'remove failures and unknown results must remain visible beside the original favorite');
+
 const storedJs = read('package-member/pages/stored-value/index.js');
 const storedWxml = read('package-member/pages/stored-value/index.wxml');
 const storedWxss = read('package-member/pages/stored-value/index.wxss');
@@ -13,10 +52,8 @@ assert.doesNotMatch(storedWxml, /<\s*(?:input|form|button)\b|bind(?:tap|submit)\
 assert(storedJs.includes('!this.data.account.topupEnabled'), 'top-up action must enforce the capability again');
 assert(storedWxss.includes('.page{font-size:14px}'), 'stored-value status text must remain readable');
 
-const pointsJs = read('package-member/pages/points/index.js');
-for (const label of ['每日签到', '订单奖励', '退款扣回', '后台调整']) assert(pointsJs.includes(label), `${label} points label is required`);
-assert(!pointsJs.includes('|| row.action ||'), 'raw points action codes must never be the display fallback');
-assert(pointsJs.includes("POINT_ACTION_LABELS[row.action] || '积分变动'"), 'unknown points action codes need a generic Chinese fallback');
+// Points labels and unknown action fallback are exercised through the page's
+// public ledger in member-auth-refresh.test.js and points-account.test.js.
 
 const invoiceWxml = read('package-member/pages/invoices/index.wxml');
 const invoiceWxss = read('package-member/pages/invoices/index.wxss');
@@ -47,15 +84,37 @@ const inquiryWxml = read('package-business/pages/inquiries/index.wxml');
 assert(inquiryWxml.includes("action-label=\"{{canCreateInquiry ? '新建询价' : ''}}\""), 'inquiry header action must bind to an explicit capability');
 assert(inquiryJs.includes('if (!this.data.canCreateInquiry) return;'), 'inquiry creation must enforce capability inside the handler');
 
-for (const relativePath of [
-  'package-member/pages/points/index.wxss',
-  'package-member/pages/reviews/index.wxss',
-  'package-business/pages/inquiries/index.wxss'
+for (const [relativePath, supportingSelector, actionSelector] of [
+  ['package-member/pages/points/index.wxss', '.row>view text:last-child', '.state button'],
+  ['package-member/pages/reviews/index.wxss', '.order-label', '.review-submit'],
+  ['package-business/pages/inquiries/index.wxss', '.card>text', '.card']
 ]) {
   const wxss = read(relativePath);
-  assert(wxss.includes('.page{font-size:14px}'), `${relativePath} must keep body text at 14px or larger`);
-  assert(wxss.includes('font-size:13px'), `${relativePath} must keep supporting text at 13px or larger`);
-  assert(wxss.includes('min-height:44px'), `${relativePath} must keep interactive targets at least 44px high`);
+  assert(px(effectiveRule(wxss, '.page')['font-size']) >= 14, `${relativePath} must keep body text at 14px or larger without viewport-scaled units`);
+  assert(px(effectiveRule(wxss, supportingSelector)['font-size']) >= 13, `${relativePath} must keep supporting text at 13px or larger without viewport-scaled units`);
+  assert(px(effectiveRule(wxss, actionSelector)['min-height']) >= 44, `${relativePath} must keep its primary interactive target at least 44px high`);
+}
+
+// Static six-width typography checks, not a substitute for device rendering.
+for (const [pageName, selectors] of [
+  ['center', ['.account>text:nth-child(2)', '.account>view>view text:first-child', '.row>view text:last-child', '.quick button']],
+  ['frequent', ['.info text:first-child', '.info text:not(:first-child)', '.qty text', '.bar button']],
+  ['inquiry-create', ['.search', '.info text:first-child', '.info text:last-child', '.note text', '.note textarea']],
+  ['inquiry-detail', ['.hero text:not(:first-child)', '.row text', '.row>view text:last-child', '.quote-head text:last-child', '.result button']],
+  ['repurchase', ['.row>view text:last-child', '.invalid-row', '.state text:nth-child(2)', '.bar button']]
+]) {
+  const css = read(`package-business/pages/${pageName}/index.wxss`);
+  assert.equal(px(effectiveRule(css, '.page')['font-size']), 16, `${pageName} body must remain readable`);
+  for (const width of [320, 375, 390, 414, 428, 480]) {
+    for (const selector of selectors) {
+      assert(px(effectiveRule(css, selector)['font-size']) >= 14, `${pageName} ${selector} must use readable px typography at ${width}px`);
+    }
+  }
+}
+for (const [pageName, rowSelector] of [['frequent', '.card'], ['inquiry-create', '.item']]) {
+  const css = read(`package-business/pages/${pageName}/index.wxss`);
+  assert.equal(effectiveRule(css, rowSelector)['flex-wrap'], 'wrap', `${pageName} controls must be able to move to another line`);
+  assert.equal(effectiveRule(css, '.info').flex, '1 1 120px', `${pageName} product text needs space instead of shrinking beside controls`);
 }
 
 console.log('member UI contract test: passed');

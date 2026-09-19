@@ -13,14 +13,32 @@ async function fetchRemotePages(loadPage, options = {}) {
   const pageSize = Math.min(100, Math.max(1, Number(options.pageSize) || 100));
   const maxPages = Math.max(1, Math.min(50, Number(options.maxPages) || 20));
   const rows = [];
+  let expectedTotal = null;
+  let complete = false;
   for (let page = 1; page <= maxPages; page += 1) {
     const result = await loadPage({ page, pageSize });
     if (!result || !result.ok || !result.data || !Array.isArray(result.data.rows)) {
-      return { ok: false, rows: [], code: 'REMOTE_PAGE_FAILED' };
+      const remoteError = result && result.error && typeof result.error === 'object' ? result.error : {};
+      return {
+        ok: false,
+        rows: [],
+        code: typeof remoteError.code === 'string' && remoteError.code ? remoteError.code : 'REMOTE_PAGE_FAILED',
+        message: typeof remoteError.message === 'string' ? remoteError.message : ''
+      };
     }
     rows.push(...result.data.rows);
-    if (result.data.rows.length < pageSize) break;
+    const rawTotal = result.data.total;
+    const total = typeof rawTotal === 'number' || (typeof rawTotal === 'string' && rawTotal.trim()) ? Number(rawTotal) : NaN;
+    if (Number.isSafeInteger(total) && total >= 0) {
+      if ((expectedTotal !== null && expectedTotal !== total) || rows.length > total) return { ok: false, rows: [], code: 'REMOTE_PAGE_INCONSISTENT' };
+      expectedTotal = total;
+    }
+    if (result.data.rows.length < pageSize || (expectedTotal !== null && rows.length >= expectedTotal)) {
+      complete = true;
+      break;
+    }
   }
+  if (!complete || (expectedTotal !== null && rows.length < expectedTotal)) return { ok: false, rows: [], code: 'REMOTE_PAGE_LIMIT_REACHED' };
   return { ok: true, rows };
 }
 

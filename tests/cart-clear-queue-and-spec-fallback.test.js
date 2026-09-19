@@ -64,6 +64,7 @@ async function run() {
 
   // 单规格商品允许缺省回退，且购物车记录的规格必须与真实 SKU 对齐
   page.data.products.push({ id: 'product-single', name: '单规格商品', skuOptions: [{ label: '默认规格', id: 'sku-single' }] });
+  page._remotePriceBySku = { 'sku-single': { amountCent: 5000, availability: 'available' } };
   await page.applyAddProduct('product-single', '一个过期文案');
   assert.equal(addItemCalls.length, 1, '单规格商品仍应可以加购');
   assert.equal(addItemCalls[0].skuId, 'sku-single', '单规格回退必须使用唯一真实 SKU');

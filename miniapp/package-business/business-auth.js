@@ -1,6 +1,8 @@
+const { isApprovedBusiness } = require('../modules/identity-state');
+
 function approvedBusinessUser(result) {
   const user = result && result.ok && result.data && result.data.user;
-  if (!user || user.userType !== 'b' || user.businessStatus !== 'approved' || !user.organizationId || user.status === 'disabled') return null;
+  if (!isApprovedBusiness(user)) return null;
   return user;
 }
 

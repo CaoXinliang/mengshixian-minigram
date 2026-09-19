@@ -1,0 +1,24 @@
+<view wx:if="{{visible}}" class="purpose-page" style="--purpose-safe-top: {{safeTop}};" catchtouchmove="preventClose">
+  <view class="purpose-head">
+    <button class="purpose-back" aria-label="返回浏览商城" hover-class="control-pressed" bindtap="skip">‹</button>
+    <text class="purpose-brand">梦食鲜</text>
+    <view class="purpose-head-space" aria-hidden="true"></view>
+  </view>
+  <scroll-view class="purpose-scroll" scroll-y="true" enhanced="true" show-scrollbar="false">
+    <view class="purpose-content">
+      <text class="purpose-title">您买菜的用途是？</text>
+      <text class="purpose-subtitle">请选择采购用途，我们会为您呈现合适的服务入口</text>
+      <view class="purpose-options">
+        <button wx:for="{{options}}" wx:key="value" class="purpose-option purpose-option-{{item.value}}" style="width:686rpx;" data-value="{{item.value}}" hover-class="is-pressed" bindtap="select">
+          <view class="purpose-option-copy">
+          <view class="purpose-option-title"><text>{{item.title}}</text><text class="purpose-option-arrow" aria-hidden="true">›</text></view>
+            <text class="purpose-option-desc">{{item.copy}}</text>
+          </view>
+          <view class="purpose-option-mark" aria-hidden="true">{{item.mark}}</view>
+        </button>
+      </view>
+      <button class="purpose-skip" hover-class="control-pressed" bindtap="skip">先浏览，稍后再选</button>
+      <text class="purpose-note">采购用途只影响入口推荐，不会直接获得价格或企业采购权限</text>
+    </view>
+  </scroll-view>
+</view>

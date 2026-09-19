@@ -6,11 +6,12 @@ const originalLoad = Module._load;
 const pageDefinition = {};
 const storage = {};
 let getMeResult = { ok: true, data: { user: { userType: 'b', businessStatus: 'approved', organizationId: 'org-1', status: 'active' } } };
+let loginPayload = null;
 
 const servicesStub = {
   config: { provider: 'cloudbase', cloudFunctionName: 'api', cloudEnvId: 'test-env', priceFieldsNeverFallback: true },
   auth: {
-    login: async () => ({ ok: true, data: { user: { userType: 'b', businessStatus: 'approved', organizationId: 'org-1', status: 'active' } } }),
+    login: async (payload) => { loginPayload = payload; return { ok: true, data: { user: { userType: 'b', businessStatus: 'approved', organizationId: 'org-1', status: 'active' } } }; },
     getMe: async () => getMeResult,
     applyBusiness: async () => ({ ok: true, data: {} })
   },
@@ -56,7 +57,8 @@ async function run() {
     }
   });
   page.data.agreed = true;
-  await page.completeLogin({ detail: { errMsg: 'getPhoneNumber:ok' } });
+  await page.completeLogin({ detail: { errMsg: 'getPhoneNumber:ok', code: 'phone-code-test' } });
+  assert.deepEqual(loginPayload, { phoneCode: 'phone-code-test' }, 'the one-time phone credential must be sent to the service instead of stored as a plaintext phone');
   assert.equal(page.data.loggedIn, true);
   assert.equal(page.data.userType, 'b');
   assert.equal(page.data.businessStatus, 'approved');
@@ -102,7 +104,14 @@ async function run() {
   assert.equal(page.data.loggedIn, false, '退出后的旧身份响应不得把用户反向登录');
   assert.equal(page.data.isApprovedBusiness, false);
 
+  page.data.products = [{
+    id: 'expiry-product', name: '会话过期测试商品', unit: '盒', specLabel: '盒',
+    skuOptions: [{ id: 'expiry-sku', label: '盒', packageUnit: '盒' }]
+  }];
   page.applyRemoteIdentity({ userType: 'b', businessStatus: 'approved', organizationId: 'org-1', status: 'active' });
+  page._remotePriceBySku = { 'expiry-sku': { skuId: 'expiry-sku', amountCent: 1000, availability: 'available' } };
+  page.applyRemotePriceLabels();
+  assert.equal(page.data.products[0].presentation.action, 'quantity');
   storage['mengshixian_login_agreed'] = '1';
   getMeResult = { ok: false, error: { code: 'AUTH_ACCOUNT_DISABLED', message: '用户已停用' } };
   await page.refreshRemoteIdentity();
@@ -110,6 +119,8 @@ async function run() {
   assert.equal(page.data.isApprovedBusiness, false);
   assert.equal(page.data.organizationId, '');
   assert.equal(storage['mengshixian_login_agreed'], undefined);
+  assert.equal(page.data.products[0].presentation.action, 'login', '过期清理后的商品操作必须回到登录入口');
+  assert.equal(page.data.products[0].presentation.statusCode, 'login_required');
 
   page.performLogout({ silent: true });
   assert.equal(storage['mengshixian_login_agreed'], undefined);

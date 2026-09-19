@@ -50,7 +50,12 @@ async function run() {
   const checkout = page('package-trade/pages/checkout/index.js', { checkout: { quote: async () => ({ ok: false }) } });
   await checkout.loadQuote();
   assert.equal(checkout.data.quoteErrorText, '当前暂无可配送仓库');
-  Object.assign(checkout.data, { warehouse: { id: 'warehouse' }, address: { id: 'address' }, cartItems: [{ skuId: 'sku', qty: 1 }] });
+  Object.assign(checkout.data, {
+    warehouse: { id: 'warehouse' },
+    address: { id: 'address', regionCode: '360700' },
+    deliveryAreas: [{ id: 'area', regionCodes: ['360700'], warehouseIds: ['warehouse'] }],
+    cartItems: [{ skuId: 'sku', qty: 1 }]
+  });
   await checkout.loadQuote();
   assert.equal(checkout.data.quoteState, 'error');
   assert.equal(checkout.data.quoteErrorText, '订单金额计算失败，请重试');
@@ -61,7 +66,7 @@ async function run() {
   let refundStatus = 'awaiting_manual_refund';
   const aftersale = page('package-trade/pages/aftersale-detail/index.js', { aftersales: { get: async () => ok({ refund: { _id: 'r1', status: refundStatus } }) } });
   await aftersale.onLoad({ id: 'r1' });
-  assert.equal(aftersale.data.detail.timeline[2].note, '正在处理退款，请稍候');
+  assert.equal(aftersale.data.detail.timeline[2].note, '等待运营提交真实退款渠道');
   assert.equal(aftersale.data.detail.statusText, '等待退款处理');
   refundStatus = 'future_internal_code';
   await aftersale.loadDetail();

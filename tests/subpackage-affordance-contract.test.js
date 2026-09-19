@@ -25,7 +25,7 @@ assert.match(aftersaleWxml, /class="evidence-action evidence-action-retry"[^>]*b
   '售后凭证重试必须使用真正的按钮');
 assert.match(aftersaleWxml, /class="evidence-action evidence-action-remove"[^>]*bindtap="removeEvidence"/,
   '售后凭证移除必须使用真正的按钮');
-assert.match(aftersaleWxss, /\.evidence-status,[\s\S]*?\.evidence-action \{[\s\S]*?min-height: 44px/,
+assert.match(aftersaleWxss, /\.evidence-status\s*,\s*\.evidence-action\s*\{[^}]*\bmin-height\s*:\s*44px(?:;|})/,
   '凭证操作按钮必须保留 44px 的点击高度');
 
 console.log('subpackage affordance contract test: passed');

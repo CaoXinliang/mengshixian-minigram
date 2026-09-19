@@ -9,6 +9,9 @@ const root = path.resolve(__dirname, '../miniapp');
 const read = relative => fs.readFileSync(path.join(root, relative), 'utf8');
 const mainCss = read('pages/index/index.wxss');
 const mainWxml = read('pages/index/index.wxml');
+const memberCss = read('components/member-home-panel/index.wxss');
+const memberWxml = read('components/member-home-panel/index.wxml');
+const mealCss = read('components/meal-experience-panel/index.wxss');
 
 function rule(source, selector) {
   const result = {};
@@ -37,42 +40,48 @@ function page(relative, services, wx = {}) {
   });
 }
 
-test('narrow-screen title corrections only change typography inside the 360px media rule', () => {
+test('narrow-screen title corrections keep the product detail heading on the fixed readable baseline', () => {
   const narrowCss = Array.from(mainCss.matchAll(/@media screen and \(max-width: 360px\)\{([\s\S]*?)\n\}/g), match => match[1]).join('\n');
   const selectors = [
-    '.meal-intro>view text:first-child', '.empty-state text:nth-child(2)', '.guest-card view text:first-child',
-    '.profile-top>view:nth-child(2) text:first-child', '.profile-stats text:first-child', '.detail-head>text',
-    '.order-empty text:first-child', '.delivery-status>text:nth-child(2)', '.business-title', '.checkout-total text:last-child'
+    '.empty-state text:nth-child(2)', '.order-empty text:first-child',
+    '.delivery-status>text:nth-child(2)', '.business-title'
   ];
   for (const selector of selectors) {
     assert.deepEqual(rule(narrowCss, selector), { 'font-size': '14px' }, `${selector}: do not change control dimensions to fix small type`);
   }
+  assert.equal(rule(mainCss, '.detail-head>text')['font-size'], '22px');
+  assert.equal(rule(narrowCss, '.detail-head>text')['font-size'], undefined, 'narrow screens must not shrink the detail heading below the shared baseline');
+  assert.equal(rule(mealCss, '.meal-detail-copy>text:first-child')['font-size'], '24px');
+  assert.equal(rule(mealCss, '.detail-head>text')['font-size'], '22px');
+  assert.equal(mealCss.includes('@media screen and (max-width: 360px)'), false, 'the isolated meal component must keep its readable title baselines on narrow screens');
 });
 
-test('quantity dialog labels cannot shrink to vertical text and stepper faces retain their original dimensions', () => {
-  for (const selector of ['.quantity-picker-spec-row>text', '.quantity-picker-quantity-copy']) {
-    const style = rule(mainCss, selector);
-    assert.equal(style['min-width'], '44px');
-    assert.equal(style.flex, '0 0 auto');
-    assert.equal(style['white-space'], 'nowrap');
-  }
+test('quantity dialog labels remain readable and stepper faces use the shared compact pixel baseline', () => {
+  const specLabel = rule(mainCss, '.quantity-picker-spec-row>text');
+  assert.equal(specLabel['min-height'], '24px');
+  assert.equal(specLabel.flex, 'none');
+  assert.equal(specLabel['white-space'], 'nowrap');
+  const quantityCopy = rule(mainCss, '.quantity-picker-quantity-copy');
+  assert.equal(quantityCopy['min-width'], '44px');
+  assert.equal(quantityCopy.flex, '0 0 auto');
+  assert.equal(quantityCopy['white-space'], 'nowrap');
   assert.equal(rule(mainCss, '.quantity-picker-stepper').flex, 'none');
   const stepperCss = read('components/quantity-stepper/index.wxss');
-  assert.equal(rule(stepperCss, '.step-face').width, '50rpx');
-  assert.equal(rule(stepperCss, '.step-face').height, '50rpx');
-  assert.equal(rule(stepperCss, '.quantity-stepper.is-compact .step-face').width, '46rpx');
-  assert.equal(rule(stepperCss, '.quantity-stepper.is-compact .step-face').height, '46rpx');
+  assert.equal(rule(stepperCss, '.step-face').width, '30px');
+  assert.equal(rule(stepperCss, '.step-face').height, '30px');
+  assert.equal(rule(stepperCss, '.quantity-stepper.is-compact .step-face').width, '28px');
+  assert.equal(rule(stepperCss, '.quantity-stepper.is-compact .step-face').height, '28px');
 });
 
 test('mine receipt badge stays within its button with a compact 99+ label and 24px icon', () => {
-  const badge = rule(mainCss, '.order-grid .order-count');
+  const badge = rule(memberCss, '.order-count');
   assert.equal(badge.top, '0');
   assert.equal(badge.height, '16px');
   assert.equal(badge['white-space'], 'nowrap');
-  assert.equal(rule(mainCss, '.order-grid image').width, '24px');
-  assert.equal(rule(mainCss, '.order-grid image').height, '24px');
-  assert(mainWxml.includes("{{pendingReceiptCount > 99 ? '99+' : pendingReceiptCount}}"));
-  assert(mainWxml.includes('aria-label="{{pendingReceiptCount}}笔订单待收货"'));
+  assert.equal(rule(memberCss, '.member-order-grid image').width, '24px');
+  assert.equal(rule(memberCss, '.member-order-grid image').height, '24px');
+  assert(memberWxml.includes("{{pendingReceiptCount > 99 ? '99+' : pendingReceiptCount}}"));
+  assert(memberWxml.includes('aria-label="{{pendingReceiptCount}}笔订单待收货"'));
 });
 
 test('quantity dialog maximum height uses the actual page safe top on phone and desktop', () => {
@@ -132,6 +141,10 @@ test('guest bundle page has no quote retry and quantity changes do not call a ga
   assert.equal(state.calls.length, 0);
   assert.equal(state.addressCalls, 0);
   assert.equal(state.deliveryCalls, 0);
+  instance.changeQty({ currentTarget: { dataset: {} }, detail: { source: 'input', valid: true, quantity: 5 } });
+  await Promise.resolve();
+  assert.equal(instance.data.quantity, 5, '套餐数量必须支持合法数字直输');
+  assert.equal(state.calls.length, 0, '游客直输数量也不能绕过报价准入');
   const wxml = read('package-marketing/pages/bundle-detail/index.wxml');
   assert(wxml.includes('<button wx:if="{{canRetryQuote}}" disabled="{{quoting}}" bindtap="retryQuote">重试</button>'));
   assert(wxml.includes('<button wx:if="{{quoteAction}}" bindtap="openQuoteAction">{{quoteActionText}}</button>'));

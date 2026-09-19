@@ -54,7 +54,8 @@ async function run() {
   });
 
   let releaseWrite;
-  page._cartWriteQueue = new Promise((resolve) => { releaseWrite = resolve; });
+  const writeGate = new Promise((resolve) => { releaseWrite = resolve; });
+  page.enqueueCartWrite(() => writeGate);
   const refresh = page.loadRemoteCart();
   await Promise.resolve();
   assert.equal(cartReadCount, 0, 'cart refresh must wait for a pending cart write');

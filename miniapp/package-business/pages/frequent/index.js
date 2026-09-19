@@ -38,10 +38,18 @@ Page({
   retry() { return this.load(); },
   toggle(event) { const id = event.currentTarget.dataset.id; this.setData({ rows: this.data.rows.map(row => row.id === id && !row.unavailable ? { ...row, selected: !row.selected } : row) }); },
   changeQuantity(event) {
-    const id = event.currentTarget.dataset.id; const direction = Number(event.currentTarget.dataset.direction || 0);
+    const id = event.currentTarget.dataset.id;
+    const detail = event.detail || {};
+    if (detail.valid === false) {
+      if (typeof wx.showToast === 'function') wx.showToast({ title: detail.message || '请输入有效数量', icon: 'none' });
+      return;
+    }
+    const direction = Number(detail.delta === undefined ? event.currentTarget.dataset.direction || 0 : detail.delta);
     this.setData({ rows: this.data.rows.map(row => {
       if (row.id !== id || row.unavailable) return row;
-      const minimum = firstQuantity(row); const next = Math.max(minimum, row.quantity + (direction < 0 ? -row.orderMultiple : row.orderMultiple));
+      const minimum = firstQuantity(row);
+      const directQuantity = detail.source === 'input' && detail.valid === true ? Number(detail.quantity) : NaN;
+      const next = Number.isSafeInteger(directQuantity) ? directQuantity : Math.max(minimum, row.quantity + (direction < 0 ? -row.orderMultiple : row.orderMultiple));
       return { ...row, quantity: Math.min(999, next), selected: true };
     }) });
   },

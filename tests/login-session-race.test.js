@@ -7,7 +7,7 @@ let definition;
 let harness;
 const stages = ['login', 'prices', 'address', 'cart', 'orders'];
 const oldUser = { _id: 'old-user', userType: 'b', businessStatus: 'approved', organizationId: 'old-org', status: 'active' };
-const newUser = { _id: 'new-user', userType: 'c', businessStatus: '', organizationId: '', status: 'active' };
+const newUser = { _id: 'new-user', userType: 'b', businessStatus: 'approved', organizationId: 'new-org', status: 'active' };
 const responseRows = (rows) => ({ ok: true, data: { rows } });
 async function response(stage, value) {
   harness.calls.push(stage);
@@ -60,6 +60,31 @@ function makePage(stage) {
   return { page, state };
 }
 
+test('quantity typed before login resumes as an absolute cart quantity, not an addition', async () => {
+  const { page } = makePage('unused');
+  const absoluteWrites = [];
+  const additiveWrites = [];
+  page.enqueueCartWrite = operation => operation();
+  page.applyChangeQuantity = event => { absoluteWrites.push(event.currentTarget.dataset); };
+  page.addProduct = (...args) => { additiveWrites.push(args); };
+  page.changeQuantity({ currentTarget: { dataset: { id: 'product-1', spec: '一盒' } }, detail: { valid: true, quantity: 6 } });
+  page.data.agreed = true;
+  await page.completeLogin();
+  assert.equal(page.data.cartItems[0].qty, 1, 'the login fixture must load an already existing cart row');
+  assert.equal(additiveWrites.length, 0, 'direct input must not add six more to an existing cart row');
+  assert.deepEqual(absoluteWrites, [{ id: 'product-1', spec: '一盒', quantity: 6 }]);
+});
+
+test('plus before login retains the original additive continuation', async () => {
+  const { page } = makePage('unused');
+  const additions = [];
+  page.addProduct = (...args) => { additions.push(args); };
+  page.changeQuantity({ currentTarget: { dataset: { id: 'product-1', spec: '一盒' } }, detail: { delta: 1 } });
+  page.data.agreed = true;
+  await page.completeLogin();
+  assert.deepEqual(additions, [['product-1', '一盒', undefined, undefined]], 'the existing default add amount remains unchanged');
+});
+
 for (const stage of stages) {
   test(`logout while awaiting ${stage} cannot restore login or stale session data`, async () => {
     const { page, state } = makePage(stage);
@@ -69,7 +94,7 @@ for (const stage of stages) {
     state.release();
     await pending;
     assert.equal(page.data.loggedIn, false, `${stage}: late completion must not log the user back in`);
-    assert.equal(page._remoteUser, null);
+    assert.equal(page.data.userType, '');
     assert.equal(Boolean(page.data.address.id), false, 'late address data must stay cleared after logout');
     assert.deepEqual(page.data.cartItems, [], 'late cart data must stay cleared after logout');
     assert.deepEqual(page.data.orderRows, [], 'late order data must stay cleared after logout');
@@ -85,11 +110,10 @@ test('an older login completion cannot overwrite or consume a newer login sessio
   await state.reached;
   state.user = newUser;
   await page.completeLogin();
-  assert.equal(page._remoteUser._id, newUser._id);
+  assert.equal(page.data.organizationId, 'new-org');
   state.release();
   await previous;
-  assert.equal(page._remoteUser._id, newUser._id);
-  assert.equal(page.data.userType, 'c');
+  assert.equal(page.data.organizationId, 'new-org', 'the older login must not replace the newer server identity');
   assert.equal(state.toasts.filter((item) => item.title === '登录成功').length, 1);
 });
 
@@ -102,7 +126,7 @@ for (const stage of ['address', 'cart', 'orders']) {
     await page.completeLogin();
     state.release();
     await previous;
-    assert.equal(page._remoteUser._id, newUser._id);
+    assert.equal(page.data.organizationId, 'new-org', 'the page must still expose the newer server identity');
     assert.equal(page.data.address.id, `address-${newUser._id}`);
     assert.equal(page.data.cartItems[0].remoteCartItemId, `cart-${newUser._id}`);
     assert.equal(page.data.orderRows[0].id, `order-${newUser._id}`);
@@ -112,7 +136,7 @@ for (const stage of ['address', 'cart', 'orders']) {
 test('logout while waiting for a cart write stops the queued read', async () => {
   const { page, state } = makePage('unused');
   page.applyRemoteIdentity(oldUser);
-  page._cartWriteQueue = state.gate;
+  page.enqueueCartWrite(() => state.gate);
   const pending = page.loadRemoteCart();
   page.performLogout({ silent: true });
   state.release();
@@ -146,7 +170,8 @@ test('a delayed login-sheet callback does not navigate after logout', async () =
   state.delayDismissal = true;
   let navigations = 0;
   page.openUtility = () => { navigations += 1; };
-  page._loginContinuation = { type: 'orders' };
+  page.requireLogin({ type: 'orders' });
+  page.data.agreed = true;
   await page.completeLogin();
   assert.equal(page.data.loggedIn, true);
   page.performLogout({ silent: true });

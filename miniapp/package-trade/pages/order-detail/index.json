@@ -1,1 +1,7 @@
-{"navigationStyle":"custom"}
+{
+  "navigationStyle": "custom",
+  "usingComponents": {
+    "responsive-topbar": "/components/responsive-topbar/index",
+    "payment-recovery-panel": "/components/payment-recovery-panel/index"
+  }
+}

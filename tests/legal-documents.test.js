@@ -9,6 +9,8 @@ const { DOCUMENTS } = require(path.join(miniappRoot, 'config', 'legal-documents'
 const appConfig = JSON.parse(fs.readFileSync(path.join(miniappRoot, 'app.json'), 'utf8'));
 const indexWxml = fs.readFileSync(path.join(miniappRoot, 'pages', 'index', 'index.wxml'), 'utf8');
 const indexSource = fs.readFileSync(path.join(miniappRoot, 'pages', 'index', 'index.js'), 'utf8');
+const memberHomeWxml = fs.readFileSync(path.join(miniappRoot, 'components', 'member-home-panel', 'index.wxml'), 'utf8');
+const memberPresentationSource = fs.readFileSync(path.join(miniappRoot, 'modules', 'member-presentation.js'), 'utf8');
 const legalWxml = fs.readFileSync(path.join(miniappRoot, 'package-member', 'pages', 'legal', 'index.wxml'), 'utf8');
 const legalSource = fs.readFileSync(path.join(miniappRoot, 'package-member', 'pages', 'legal', 'index.js'), 'utf8');
 const legalPageConfig = JSON.parse(fs.readFileSync(path.join(miniappRoot, 'package-member', 'pages', 'legal', 'index.json'), 'utf8'));
@@ -34,9 +36,12 @@ assert.ok(!termsText.includes('测试页面'), '交付协议不应向用户暴�
 
 assert.match(indexWxml, /data-document="terms"[^>]*>《用户服务协议》/u, '登录弹窗必须可单独打开用户服务协议');
 assert.match(indexWxml, /data-document="privacy"[^>]*>《隐私政策》/u, '登录弹窗必须可单独打开隐私政策');
-assert.match(indexWxml, /class="mine-legal-links"/u, '我的页面必须提供登录外的协议入口');
+assert.ok(memberPresentationSource.includes("{ type: 'policy', label: '协议与隐私'")
+  && memberHomeWxml.includes('data-type="{{item.type}}"')
+  && memberHomeWxml.includes('aria-label="{{item.label}}"'), '我的页面必须通过服务模型提供登录外的协议与隐私入口');
 assert.match(indexSource, /package-member\/pages\/legal\/index\?type=\$\{type\}/u, '首页协议入口必须跳转到独立协议页');
 assert.match(legalWxml, /版本 \{\{document\.version\}\}/u, '协议页必须展示版本号');
+assert.match(legalWxml, /不会被记录为正式版本的接受或撤回/u, '未接入服务端法务记录时必须明确说明，不能用本地浏览冒充正式接受');
 assert.match(legalWxml, /openWechatPrivacyContract/u, '隐私页必须提供微信平台隐私指引入口');
 assert.match(legalSource, /wx\.openPrivacyContract/u, '协议页必须安全调用微信平台隐私指引 API');
 

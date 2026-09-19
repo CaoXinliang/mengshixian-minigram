@@ -1,0 +1,25 @@
+.page{min-height:100vh;background:#f3f7fc;color:#172b43;font-size:16px}
+button{margin:0;padding:0;border:0;background:transparent;line-height:1.4}
+button::after{display:none}
+.state{display:flex;align-items:center;justify-content:center;margin:12px 16px;padding:28px 18px;border-radius:16px;background:#fff;color:#667085;flex-direction:column;gap:10px;text-align:center;line-height:1.6}
+.state.error{background:#fff7f5}
+.state-title{color:#172b43;font-size:19px;font-weight:700}
+.state button{display:flex;align-items:center;justify-content:center;min-width:96px;min-height:44px;padding:0 18px;border-radius:999px;color:#fff;background:#176bd5;font-size:16px}
+.identity-card{display:flex;align-items:center;min-height:112px;margin:12px 16px;padding:20px;box-sizing:border-box;border-radius:16px;color:#fff;background:#176bd5}
+.identity-card.is-disabled{background:#718196}
+.avatar{display:flex;align-items:center;justify-content:center;width:52px;height:52px;margin-right:14px;border-radius:50%;color:#176bd5;background:#fff;font-size:22px;font-weight:700}
+.identity-card>view:last-child{display:flex;min-width:0;flex:1;flex-direction:column}
+.identity-card>view:last-child text:first-child{font-size:21px;font-weight:700}
+.identity-card>view:last-child text:last-child{margin-top:5px;color:rgba(255,255,255,.84);font-size:15px}
+.card{margin:12px 16px;padding:16px;border-radius:16px;background:#fff}
+.card-title{font-size:19px;font-weight:700}
+.info-row{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;min-height:48px;padding:12px 0;box-sizing:border-box;border-bottom:1px solid #edf1f5}
+.info-row:last-child{border-bottom:0}
+.info-row text:last-child{color:#667085;text-align:right;overflow-wrap:anywhere}
+.action-list{padding:0 16px}
+.action-list button{display:flex;align-items:center;justify-content:space-between;width:100%;min-height:58px;border-bottom:1px solid #edf1f5;text-align:left}
+.action-list button:last-child{border-bottom:0}
+.action-list button text:first-child{font-size:17px;font-weight:600}
+.action-list button text:last-child{color:#667085;font-size:14px;text-align:right}
+.logout{display:flex;align-items:center;justify-content:center;width:calc(100% - 32px);min-height:48px;margin:12px 16px 24px;border-radius:999px;color:#c93f45;background:#fff;font-size:17px;font-weight:600}
+@media screen and (max-width:374px){.identity-card{padding:16px}.action-list button text:last-child{max-width:58%}}

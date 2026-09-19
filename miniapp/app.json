@@ -43,6 +43,8 @@
       "root": "package-member",
       "name": "member",
       "pages": [
+        "pages/account/index",
+        "pages/membership/index",
         "pages/points/index",
         "pages/favorites/index",
         "pages/reviews/index",
@@ -60,11 +62,9 @@
   },
   "window": {
     "navigationStyle": "custom",
+    "navigationBarTextStyle": "black",
     "backgroundTextStyle": "light",
     "backgroundColor": "#F3F7FC"
-  },
-  "usingComponents": {
-    "responsive-topbar": "/components/responsive-topbar/index"
   },
   "lazyCodeLoading": "requiredComponents",
   "style": "v2",

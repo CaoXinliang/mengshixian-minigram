@@ -1,0 +1,56 @@
+<view class="cart-panel">
+  <view class="sub-head cart-topbar">
+    <view class="cart-location"><text class="cart-location-label">{{warehouseName}}</text></view>
+    <text class="cart-page-title">购物车</text>
+    <button wx:if="{{cartCount}}" class="text-btn" aria-label="清空购物车" hover-class="control-pressed" bindtap="clear"><text class="text-btn-face">清空</text></button>
+    <view wx:else class="cart-head-spacer"></view>
+  </view>
+  <content-state wx:if="{{cartStatus == 'loading' && !cartItems.length}}" tone="loading" title="正在读取购物车" message="请稍候" />
+  <content-state wx:elif="{{cartStatus == 'error' && !cartItems.length}}" tone="error" title="购物车读取失败" message="{{cartErrorText}}" action-label="重新加载" bind:action="retry" />
+  <view wx:elif="{{cartCount}}">
+    <view wx:if="{{cartStatus == 'error'}}" class="cart-inline-error"><text>{{cartErrorText}}</text><button bindtap="retry">重新加载</button></view>
+    <button class="cart-address" aria-label="{{hasAddress ? '管理收货地址' : '选择收货地址'}}" bindtap="openAddress">
+      <view class="cart-address-mark">址</view>
+      <view class="cart-address-copy">
+        <text class="cart-address-title">{{hasAddress ? (addressName + ' ' + addressMasked) : '选择收货信息'}}</text>
+        <text class="cart-address-detail">{{hasAddress ? addressDetail : '填写地址后确认配送范围'}}</text>
+      </view>
+      <text class="cart-address-arrow">›</text>
+    </button>
+    <view class="cart-list-heading"><text class="cart-list-title">商品清单</text><text class="cart-list-count">{{cartCount}} 件</text></view>
+    <view class="cart-list">
+      <view class="cart-select-all"><checkbox aria-label="{{allCartSelected ? '取消全选' : '全选可结算商品'}}" value="all" checked="{{allCartSelected}}" disabled="{{!selectableCartCount}}" bindchange="toggleAll" /><text>全选可结算商品</text><text>{{selectableCartCount}} 项</text></view>
+      <view class="cart-row {{item.cartAvailability != 'available' ? 'is-unavailable' : ''}}" wx:for="{{cartItems}}" wx:key="cartKey">
+        <checkbox class="cart-check" aria-label="{{item.selected !== false ? '取消选择' : '选择'}} {{item.name}}" value="{{item.cartKey}}" checked="{{item.selected !== false}}" disabled="{{item.cartAvailability != 'available'}}" bindchange="toggleRow" data-sku-id="{{item.skuId}}" data-id="{{item.id}}" data-spec="{{item.selectedSpec}}" />
+        <image class="cart-item-image" src="{{item.img || '/assets/products/placeholder.svg'}}" mode="aspectFit" />
+        <view class="cart-item-copy">
+          <text class="cart-item-name">{{item.name}}</text>
+          <text class="cart-spec">{{item.selectedSpec}}</text>
+          <text wx:if="{{item.purchaseRuleText}}" class="cart-purchase-rule">{{item.purchaseRuleText}}</text>
+          <text wx:if="{{item.cartChangeText}}" class="cart-change-text">{{item.cartChangeText}}</text>
+          <text wx:if="{{item.cartUnavailableText}}" class="cart-unavailable-reason">{{item.cartUnavailableText}}</text>
+          <text wx:else class="cart-unit-price price-pending {{!item.priceText ? 'is-locked' : (item.priceTemporary ? 'is-temporary' : '')}}">{{item.priceText ? (item.priceText + (item.priceUnitLabel ? ' / ' + item.priceUnitLabel : '')) : priceFallback}}</text>
+        </view>
+        <view wx:if="{{item.cartAvailability == 'available'}}" class="stepper">
+          <quantity-stepper quantity="{{item.qty}}" min="{{item.minimumQuantity || 1}}" max="{{item.maximumQuantity || 999}}" step="{{item.orderMultiple || 1}}" allow-zero="{{true}}" compact bind:change="quantityChange" data-id="{{item.id}}" data-spec="{{item.selectedSpec}}" />
+        </view>
+        <button wx:else class="cart-remove-invalid" bindtap="remove" data-id="{{item.id}}" data-spec="{{item.selectedSpec}}">移除</button>
+      </view>
+    </view>
+    <view class="delivery-method"><view class="delivery-method-lead"><image class="delivery-method-icon" src="/assets/icons/truck.svg" mode="aspectFit" /><text class="delivery-method-title">配送方式</text></view><text class="delivery-method-note">{{hasAddress ? warehouseEta : '以结算页为准'}}</text></view>
+    <view class="cart-bottom-space"></view>
+    <view class="cart-total">
+      <view class="cart-total-copy">
+        <text class="cart-selected-summary">已选 <text class="cart-selected-count">{{selectedCartCount}}</text> 件</text>
+        <text class="cart-payable-summary">合计 <text class="{{selectedCartPriceReady ? 'cart-payable' : 'cart-payable-pending'}}">{{selectedCartTotal}}</text></text>
+      </view>
+      <button class="cart-checkout-action {{!selectedCartCount || !selectedCartPriceReady ? 'is-disabled' : ''}}" disabled="{{!selectedCartCount || !selectedCartPriceReady}}" aria-disabled="{{!selectedCartCount || !selectedCartPriceReady}}" hover-class="control-pressed" bindtap="checkout"><text class="cart-checkout-face">{{selectedCartCount && !selectedCartPriceReady ? '暂不可结算' : '去结算'}}</text></button>
+    </view>
+  </view>
+  <view wx:else class="empty-state">
+    <image src="/assets/icons/cart.svg" mode="aspectFit" />
+    <text class="empty-state-title">购物车还是空的</text>
+    <text class="empty-state-description">去首页挑一些喜欢的食材吧</text>
+    <button bindtap="browse">去逛逛</button>
+  </view>
+</view>

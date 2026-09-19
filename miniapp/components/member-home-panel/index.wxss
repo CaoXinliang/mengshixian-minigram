@@ -1,0 +1,42 @@
+:host{display:block;width:100%;box-sizing:border-box;color:var(--color-text-primary,#172b43)}
+button{margin:0;padding:0;border:0;background:transparent;line-height:1.4}
+button::after{display:none}
+.member-home{padding-bottom:16px}
+.member-head{display:flex;align-items:center;justify-content:space-between;min-height:56px;padding:0 16px;color:var(--color-text-primary,#172b43);font-size:20px;font-weight:700}
+.member-settings{display:flex;align-items:center;justify-content:center;width:44px;min-width:44px;max-width:44px;height:44px;margin:0;border-radius:50%;color:var(--color-brand-primary,#176bd5);background:var(--color-brand-soft,#eaf2fd);font-size:18px}
+.guest-actions{display:block;width:100%;padding:0 16px;box-sizing:border-box}
+.guest-action{display:flex;align-items:center;width:100%;min-width:100%;max-width:100%;min-height:72px;margin:12px 0 0;padding:14px 16px;box-sizing:border-box;border-radius:16px;background:#fff;text-align:left}
+.guest-action image{width:38px;height:38px;margin-right:12px;padding:8px;box-sizing:border-box;border-radius:50%;background:var(--color-brand-soft,#eaf2fd)}
+.guest-action view{display:flex;min-width:0;flex:1;flex-direction:column}
+.guest-action view text:first-child{font-size:16px;font-weight:700}
+.guest-action view text:last-child{margin-top:4px;color:var(--color-text-secondary,#667085);font-size:12px}
+.guest-action>text{margin-left:8px;color:var(--color-text-secondary,#667085);font-size:22px}
+.guest-service{margin-top:10px}
+.member-profile{display:flex;align-items:center;min-height:100px;margin:12px 16px 0;padding:16px;box-sizing:border-box;border-radius:16px;color:#fff;background:#176bd5}
+.member-profile.is-disabled{background:#718196}
+.member-avatar{display:flex;align-items:center;justify-content:center;width:46px;height:46px;margin-right:12px;border-radius:50%;color:var(--color-brand-primary,#176bd5);background:#fff;font-size:18px;font-weight:700}
+.member-profile-copy{display:flex;min-width:0;flex:1;flex-direction:column}
+.member-profile-copy text:first-child{font-size:16px;font-weight:700}
+.member-profile-copy text:last-child{margin-top:4px;color:rgba(255,255,255,.84);font-size:13px}
+.member-card{margin:12px 16px 0;padding:14px;border-radius:16px;background:#fff}
+.member-card-head{display:flex;align-items:center;justify-content:space-between}
+.member-card-head>text:first-child,.member-card-title{font-size:16px;font-weight:700}
+.member-card-head>button{display:flex;align-items:center;justify-content:center;width:auto;min-width:44px;max-width:120px;min-height:44px;padding:0 14px;border-radius:999px;color:#176bd5;background:#eaf2fd;font-size:13px;font-weight:600}
+.status-pill{padding:5px 10px;border-radius:999px;color:#b46b00;background:#fff2d8;font-size:12px}
+.member-order-grid,.member-service-grid,.business-action-grid{display:flex;margin-top:12px;flex-wrap:wrap}
+.member-order-grid button,.member-service-grid button,.business-action-grid button{position:relative;display:flex;align-items:center;justify-content:center;min-height:72px;padding:4px 2px;box-sizing:border-box;flex-direction:column}
+.member-order-grid button{width:25%}
+.member-order-grid image{width:24px;height:24px}
+.member-order-grid button>text:nth-child(2),.member-service-grid button>text,.business-action-grid button>text{margin-top:5px;color:#26384d;font-size:13px;text-align:center}
+.member-service-grid button>text{font-size:13px}
+.order-count{position:absolute;top:0;right:calc(50% - 24px);display:flex;align-items:center;justify-content:center;min-width:16px;height:16px;margin:0!important;padding:0 3px;border:1px solid #fff;border-radius:8px;color:#fff!important;background:#ef4b57;font-size:10px!important;white-space:nowrap}
+.member-service-grid button{width:33.333%}
+.service-icon{display:flex;align-items:center;justify-content:center;width:36px;height:36px;border-radius:50%;background:var(--color-brand-soft,#eaf2fd)}
+.service-icon image{width:20px;height:20px}
+.member-service-grid .is-locked{opacity:.52}
+.lock-label{margin-top:2px!important;color:#718196!important;font-size:11px!important}
+.business-action-grid button{width:25%;min-height:54px}
+.about-row{display:flex;align-items:center;justify-content:space-between;width:calc(100% - 32px);min-width:calc(100% - 32px);max-width:calc(100% - 32px);min-height:54px;margin:12px 16px 0;padding:0 16px;box-sizing:border-box;border-radius:16px;background:#fff;text-align:left}
+.about-row text:first-child{font-size:15px;font-weight:600}
+.about-row text:last-child{color:var(--color-text-secondary,#667085);font-size:22px}
+@media screen and (max-width:374px){.business-action-grid button{width:50%}.member-profile{padding:14px}}

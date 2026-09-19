@@ -8,10 +8,12 @@ const pageDefinition = {};
 const quoteCalls = [];
 const createCalls = [];
 let failPickupQuote = true;
+let pickupUnavailable = false;
 const okRows = rows => ({ ok: true, data: { rows } });
 
 const servicesStub = {
   config: { provider: 'cloudbase' },
+  health: { get: async () => ({ ok: true, data: { capabilities: { demoOrder: true } } }) },
   address: { list: async () => okRows([]) },
   delivery: { options: async () => ({ ok: true, data: {
     warehouses: [{ _id: 'warehouse-1', name: '南山仓' }, { _id: 'warehouse-2', name: '宝安仓' }],
@@ -28,8 +30,9 @@ const servicesStub = {
   checkout: {
     quote: async (payload) => {
       quoteCalls.push(payload);
+      if (pickupUnavailable) return { ok: false, error: { code: 'PICKUP_SITE_NOT_AVAILABLE', message: '自提点已停用' } };
       if (payload.fulfillmentType === 'pickup' && failPickupQuote) return { ok: false, error: { message: '自提报价网络错误' } };
-      return { ok: true, data: { quote: { fulfillmentType: payload.fulfillmentType, goodsAmountCent: 1800, freightAmountCent: payload.fulfillmentType === 'pickup' ? 0 : 500, payableAmountCent: payload.fulfillmentType === 'pickup' ? 1800 : 2300, items: [] } } };
+      return { ok: true, data: { quote: { fulfillmentType: payload.fulfillmentType, goodsAmountCent: 1800, freightAmountCent: payload.fulfillmentType === 'pickup' ? 0 : 500, discountAmountCent: 0, payableAmountCent: payload.fulfillmentType === 'pickup' ? 1800 : 2300, items: [{ skuId: 'sku-1', unitPriceCent: 1800, subtotalCent: 1800 }] } } };
     },
     createOrder: async (payload) => { createCalls.push(payload); return { ok: true, data: { order: { _id: 'pickup-order' } } }; }
   },
@@ -80,10 +83,19 @@ async function run() {
   await tick();
   assert.equal(quoteCalls.at(-1).pickupSiteId, 'pickup-2');
 
+  pickupUnavailable = true;
+  await page.loadQuote();
+  assert.equal(page.data.pickupSite, null, 'a server-rejected pickup site must be cleared before the user requotes');
+  assert.equal(page.data.quoteState, 'invalid');
+  assert.equal(page.data.quoteErrorText, '自提点已失效，请重新选择');
+  pickupUnavailable = false;
+  page.syncPickupSites();
+  await page.loadQuote();
+
   await page.submitOrder();
   assert.equal(createCalls.length, 1);
   assert.equal(createCalls[0].fulfillmentType, 'pickup');
-  assert.equal(createCalls[0].pickupSiteId, 'pickup-2');
+  assert.equal(createCalls[0].pickupSiteId, 'pickup-1', 'after an invalid point is removed, order creation must use the newly selected valid point');
   assert.equal(Object.hasOwn(createCalls[0], 'addressId'), false);
   assert.equal(Object.hasOwn(createCalls[0], 'deliverySlotId'), false);
 

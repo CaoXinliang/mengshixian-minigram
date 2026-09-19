@@ -1,0 +1,6 @@
+{
+  "component": true,
+  "usingComponents": {
+    "product-purchase-action": "/components/product-purchase-action/index"
+  }
+}

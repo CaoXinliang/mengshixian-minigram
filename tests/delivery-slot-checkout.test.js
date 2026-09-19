@@ -8,10 +8,12 @@ const quoteCalls = [];
 const createCalls = [];
 const toasts = [];
 const navigations = [];
+let slotUnavailable = false;
 const okRows = rows => ({ ok: true, data: { rows } });
 
 const servicesStub = {
   config: { provider: 'cloudbase' },
+  health: { get: async () => ({ ok: true, data: { capabilities: { demoOrder: true } } }) },
   address: { list: async () => okRows([{ _id: 'address-1', name: '张三', phoneMasked: '138****0000', detail: '南山区科技园', regionCode: '440305', isDefault: true }]) },
   delivery: { options: async () => ({ ok: true, data: {
     warehouses: [{ _id: 'warehouse-1', name: '南山仓' }, { _id: 'warehouse-2', name: '宝安仓' }],
@@ -27,7 +29,11 @@ const servicesStub = {
     removeItem: async () => ({ ok: true })
   },
   checkout: {
-    quote: async (payload) => { quoteCalls.push(payload); return { ok: true, data: { quote: { goodsAmountCent: 2000, freightAmountCent: 500, payableAmountCent: 2500, items: [] } } }; },
+    quote: async (payload) => {
+      quoteCalls.push(payload);
+      if (slotUnavailable) return { ok: false, error: { code: 'DELIVERY_SLOT_NOT_AVAILABLE', message: '配送时段已失效' } };
+      return { ok: true, data: { quote: { goodsAmountCent: 2000, freightAmountCent: 500, discountAmountCent: 0, payableAmountCent: 2500, items: [{ skuId: 'sku-1', unitPriceCent: 2000, subtotalCent: 2000 }] } } };
+    },
     createOrder: async (payload) => { createCalls.push(payload); return { ok: true, data: { order: { _id: 'order-1' } } }; }
   },
   auth: { getMe: async () => ({ ok: true, data: { user: { userType: 'c', businessStatus: '' } } }) }
@@ -68,6 +74,15 @@ async function run() {
   await new Promise((resolve) => setImmediate(resolve));
   assert.equal(page.data.deliverySlot.id, 'slot-pm');
   assert.equal(quoteCalls.at(-1).deliverySlotId, 'slot-pm', 'changing a slot must refresh the server quote');
+
+  slotUnavailable = true;
+  await page.loadQuote();
+  assert.equal(page.data.deliverySlot, null, 'a server-rejected slot must be cleared before the user requotes');
+  assert.equal(page.data.quoteState, 'invalid');
+  assert.equal(page.data.quoteErrorText, '配送时段已失效，请重新选择');
+  slotUnavailable = false;
+  page.syncDeliverySlots();
+  await page.loadQuote();
 
   page.selectWarehouse({ currentTarget: { dataset: { id: 'warehouse-2' } } });
   await new Promise((resolve) => setImmediate(resolve));

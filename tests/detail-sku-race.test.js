@@ -63,6 +63,21 @@ async function run() {
   assert.equal(page.data.selectedSpec, '6卷/件', 'late product detail response must preserve the user selected SKU');
   assert.equal(page.data.selectedProduct.selectedSkuId, 'sku-case');
   assert.equal(page.data.selectedProduct.priceText, '¥89.78');
+
+  // Ordinary product details deliberately ignore product video media. Recipe video
+  // belongs to the recipe detail flow and is covered separately.
+  const detailResponse = media => ({ ok: true, data: {
+    product: { name: baseProduct.name, categoryName: baseProduct.category },
+    skus: [{ _id: 'sku-roll', specName: '1卷', packageUnit: '1卷' }, { _id: 'sku-case', specName: '6卷/件', packageUnit: '6卷/件' }],
+    media
+  } });
+  const videoMedia = [{ mediaType: 'video', mediaAssetId: 'test-video' }];
+  let videoResolveCalls = 0;
+  page.resolveMediaFileMap = async () => { videoResolveCalls += 1; return { 'test-video': 'https://example.invalid/test-video.mp4' }; };
+  let pending = page.loadRemoteProductDetail(baseProduct);
+  releaseDetail(detailResponse(videoMedia));
+  await pending;
+  assert.equal(videoResolveCalls, 0, 'ordinary product detail must not resolve or render product video media');
   console.log('detail SKU race test: passed');
 }
 

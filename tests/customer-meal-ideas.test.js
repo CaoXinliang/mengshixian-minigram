@@ -5,8 +5,10 @@ const path = require('path');
 
 const pagePath = path.resolve(__dirname, '../miniapp/pages/index/index.js');
 const wxmlPath = path.resolve(__dirname, '../miniapp/pages/index/index.wxml');
+const mealPanelWxmlPath = path.resolve(__dirname, '../miniapp/components/meal-experience-panel/index.wxml');
 const mealIdeas = require(path.resolve(__dirname, '../miniapp/config/meal-ideas.js'));
 const contentServiceSource = fs.readFileSync(path.resolve(__dirname, '../miniapp/services/content.js'), 'utf8');
+const memberPresentationSource = fs.readFileSync(path.resolve(__dirname, '../miniapp/modules/member-presentation.js'), 'utf8');
 
 function loadPage(customerMealIdeasEnabled) {
   const originalLoad = Module._load;
@@ -66,6 +68,10 @@ try {
   customerPage.syncMealIdeas([]);
   assert.equal(customerPage.data.mealBatchCursor, cursorAfterShuffle, '商品数据同步后必须保留换批游标');
   assert.deepEqual(customerPage.data.mealIdeaRows.map(item => item.id), shuffledBatchIds, '商品数据同步后不得把当前批次重置为首批');
+  customerPage.openMealIdea({ currentTarget: { dataset: { id: shuffledBatchIds[0] } } });
+  customerPage.backToMealIdeas();
+  assert.equal(customerPage.data.mealBatchCursor, cursorAfterShuffle, '从详情返回必须保留原换批游标');
+  assert.deepEqual(customerPage.data.mealIdeaRows.map(item => item.id), shuffledBatchIds, '从详情返回必须回到原菜谱批次');
 
   customerPage.syncMealIdeas([
     { id: 'lobster', name: '波士顿龙虾', img: '/assets/products/lobster.png' },
@@ -102,6 +108,18 @@ try {
   customerPage.selectMealScene({ currentTarget: { dataset: { scene: '火锅暖锅' } } });
   assert(customerPage.data.mealIdeaRows.length > 0);
   assert(customerPage.data.mealIdeaRows.every(item => item.scene === '火锅暖锅'));
+  assert.equal(customerPage.data.mealCanShuffle, false, '不足下一批时不能提供有效换批操作');
+  const smallSceneIds = customerPage.data.mealIdeaRows.map(item => item.id);
+  customerPage.shuffleMealIdeas();
+  assert.deepEqual(customerPage.data.mealIdeaRows.map(item => item.id), smallSceneIds, '不足一批时保留当前菜品');
+  customerPage.onPageContentScroll({ detail: { scrollTop: 320 } });
+  customerPage.openMealIdea({ currentTarget: { dataset: { id: smallSceneIds[0] } } });
+  assert.equal(customerPage.data.page, 'mealIdea');
+  assert(customerPage.data.pageScrollTop <= 1, '进入做法应从顶部开始');
+  customerPage.onPageContentScroll({ detail: { scrollTop: 900 } });
+  customerPage.backToMealIdeas();
+  assert.equal(customerPage.data.pageScrollTop, 320, '返回菜品列表须恢复位置，做法滚动不能覆盖列表位置');
+  assert.equal(customerPage.data.mealScene, '火锅暖锅');
   if (customerPage._pageMotionTimer) clearTimeout(customerPage._pageMotionTimer);
 
   const businessPage = loadPage(true);
@@ -120,16 +138,53 @@ try {
   assert.equal(navigations.length, navigationCountBeforeRollback, '普通用户不得跳转到 B 端常购清单分包');
   assert.equal(rollbackPage.data.shortcutLabel, '常用清单');
 
-  const wxml = fs.readFileSync(wxmlPath, 'utf8');
-  assert(wxml.includes('{{shortcutLabel}}') && wxml.includes('{{shortcutToolLabel}}') && wxml.includes('{{shortcutIcon}}'), '导航栏与我的页入口必须随 B/C 身份切换');
-  assert(wxml.includes('cloudModeEnabled && isApprovedBusiness') && !wxml.includes("userType == 'b' && businessStatus == 'approved'"), '企业采购中心入口必须复用完整合法 B 身份状态');
-  assert((wxml.match(/cloudModeEnabled && canApplyBusiness/g) || []).length === 2 && !wxml.includes("userType != 'b' && businessStatus != 'pending'"), '企业申请入口和表单必须复用统一的可申请身份状态');
+  const pageWxml = fs.readFileSync(wxmlPath, 'utf8');
+  const wxml = `${pageWxml}\n${fs.readFileSync(mealPanelWxmlPath, 'utf8')}`;
+  const pageSource = fs.readFileSync(pagePath, 'utf8');
+  assert(wxml.includes('bindscroll="onPageContentScroll"'), '列表位置必须由实际scroll事件记录');
+  assert.match(wxml, /<button\b[^>]*class="meal-shuffle"[^>]*disabled="\{\{!canShuffle\}\}"/, '不能换批时按钮必须明确禁用而不是无反馈点击');
+  const coverPage = loadPage(true);
+  const coverIdea = { ...mealIdeas[0], cover: '/missing-meal-cover.png' };
+  coverPage._mealIdeas = [coverIdea];
+  coverPage.syncMealIdeas([]);
+  coverPage.data.selectedMealIdea = coverPage.data.mealIdeas[0];
+  const errorEvent = src => ({ detail: { id: coverIdea.id, src } });
+  coverPage.handleMealCoverError(errorEvent(coverIdea.cover));
+  assert.equal(coverPage.data.mealIdeaRows[0].cover, coverIdea.coverFallback, '列表坏图应恢复示意图');
+  assert.equal(coverPage.data.selectedMealIdea.cover, coverIdea.coverFallback, '详情坏图必须同步恢复');
+  const recoveredRows = coverPage.data.mealIdeaRows;
+  coverPage.handleMealCoverError(errorEvent(coverIdea.cover));
+  coverPage.handleMealCoverError(errorEvent(coverIdea.coverFallback));
+  assert.equal(coverPage.data.mealIdeaRows, recoveredRows, '迟到或示意图重复错误不得反复更新页面');
+  coverPage._mealIdeas = [{ ...coverIdea, cover: '/replacement-meal-cover.png' }];
+  coverPage.syncMealIdeas([]);
+  assert.equal(coverPage.data.selectedMealIdea.cover, '/replacement-meal-cover.png', '后台替换同ID封面后不得被旧失败记录封死');
+  coverPage.handleMealCoverError(errorEvent(coverIdea.cover));
+  assert.equal(coverPage.data.selectedMealIdea.cover, '/replacement-meal-cover.png', '旧源迟到错误不得覆盖新封面');
+  for (const prefix of ['item', 'selectedIdea']) {
+    const expectedAttributes = [
+      `src="{{${prefix}.cover}}"`,
+      'binderror="handleMediaError"',
+      `data-id="{{${prefix}.id}}"`,
+      `data-src="{{${prefix}.cover}}"`
+    ];
+    const coverTag = wxml.split('<image').find(tag => expectedAttributes.every(attribute => tag.includes(attribute)));
+    assert(coverTag, '列表/详情图片必须接入实际error事件并标记来源');
+  }
+  assert(pageSource.includes('shortcutLabel') && pageSource.includes('shortcutToolLabel') && pageSource.includes('shortcutIcon')
+    && pageSource.includes('memberHomeModel: deriveMemberHomeModel(user)')
+    && pageWxml.includes('model="{{memberHomeModel}}"'), '导航栏与我的页模型必须随 B/C 身份切换');
+  assert(pageSource.includes('if (!this.data.isApprovedBusiness)')
+    && memberPresentationSource.includes('canOpenProcurement: approved')
+    && !wxml.includes("userType == 'b' && businessStatus == 'approved'"), '企业采购中心入口必须复用完整合法 B 身份状态');
+  assert(wxml.includes('cloudModeEnabled && canApplyBusiness')
+    && memberPresentationSource.includes('canApplyBusiness: identity.canApplyBusiness')
+    && !wxml.includes("userType != 'b' && businessStatus != 'pending'"), '企业申请入口和表单必须复用统一的可申请身份状态');
   assert(wxml.includes("page == 'mealIdeas'") && wxml.includes("page == 'mealIdea'"), '吃什么列表与搭配详情必须都有真实页面状态');
   assert(wxml.includes('class="meal-scene-filter"') && wxml.includes('按用餐场景筛选') && !wxml.includes('class="meal-scene-scroll"'), '场景筛选必须完整展示，不能用右侧截断的横向滚动条');
-  assert(wxml.includes('<button catchtap="openMealIdea" data-id="{{item.id}}">查看搭配</button>'), '菜谱卡按钮本身必须可以点击，不能只依赖整张卡片冒泡');
-  assert(wxml.includes('<button catchtap="openProduct" data-id="{{item.id}}">查看商品</button>'), '关联商品按钮本身必须可以点击，不能只依赖外层容器冒泡');
-  const pageSource = fs.readFileSync(pagePath, 'utf8');
-  assert.match(pageSource, /this\._mealIdeas \|\| MEAL_IDEAS/, '后台菜品为空或失败时必须保留当前本地菜品兜底');
+  assert(/<button\b(?=[^>]*\bcatchtap="handleOpenIdea")(?=[^>]*\bdata-id="\{\{item\.id\}\}")[^>]*>[\s\S]*?查看搭配[\s\S]*?<\/button>/.test(wxml), '菜谱卡按钮本身必须可以点击，不能只依赖整张卡片冒泡');
+  assert(/<button\b(?=[^>]*\bcatchtap="handleOpenProduct")(?=[^>]*\bdata-id="\{\{item\.id\}\}")[^>]*>[\s\S]*?查看商品[\s\S]*?<\/button>/.test(wxml), '关联商品按钮本身必须可以点击，不能只依赖外层容器冒泡');
+  assert.match(pageSource, /this\._mealIdeas \|\| MEAL_IDEAS/, '未取得后台集合前允许既有临时内容；成功空数组不得被兜底覆盖');
   console.log('customer meal ideas and B/C navigation test: passed');
 } finally {
   delete global.wx;

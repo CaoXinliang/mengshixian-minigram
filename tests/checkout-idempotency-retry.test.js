@@ -21,7 +21,8 @@ const servicesStub = {
       if (createCount === 1) return { ok: false, error: { message: '网络暂时不可用' } };
       return { ok: true, data: { order: { _id: 'order-1', orderNo: 'MSX-1', paymentMethod: 'demo', totalAmountCent: 5800, items: [] } } };
     }
-  }
+  },
+  orders: { resolveCreate: async () => ({ ok: true, data: { found: false, order: null } }) }
 };
 
 Module._load = function (request, parent, isMain) {
@@ -51,14 +52,18 @@ async function run() {
   page.data.warehouse = { id: 'warehouse-1', name: '南山仓', eta: '预计送达' };
   page.data.cartItems = [{ id: 'cart-1', skuId: 'sku-1', name: '测试冻品', unit: '500g装', qty: 1 }];
   page.data.quoteState = 'ready';
+  page.data.paymentCapabilities = { demoOrder: true };
 
   await page.submitOrder();
   assert.equal(createCount, 1, 'first order request must be sent once');
   assert.ok(idempotencyKeys[0], 'first request must carry an idempotency key');
+  assert.equal(page.data.orderSubmitState, 'unknown', 'network ambiguity must not be presented as a confirmed failure');
+  await page.queryOrderResult();
+  assert.equal(page.data.orderSubmitState, 'not_found', 'a successful recovery query may confirm that no order exists');
   await page.submitOrder();
   assert.equal(createCount, 2, 'retry after a failed response must send one new request');
   assert.equal(idempotencyKeys[1], idempotencyKeys[0], 'checkout retry must reuse the original idempotency key');
-  assert.equal(page._orderIdempotencyKey, '', 'idempotency key must clear after the order is created');
+  assert.equal(page.orderSubmission().currentKey(), '', 'idempotency key must clear after the order is created');
   console.log('checkout idempotency retry test: passed');
 }
 

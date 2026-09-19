@@ -30,12 +30,12 @@ function mediaLayoutContracts() {
   ]) {
     const grid = declarations(source, selector);
     assert.equal(grid.display, 'grid', `${name} media must use a wrapping grid`);
-    assert.equal(grid['grid-template-columns'], 'repeat(auto-fill, minmax(120px, 1fr))');
-    assert.equal(grid.gap, '8px');
+    assert.equal(grid['grid-template-columns'].replace(/\s/g, ''), name === 'review' ? 'repeat(auto-fill,minmax(120px,1fr))' : 'repeat(auto-fill,minmax(104px,1fr))');
+    assert.equal(grid.gap, name === 'review' ? '8px' : '12px');
     const add = declarations(source, addSelector);
     assert.equal(add.width, '100%', `${name} add action must not inherit a tiny rpx width`);
     assert.equal(add['min-width'], '0');
-    assert.equal(add['white-space'], 'normal', `${name} add action must allow complete large-font text`);
+    assert.equal(add['white-space'] || declarations(source, 'button')['white-space'], 'normal', `${name} add action must allow complete large-font text`);
     assert.equal(add['line-height'], '1.4');
   }
   assert.equal(declarations(review, '.media-actions')['grid-template-columns'], 'repeat(auto-fit, minmax(48px, 1fr))');
@@ -44,14 +44,21 @@ function mediaLayoutContracts() {
   assert.equal(declarations(aftersale, '.evidence > view').width, '100%');
 
   // This is a layout contract, not a substitute for final WeChat simulator screenshots.
-  for (const viewport of [320, 375, 390, 414, 480]) {
-    const contentWidth = viewport - (18 * 2 + 24 * 2) * viewport / 750;
+  for (const viewport of [320, 375, 390, 414, 428, 480]) {
+    // Current card has 16px horizontal margins and 14px padding, not the legacy rpx gutters.
+    const contentWidth = viewport - 16 * 2 - 14 * 2;
     const columns = Math.floor((contentWidth + 8) / (120 + 8));
     const cellWidth = (contentWidth - (columns - 1) * 8) / columns;
     assert(columns >= 2 && cellWidth >= 120, `${viewport}px must retain usable media columns`);
     const actionWidth = (cellWidth - 6) / 2;
     assert(actionWidth >= 26 * 2 + 4 * 2, `${viewport}px must fit two-character retry/remove at 26px`);
+    const evidenceWidth = viewport - 64;
+    const evidenceColumns = Math.floor((evidenceWidth + 12) / (104 + 12));
+    const evidenceCell = (evidenceWidth - (evidenceColumns - 1) * 12) / evidenceColumns;
+    assert(evidenceColumns >= 2 && evidenceCell >= 104, `${viewport}px evidence cells must fit readable stacked actions`);
   }
+  assert.equal(declarations(aftersale, '.evidence > view').height, 'auto', 'evidence card must grow to show state, retry and remove without clipping');
+  assert.equal(declarations(aftersale, '.evidence-action').position, 'static', 'evidence actions must not overlap');
   const reviewMarkup = read('package-member/pages/reviews/index.wxml');
   for (const handler of ['retryMedia', 'removeMedia', 'chooseMedia']) assert(reviewMarkup.includes(`bindtap="${handler}"`));
   const aftersaleMarkup = read('package-trade/pages/aftersale-apply/index.wxml');

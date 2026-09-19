@@ -1,5 +1,6 @@
 module.exports = {
   config: require('./config'),
+  health: require('./health'),
   auth: require('./auth'),
   catalog: require('./catalog'),
   pricing: require('./pricing'),

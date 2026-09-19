@@ -1,0 +1,9 @@
+<view class="panel">
+  <view class="heading"><view class="avatar">鲜</view><view><text>{{model.title}}</text><text wx:if="{{model.subtitle}}">{{model.subtitle}}</text></view></view>
+  <view wx:if="{{model.paragraphs.length}}" class="content"><text wx:for="{{model.paragraphs}}" wx:key="*this">{{item}}</text></view>
+  <view wx:if="{{model.questions.length}}" class="questions"><view wx:for="{{model.questions}}" wx:key="question"><text>{{item.question}}</text><text>{{item.answer}}</text></view></view>
+  <button wx:if="{{model.contact && contactAvailable}}" class="primary" open-type="contact" session-from="梦食鲜商城咨询">联系微信客服</button>
+  <button wx:elif="{{model.contact}}" class="primary is-disabled" bindtap="contactUnavailable">微信客服暂不可用</button>
+  <view wx:if="{{model.actions.length}}" class="actions"><button wx:for="{{model.actions}}" wx:key="key" bindtap="navigate" data-type="{{item.key}}">{{item.label}}</button></view>
+  <text class="source-note">说明内容以订单事实、实际包装、微信认证主体和运营核验结果为准。</text>
+</view>

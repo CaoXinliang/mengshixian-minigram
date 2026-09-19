@@ -3,15 +3,18 @@
   <view class="filters"><view class="filter-track"><button wx:for="{{filters}}" wx:key="*this" class="{{filter == item ? 'active' : ''}}" bindtap="switchFilter" data-filter="{{item}}">{{item}}</button></view></view>
   <view wx:if="{{loading}}" class="empty state-loading">正在加载订单…</view>
   <view wx:elif="{{error}}" class="empty"><text>订单加载失败</text><text>{{errorText}}</text><button bindtap="retry">重新加载</button></view>
+  <view wx:elif="{{afterSaleSummaryWarning}}" class="empty"><text>售后状态暂时无法确认</text><text>当前保留订单结果，不会把未知状态当成“没有售后”。</text><button bindtap="retry">重新查询售后状态</button></view>
   <block wx:elif="{{rows.length}}">
     <view wx:for="{{rows}}" wx:key="id" class="order" bindtap="openDetail" data-id="{{item.id}}" aria-role="button" aria-label="查看订单 {{item.summary}}" hover-class="control-pressed">
       <view><text>梦食鲜</text><text>{{item.status}}</text></view>
-      <text class="order-number">{{item.summary}}</text><text wx:if="{{item.itemSummary}}" class="order-items">{{item.itemSummary}}</text><text class="order-delivery">{{item.deliveryTime}}</text><text class="order-total">{{item.amountLabel}} ¥{{item.total}}</text>
+      <text class="order-number">{{item.summary}}</text><view class="order-product"><image src="/assets/icons/box.svg" mode="aspectFit"/><view><text wx:if="{{item.itemSummary}}" class="order-items">{{item.itemSummary}}</text><text class="order-delivery">{{item.rawStatus == 'cancelled' ? '订单已取消，未进入后续履约' : item.deliveryTime}}</text><text wx:if="{{item.afterSaleSummaryUnknown}}" class="order-delivery">售后状态暂时无法确认，请进入详情重试</text></view></view><text class="order-total">{{item.amountLabel}} ¥{{item.total}}</text>
       <view class="actions">
-        <button wx:if="{{item.canCancel}}" disabled="{{actionBusyId == item.id}}" catchtap="cancel" data-id="{{item.id}}">{{actionBusyId == item.id && actionBusyType == 'cancel' ? '处理中' : '取消订单'}}</button>
-        <button wx:if="{{item.canConfirm}}" disabled="{{actionBusyId == item.id}}" catchtap="confirm" data-id="{{item.id}}">{{actionBusyId == item.id && actionBusyType == 'confirm' ? '处理中' : '确认收货'}}</button>
-        <button wx:if="{{item.canRefund}}" disabled="{{actionBusyId == item.id}}" catchtap="refund" data-id="{{item.id}}">申请售后</button>
-        <button wx:if="{{item.afterSaleId}}" catchtap="viewAftersale" data-id="{{item.id}}">查看售后</button>
+        <button class="detail-action" catchtap="openDetail" data-id="{{item.id}}"><text class="order-action-face">查看详情</text></button>
+        <button wx:if="{{item.canCancel}}" disabled="{{actionBusyId == item.id}}" catchtap="cancel" data-id="{{item.id}}"><text class="order-action-face">{{actionBusyId == item.id && actionBusyType == 'cancel' ? '处理中' : '取消订单'}}</text></button>
+        <button wx:if="{{item.canConfirm}}" disabled="{{actionBusyId == item.id}}" catchtap="confirm" data-id="{{item.id}}"><text class="order-action-face">{{actionBusyId == item.id && actionBusyType == 'confirm' ? '处理中' : '确认收货'}}</text></button>
+        <button wx:if="{{item.canRefund}}" disabled="{{actionBusyId == item.id}}" catchtap="refund" data-id="{{item.id}}"><text class="order-action-face">申请售后</text></button>
+        <button wx:if="{{actionRecoveryId == item.id}}" disabled="{{actionBusyId == item.id}}" catchtap="resolveOrderAction" data-id="{{item.id}}"><text class="order-action-face">{{actionBusyId == item.id && actionBusyType == 'resolve' ? '查询中' : '查询操作结果'}}</text></button>
+        <button wx:if="{{item.afterSaleId}}" catchtap="viewAftersale" data-id="{{item.id}}"><text class="order-action-face">查看售后</text></button>
       </view>
     </view>
     <button wx:if="{{hasMore || loadMoreError}}" class="load-more" disabled="{{loadingMore}}" bindtap="loadMore">{{loadingMore ? '正在加载…' : (loadMoreError ? '加载失败，点这里重试' : '查看更多订单')}}</button>

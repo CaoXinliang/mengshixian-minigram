@@ -52,7 +52,7 @@ Component({
         && Number(menuRect.left) >= 0
         && Number(menuRect.top) >= statusBarHeight;
       const navigationHeight = hasUsableMenuRect
-        ? Math.max(40, Number(menuRect.height) + (Number(menuRect.top) - statusBarHeight) * 2)
+        ? Math.max(44, Number(menuRect.height) + (Number(menuRect.top) - statusBarHeight) * 2)
         : 44;
       const capsuleInsetRight = hasUsableMenuRect
         ? Math.max(88, windowWidth - Number(menuRect.left) + 8)

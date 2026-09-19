@@ -1,0 +1,15 @@
+:host{display:block}
+.content-state{display:flex;align-items:center;justify-content:center;min-height:88px;padding:14px 16px;box-sizing:border-box;border:0;border-radius:var(--radius-card,14px);background:var(--color-brand-soft,#eaf2fd);flex-direction:column;text-align:center}
+.content-state.is-compact{min-height:72px;padding:12px 14px}
+.content-state__title{color:var(--color-text-primary,#172b43);font-size:16px;font-weight:700;line-height:1.4}
+.content-state__message{max-width:480px;margin-top:6px;color:var(--color-text-secondary,#526175);font-size:13px;line-height:1.5;overflow-wrap:anywhere}
+.content-state.is-error .content-state__title{color:var(--color-state-danger,#e65353)}
+.content-state.is-loading .content-state__title{color:var(--color-text-secondary,#526175)}
+.content-state__action{display:flex;align-items:center;justify-content:center;width:auto;min-width:44px;min-height:44px;margin:14px 0 0;padding:0;border:0;background:transparent}
+.content-state__action::after{display:none}
+.content-state__action-face{display:flex;align-items:center;justify-content:center;min-height:38px;padding:0 16px;border:1px solid var(--color-brand-primary,#176bd5);border-radius:var(--radius-pill,999px);color:#fff;background:var(--color-brand-primary,#176bd5);font-size:16px;font-weight:700;line-height:1}
+.content-state.is-home-blocking{align-items:stretch;justify-content:flex-start;min-height:0;padding:0;border:0;border-radius:0;background:transparent;text-align:left}
+.content-state.is-home-blocking .content-state__title{display:block;padding:16px 16px 0;border-radius:14px 14px 0 0;color:var(--color-text-primary,#172b43);background:var(--color-brand-soft,#eaf2fd)}
+.is-home-blocking .content-state__message{display:block;max-width:none;margin:0;padding:6px 16px 16px;border-radius:0 0 14px 14px;background:var(--color-brand-soft,#eaf2fd)}
+.is-home-blocking .content-state__action{align-self:center;min-width:148px;margin-top:20px}
+.is-home-blocking .content-state__action-face{width:100%;min-height:44px;padding:0 24px;box-sizing:border-box}

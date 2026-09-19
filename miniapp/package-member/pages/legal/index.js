@@ -3,10 +3,13 @@ const { getLegalDocument } = require('../../../config/legal-documents');
 Page({
   data: {
     activeType: 'privacy',
-    document: getLegalDocument('privacy')
+    document: getLegalDocument('privacy'),
+    contactAvailable: true
   },
 
   onLoad(query = {}) {
+    const contactAvailable = typeof wx !== 'undefined' && (typeof wx.canIUse !== 'function' || wx.canIUse('button.open-type.contact'));
+    this.setData({ contactAvailable });
     this.showDocument(query.type);
   },
 
@@ -29,7 +32,9 @@ Page({
     });
   },
 
-  contact() {},
+  contact() {
+    if (!this.data.contactAvailable) wx.showToast({ title: '当前微信版本无法打开客服，请稍后重试', icon: 'none' });
+  },
 
   back() {
     wx.navigateBack({ fail: () => wx.reLaunch({ url: '/pages/index/index?tab=mine' }) });

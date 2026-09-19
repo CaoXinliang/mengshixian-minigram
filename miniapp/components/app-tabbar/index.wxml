@@ -1,0 +1,25 @@
+<view class="tabbar" aria-role="navigation" aria-label="主导航">
+  <button class="tabbar__item {{active == 'home' ? 'is-active' : ''}}" aria-label="首页" aria-pressed="{{active == 'home'}}" hover-class="control-pressed" data-tab="home" bindtap="handleChange">
+    <image class="tabbar__icon" src="/assets/icons/home.svg" mode="aspectFit" />
+    <text class="tabbar__label">首页</text>
+  </button>
+  <button class="tabbar__item {{active == 'category' ? 'is-active' : ''}}" aria-label="分类" aria-pressed="{{active == 'category'}}" hover-class="control-pressed" data-tab="category" bindtap="handleChange">
+    <image class="tabbar__icon" src="/assets/icons/grid.svg" mode="aspectFit" />
+    <text class="tabbar__label">分类</text>
+  </button>
+  <button class="tabbar__item {{active == 'frequent' ? 'is-active' : ''}}" aria-label="{{shortcutLabel}}" aria-pressed="{{active == 'frequent'}}" hover-class="control-pressed" data-tab="frequent" bindtap="handleChange">
+    <image class="tabbar__icon" src="{{shortcutIcon}}" mode="aspectFit" />
+    <text class="tabbar__label">{{shortcutLabel}}</text>
+  </button>
+  <button class="tabbar__item {{active == 'cart' ? 'is-active' : ''}}" aria-label="购物车，共 {{cartCount}} 件商品" aria-pressed="{{active == 'cart'}}" hover-class="control-pressed" data-tab="cart" bindtap="handleChange">
+    <view class="tabbar__cart-icon {{cartPulse ? 'is-pulsing' : ''}}">
+      <image class="tabbar__icon" src="/assets/icons/cart.svg" mode="aspectFit" />
+      <text class="tabbar__badge" wx:if="{{cartCount}}">{{cartCount > 99 ? '99+' : cartCount}}</text>
+    </view>
+    <text class="tabbar__label">购物车</text>
+  </button>
+  <button class="tabbar__item {{active == 'mine' ? 'is-active' : ''}}" aria-label="我的" aria-pressed="{{active == 'mine'}}" hover-class="control-pressed" data-tab="mine" bindtap="handleChange">
+    <image class="tabbar__icon" src="/assets/icons/user.svg" mode="aspectFit" />
+    <text class="tabbar__label">我的</text>
+  </button>
+</view>

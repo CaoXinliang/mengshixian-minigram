@@ -17,7 +17,11 @@ fetchRemotePages(async ({ page, pageSize }) => {
   return fetchRemotePages(async () => ({ ok: false, data: null }), { pageSize: 100 }).then((failure) => {
     assert.equal(failure.ok, false);
     assert.equal(failure.rows.length, 0);
-    console.log('collection helper test: passed');
+    return fetchRemotePages(async () => ({ ok: true, data: { rows: Array.from({ length: 100 }, () => ({})), total: 250 } }), { pageSize: 100, maxPages: 2 }).then((limited) => {
+      assert.equal(limited.ok, false, 'a truncated paged result must not be treated as complete');
+      assert.equal(limited.code, 'REMOTE_PAGE_LIMIT_REACHED');
+      console.log('collection helper test: passed');
+    });
   });
 }).catch((error) => {
   console.error(error);

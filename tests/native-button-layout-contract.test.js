@@ -11,8 +11,9 @@ function ruleBodies(source, selector) {
   const pattern = /([^{}]+)\{([^{}]*)\}/g;
   let match;
   while ((match = pattern.exec(css))) {
-    const selectors = match[1].split(',').map((item) => item.trim());
-    if (selectors.includes(selector)) bodies.push(match[2]);
+    const normalize = value => value.trim().replace(/\s*>\s*/g, '>');
+    const selectors = match[1].split(',').map(normalize);
+    if (selectors.includes(normalize(selector))) bodies.push(match[2]);
   }
   return bodies;
 }
@@ -97,6 +98,16 @@ for (const selector of ['.warehouse-list button', '.delivery-slot-list button'])
 assert.strictEqual(effectiveRule(checkout, '.pickup-site').width, '100%', 'pickup sites must fill their one-column list');
 
 const main = read('miniapp/pages/index/index.wxss');
+const appStyles = read('miniapp/app.wxss');
+for (const selector of ['.state>button', '.empty>button']) {
+  const action = effectiveRule(appStyles, selector);
+  assert.strictEqual(action.display, 'inline-flex', `${selector} must shrink its visible surface to the action label`);
+  assert.strictEqual(action.width, 'fit-content', `${selector} must not render as a full-row native button`);
+  assert.strictEqual(action['min-width'], '44px', `${selector} must retain a 44px horizontal target`);
+  assert.strictEqual(action['min-height'], '44px', `${selector} must retain a 44px vertical target`);
+  assert.strictEqual(action['max-width'], '100%', `${selector} must still fit narrow cards`);
+  assert.strictEqual(action.flex, 'none', `${selector} must not stretch as a flex item`);
+}
 for (const selector of ['.spec-list button', '.quantity-picker-specs button']) {
   const button = effectiveRule(main, selector);
   assert.strictEqual(button.width, 'auto', `${selector} must size to its label rather than the native default`);
@@ -117,7 +128,7 @@ assert(
   'detail and quantity-picker specifications must share one compact outlined pill face'
 );
 assert.strictEqual(effectiveRule(main, '.spec-list').gap, '16px', 'detail specification faces must keep a readable gap');
-assert.strictEqual(effectiveRule(main, '.quantity-picker-specs').gap, '14px 16px', 'quantity-picker specification faces must keep readable row and column gaps');
+assert.strictEqual(effectiveRule(main, '.quantity-picker-specs').gap, '8px 14px', 'quantity-picker specification faces must retain the approved row and column gaps around 44px controls');
 
 for (const [relativePath, selector, label] of [
   ['miniapp/package-trade/pages/addresses/index.wxss', '.address-actions', 'address actions'],
@@ -128,14 +139,14 @@ for (const [relativePath, selector, label] of [
 }
 
 for (const [relativePath, controlSelector, faceSelector, faceWidth, label] of [
-  ['miniapp/pages/index/index.wxss', '.stepper button', '.stepper .step-face', '50rpx', 'cart quantity'],
+  ['miniapp/components/quantity-stepper/index.wxss', '.quantity-stepper .step-control', '.step-face', '30px', 'cart quantity'],
   ['miniapp/package-business/pages/frequent/index.wxss', '.qty button', '.qty button > text', '42rpx', 'frequent quantity'],
   ['miniapp/package-business/pages/inquiry-create/index.wxss', '.qty button', '.qty button > text', '40rpx', 'inquiry quantity'],
   ['miniapp/package-marketing/pages/bundle-detail/index.wxss', '.qty button', '.qty button > text', '46rpx', 'bundle quantity'],
-  ['miniapp/package-trade/pages/aftersale-apply/index.wxss', '.quantity button', '.quantity button > text', '42rpx', 'aftersale quantity']
+  ['miniapp/package-trade/pages/aftersale-apply/index.wxss', '.quantity button', '.quantity button > text', '28px', 'aftersale quantity']
 ]) {
   const source = read(relativePath);
-  const control = effectiveRule(source, controlSelector);
+  const control = { ...effectiveRule(source, 'button'), ...effectiveRule(source, controlSelector) };
   const face = effectiveRule(source, faceSelector);
   assert.strictEqual(control.width, '44px', `${label} hit target must stay 44px`);
   assert.strictEqual(control.height, '44px', `${label} hit target must stay 44px`);
@@ -145,7 +156,7 @@ for (const [relativePath, controlSelector, faceSelector, faceWidth, label] of [
   assert.strictEqual(face.height, faceWidth, `${label} face must remain circular rather than stretched`);
   assert.strictEqual(face['border-radius'], '50%', `${label} face must remain circular`);
   assert.match(face.border || '', /^1px solid /, `${label} face must use a thin clarity outline`);
-  if (relativePath !== 'miniapp/pages/index/index.wxss') {
+  if (faceWidth.endsWith('rpx')) {
     assert.strictEqual(face['min-width'], '0', `${label} rpx face must remain symmetrically capped on wider screens`);
     assert.match(face['max-width'] || '', /^\d+px$/, `${label} face must cap width together with max-height`);
   }
@@ -157,17 +168,17 @@ const quantityPickerStepper = effectiveRule(main, '.quantity-picker-stepper');
 const quantityPickerHead = effectiveRule(main, '.quantity-picker-head');
 const quantityPickerSummaryImage = effectiveRule(main, '.quantity-picker-summary>image');
 const quantityPickerDisabledAction = effectiveRule(main, '.quantity-picker-actions button[disabled]');
-assert.strictEqual(quantityPickerHead['min-height'], '144rpx', 'quantity picker summary must provide the requested doubled header height');
-assert(quantityPickerSummaryImage.width === '88rpx' && quantityPickerSummaryImage.height === '88rpx', 'the enlarged summary image must scale modestly inside the doubled header rather than filling it');
+assert.strictEqual(quantityPickerHead['min-height'], '104px', 'quantity picker summary must retain the approved readable header height');
+assert(quantityPickerSummaryImage.width === '64px' && quantityPickerSummaryImage.height === '64px', 'the narrow-screen summary image must retain the approved bounded size');
 assert(quantityPickerSummaryImage['min-width'] === '44px' && quantityPickerSummaryImage['min-height'] === '44px', 'the tappable summary image must remain at least 44px on 320px compact phones');
 assert.strictEqual(quantityPickerClose.width, '44px', 'quantity picker close hit target must remain 44px');
 assert.strictEqual(quantityPickerClose.background, 'transparent', 'quantity picker close hit target must be visually transparent');
-assert.strictEqual(quantityPickerCloseFace.width, '50rpx', 'quantity picker close face must retain its compact diameter');
-assert.strictEqual(quantityPickerCloseFace.height, '50rpx', 'quantity picker close face must remain circular');
+assert.strictEqual(quantityPickerCloseFace.width, '36px', 'quantity picker close face must retain its compact diameter');
+assert.strictEqual(quantityPickerCloseFace.height, '36px', 'quantity picker close face must remain circular');
 assert.strictEqual(quantityPickerCloseFace['border-radius'], '50%', 'quantity picker close face must remain circular');
-assert.match(quantityPickerCloseFace.border || '', /^1px solid /, 'quantity picker close face must use a thin clarity outline');
+assert.strictEqual(quantityPickerCloseFace.border, '0', 'quantity picker close face uses the approved subtle surface rather than an extra outline');
 assert.strictEqual(quantityPickerStepper.background, 'transparent', 'quantity picker stepper wrapper must not render a large visible pill');
 assert.strictEqual(quantityPickerDisabledAction.opacity, '1', 'quantity picker disabled faces must not be faded twice by the global disabled opacity');
-assert.strictEqual(effectiveRule(main, '.quantity-picker-action-face').padding, '0 14px', 'quantity picker actions must keep only a modest surplus around their labels');
+assert.strictEqual(effectiveRule(main, '.quantity-picker-action-face').padding, '0 20px', 'quantity picker actions must retain the approved spacing around readable labels');
 
 console.log('native button layout contract test: passed');

@@ -16,6 +16,7 @@ const services = {
     cancel: async payload => { calls.cancel.push(payload); return { ok: true }; },
     confirm: async payload => { calls.confirm.push(payload); return { ok: true }; }
   },
+  aftersales: { listAll: async () => ({ ok: true, data: { rows: [], total: 0 } }) },
   checkout: { preparePayment: async payload => { calls.pay.push(payload); return { ok: false, error: { code: 'PAYMENT_NOT_CONFIGURED', message: '微信支付预下单尚未配置。' } }; } }
 };
 Module._load = function (request, parent, isMain) {
@@ -91,8 +92,20 @@ async function run() {
   assert(navs.at(-1).url.includes('/package-business/pages/repurchase/index?orderId=order-1'));
 
   const wxml = fs.readFileSync(path.resolve(__dirname, '../miniapp/package-trade/pages/order-detail/index.wxml'), 'utf8');
-  assert(wxml.includes('商品清单') && wxml.includes('订单进度') && wxml.includes('配送信息'));
+  assert(wxml.includes('商品清单') && wxml.includes('order.progressTitle') && wxml.includes('配送信息'));
+  const timelineCondition = wxml.match(/wx:key="key" wx:if="\{\{([^}]+)\}\}" class="timeline/);
+  assert(timelineCondition, 'cancelled orders must filter unrelated future fulfillment stages');
+  const showTimeline = new Function('order', 'item', `return (${timelineCondition[1]});`);
+  assert.equal(showTimeline({ rawStatus: 'cancelled' }, { key: 'shipping', current: false }), false);
+  assert.equal(showTimeline({ rawStatus: 'cancelled' }, { key: 'pending_payment', current: false }), true);
+  assert.equal(showTimeline({ rawStatus: 'cancelled' }, { key: 'cancelled', current: true }), true);
+  assert.equal(showTimeline({ rawStatus: 'shipping' }, { key: 'shipping', current: true }), true);
   assert(wxml.includes('wx:if="{{order.canRepurchase}}"'), '再次购买入口必须仅向完整合法 B 身份显示');
+  assert(wxml.includes('order.canPay && !paymentRecovery') && wxml.includes('bindtap="preparePayment"'), '首次继续支付入口必须服从服务端可支付状态，恢复重试由组件语义事件承接');
+  assert(wxml.includes('wx:if="{{order.canInvoice}}"') && wxml.includes('bindtap="requestInvoice"'), '申请发票入口必须复用 canInvoice 与 requestInvoice');
+  assert(/wx:if="\{\{order\.canPay && !paymentRecovery\}\}"[^>]*disabled="\{\{actionBusy\}\}"[^>]*bindtap="preparePayment"/.test(wxml), '首次继续支付必须沿用订单操作 busy 锁');
+  assert(wxml.includes('<payment-recovery-panel') && wxml.includes('can-query="{{paymentRecovery.canQuery}}"') && wxml.includes('can-retry="{{paymentRecovery.canRetry}}"') && wxml.includes('bind:query="queryPaymentResult"') && wxml.includes('bind:retry="preparePayment"'), '支付恢复动作权限必须由业务模块产生并通过展示组件发出语义事件');
+  assert(/wx:if="\{\{order\.canInvoice\}\}"[^>]*disabled="\{\{actionBusy\}\}"[^>]*bindtap="requestInvoice"/.test(wxml), '申请发票必须沿用订单操作 busy 锁');
   console.log('order detail test: passed');
 }
 run().catch(error => { console.error(error); process.exit(1); });

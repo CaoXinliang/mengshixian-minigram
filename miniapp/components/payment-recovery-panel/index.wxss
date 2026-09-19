@@ -1,0 +1,14 @@
+.payment-panel{display:flex;min-width:0;margin:12px 16px;padding:16px;box-sizing:border-box;border:1px solid #d7e2ef;border-radius:16px;background:#fff;flex-direction:column;gap:8px}
+.payment-panel__title{color:#0f1b2d;font-size:16px;font-weight:700;line-height:1.4}
+.payment-panel__message{color:#667085;font-size:14px;line-height:1.5;overflow-wrap:anywhere}
+.payment-panel.is-paid{border-color:#a7dfc2;background:#f1fbf6}
+.payment-panel.is-paid .payment-panel__title{color:#16784a}
+.payment-panel.is-closed,.payment-panel.is-failed{border-color:#f1c9c2;background:#fff6f4}
+.payment-panel.is-closed .payment-panel__title,.payment-panel.is-failed .payment-panel__title{color:#b54737}
+.payment-panel.is-unknown,.payment-panel.is-processing{border-color:#b9d4f4;background:#f2f7fd}
+.payment-panel.is-test{border-color:#f3d19f;background:#fff9ee}
+.payment-panel.is-test .payment-panel__title{color:#9a5a00}
+.payment-panel__actions{display:flex;min-width:0;margin-top:4px;flex-wrap:wrap;gap:8px}
+.payment-panel__actions button{display:flex;width:auto;min-width:44px;min-height:44px;margin:0;padding:0 16px;border:0;border-radius:22px;color:#176bd5;background:#eaf2fd;align-items:center;justify-content:center;font-size:14px;font-weight:600}
+.payment-panel__actions button::after{border:0}
+.payment-panel__actions button[disabled]{color:#667085;background:#dce7f5}

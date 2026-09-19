@@ -1,0 +1,20 @@
+<view class="page">
+  <responsive-topbar title="会员等级" subtitle="查看正式等级与权益" bind:back="back" />
+  <view wx:if="{{status == 'loading'}}" class="state"><text>正在加载会员资料</text></view>
+  <view wx:elif="{{status == 'forbidden'}}" class="state"><text class="state-title">需要登录</text><text>{{errorText}}</text></view>
+  <view wx:elif="{{status == 'error'}}" class="state error"><text class="state-title">会员资料加载失败</text><text>{{errorText}}</text><button bindtap="retry">重新加载</button></view>
+  <block wx:elif="{{model}}">
+    <view class="level-card {{model.configured ? '' : 'is-unconfigured'}}">
+      <text class="level-label">当前等级</text><text class="level-name">{{model.levelName}}</text>
+      <text wx:if="{{model.growthValue !== null}}" class="growth">累计成长值 {{model.growthValue}}</text>
+      <text wx:else class="growth">成长值暂未提供</text>
+    </view>
+    <view class="card"><text class="card-title">升级进度</text><text class="supporting">{{model.nextLevelHint || '升级条件暂未配置'}}</text></view>
+    <view class="card">
+      <text class="card-title">等级权益</text>
+      <view wx:if="{{model.benefits.length}}" class="benefits"><view wx:for="{{model.benefits}}" wx:key="*this" class="benefit">{{item}}</view></view>
+      <view wx:else class="empty"><text>{{model.configured ? '当前等级暂无已发布权益' : '等级与权益暂未配置'}}</text><text>正式规则发布后会在这里显示。</text></view>
+    </view>
+    <button class="points-link" bindtap="openPoints">查看积分账户</button>
+  </block>
+</view>

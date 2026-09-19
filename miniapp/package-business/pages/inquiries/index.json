@@ -1,1 +1,6 @@
-{"navigationStyle":"custom"}
+{
+  "navigationStyle": "custom",
+  "usingComponents": {
+    "responsive-topbar": "/components/responsive-topbar/index"
+  }
+}

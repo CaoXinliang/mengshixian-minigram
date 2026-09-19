@@ -6,6 +6,10 @@ const path = require('node:path');
 let activeHarness;
 let definition;
 const services = {
+  cart: {
+    addItem: async (item) => { activeHarness.cartWrites.push(item); return { ok: true, data: { item: { ...item, _id: 'cart-test' } } }; },
+    updateItem: async (item) => { activeHarness.cartWrites.push(item); return { ok: true }; }
+  },
   config: { provider: 'cloudbase', priceFieldsNeverFallback: true },
   auth: { login: async () => ({ ok: true, data: { user: activeHarness.loginUser } }) },
   catalog: {
@@ -29,11 +33,11 @@ try {
 
 const business = { _id: 'buyer-b', userType: 'b', businessStatus: 'approved', organizationId: 'org-b', status: 'active' };
 const customer = { _id: 'buyer-c', userType: 'c', businessStatus: '', organizationId: '', status: 'active' };
-const prices = (amountCent) => ({ ok: true, data: { rows: [{ skuId: 'sku-1', amountCent }] } });
+const prices = (amountCent) => ({ ok: true, data: { rows: [{ skuId: 'sku-1', amountCent, availability: 'available' }] } });
 
 function makePage(user = business) {
   const harness = {
-    requests: [], storageReads: [], storageWrites: [], renderedPrices: [],
+    requests: [], cartWrites: [], storageReads: [], storageWrites: [], renderedPrices: [],
     storage: { mx_price_cache: { bySku: { 'sku-1': { skuId: 'sku-1', amountCent: 777 } } } }
   };
   activeHarness = harness;
@@ -70,6 +74,43 @@ test('same identity shares one pending request and uses the returned price', asy
   assert.equal(await second, true);
   assert.equal(page.data.products[0].priceText, '¥10.00');
   assert.equal(harness.storageWrites.includes('mx_price_cache'), false);
+});
+
+test('expired availability is refreshed and omitted SKU does not keep its previous price', async () => {
+  const originalNow = Date.now;
+  let now = originalNow();
+  Date.now = () => now;
+  try {
+    const { page, harness } = makePage();
+    const first = page.loadRemoteCatalogPrices();
+    harness.requests[0].resolve(prices(1000));
+    await first;
+    now += 31000;
+    const refresh = page.loadRemoteCatalogPrices();
+    assert.equal(harness.requests.length, 2, 'availability must not remain cached forever');
+    harness.requests[1].resolve({ ok: true, data: { rows: [] } });
+    await refresh;
+    assert.equal(page.data.products[0].priceUnavailable, true);
+    assert.notEqual(page.data.products[0].priceText, '¥10.00');
+  } finally { Date.now = originalNow; }
+});
+
+test('sold-out state prevents individual and bulk add while allowing cart quantity reductions', async () => {
+  const { page, harness } = makePage();
+  page.syncCart = (items) => { page.data.cartItems = items; };
+  page.pulseCartBadge = () => {};
+  const request = page.loadRemoteCatalogPrices();
+  harness.requests[0].resolve({ ok: true, data: { rows: [{ skuId: 'sku-1', amountCent: 1000, availability: 'sold_out' }] } });
+  await request;
+  await page.applyAddProduct('product-1', '一盒');
+  await page.applyAddFrequent();
+  assert.equal(harness.cartWrites.length, 0, 'disabled cards must not have a writable bulk or handler bypass');
+  page.data.cartItems = [{ ...page.data.products[0], skuId: 'sku-1', selectedSpec: '一盒', qty: 2, remoteCartItemId: 'cart-test' }];
+  await page.applyChangeQuantity({ currentTarget: { dataset: { id: 'product-1', spec: '一盒', delta: 1 } } });
+  assert.equal(harness.cartWrites.length, 0, 'sold-out item cannot be increased');
+  await page.applyChangeQuantity({ currentTarget: { dataset: { id: 'product-1', spec: '一盒', delta: -1 } } });
+  assert.equal(harness.cartWrites.length, 1, 'sold-out item must still be reducible');
+  assert.equal(harness.cartWrites[0].quantity, 1);
 });
 
 test('old identity response cannot overwrite a new identity or release its pending request', async () => {
@@ -158,7 +199,7 @@ test('fresh login discards the previous session price even when the user id is u
   page.loadRemoteCart = async () => {};
   page.loadRemoteOrders = async () => {};
   page.closeLoginSheet = (callback) => { if (callback) callback(); };
-  const login = page.completeLogin({ detail: { errMsg: 'getPhoneNumber:ok' } });
+  const login = page.completeLogin({ detail: { errMsg: 'getPhoneNumber:ok', code: 'phone-code-test' } });
   await Promise.resolve();
   assert.equal(page.data.products[0].priceUnavailable, true);
   harness.requests[1].resolve(prices(1100));
@@ -176,4 +217,34 @@ test('same identity refresh reuses its resolved memory price without another req
   await page.loadRemoteCatalogPrices();
   assert.equal(harness.requests.length, 1);
   assert.equal(page.data.products[0].priceText, '¥10.00');
+});
+
+test('a sold-out first SKU does not prevent selecting another available SKU', async () => {
+  const { page, harness } = makePage();
+  page.data.products[0].specs.push('整箱');
+  page.data.products[0].skuOptions.push({ id: 'sku-2', label: '整箱', packageUnit: '箱' });
+  const pending = page.loadRemoteCatalogPrices();
+  harness.requests[0].resolve({ ok: true, data: { rows: [
+    { skuId: 'sku-1', amountCent: 1000, availability: 'sold_out' },
+    { skuId: 'sku-2', amountCent: 9000, availability: 'available' }
+  ] } });
+  await pending;
+  assert.equal(page.data.products[0].specSelectionUnavailable, false);
+  assert.equal(page.data.products[0].specSelectionText, '选规格');
+  page.openQuantityPickerById('product-1');
+  assert.equal(page.data.quantityPickerProduct.priceUnavailable, true);
+  page.selectQuantityPickerSpec({ currentTarget: { dataset: { spec: '整箱' } } });
+  assert.equal(page.data.quantityPickerProduct.priceUnavailable, false);
+  assert.equal(page.data.quantityPickerProduct.priceText, '¥90.00');
+});
+
+test('a legacy server price keeps existing purchase entry without claiming known stock', async () => {
+  const { page, harness } = makePage();
+  const pending = page.loadRemoteCatalogPrices();
+  harness.requests[0].resolve({ ok: true, data: { rows: [{ skuId: 'sku-1', amountCent: 1000 }] } });
+  await pending;
+  assert.equal(page.data.products[0].availability, 'unknown');
+  assert.equal(page.data.products[0].priceUnavailable, false);
+  assert.equal(page.data.products[0].specSelectionUnavailable, false);
+  assert.equal(page.data.products[0].availabilityText, '');
 });

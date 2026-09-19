@@ -65,6 +65,21 @@ async function run() {
   assert.equal(page.data.bannerItems.length, 2);
   assert.equal(page.data.bannerItems[0].jumpType, 'category');
   assert.equal(page.data.bannerItems[1].jumpType, 'product');
+  const fallback = '/assets/products/placeholder.svg';
+  assert(page.data.bannerItems.every((item) => item.image === fallback && item.imageUnavailable === true), 'an unresolved banner media asset must use the same neutral unavailable state as an image load failure');
+  page.data.bannerItems[0] = { ...page.data.bannerItems[0], image: 'https://example.invalid/banner.jpg', imageUnavailable: false };
+  const original = JSON.parse(JSON.stringify(page.data.bannerItems));
+  assert.equal(typeof page.handleBannerImageError, 'function', 'failed banner images need a recovery action');
+  page.handleBannerImageError({ currentTarget: { dataset: { index: 0, src: original[0].image } } });
+  assert.deepEqual(page.data.bannerItems, [{ ...original[0], image: fallback, imageUnavailable: true }, original[1]], 'only the failed image must use a neutral placeholder, preserving copy and metadata');
+  page.data.bannerItems[0].image = 'https://example.invalid/replacement.jpg';
+  page.handleBannerImageError({ currentTarget: { dataset: { index: 0, src: original[0].image } } });
+  assert.equal(page.data.bannerItems[0].image, 'https://example.invalid/replacement.jpg', 'late failure must not overwrite a newer banner source');
+  page.data.bannerItems[0] = { ...page.data.bannerItems[0], image: fallback, imageUnavailable: true };
+  const settled = page.data.bannerItems;
+  page.handleBannerImageError({ currentTarget: { dataset: { index: 0, src: fallback } } });
+  assert.equal(page.data.bannerItems, settled, 'a fallback failure must not trigger an endless replacement loop');
+  assert(/src="\{\{item.image\}\}"[^>]*mode="\{\{item.imageUnavailable \? 'aspectFit' : 'aspectFill'\}\}"[^>]*binderror="handleBannerImageError"[^>]*data-index="\{\{index\}\}"[^>]*data-src="\{\{item.image\}\}"/.test(wxml), 'banner image errors must carry their index and original source, and a neutral placeholder must not be cropped');
   assert(
     !wxml.includes('bindtap="openBanner"') &&
       !wxml.includes('class="banner-action"') &&

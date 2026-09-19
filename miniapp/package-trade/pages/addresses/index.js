@@ -1,56 +1,44 @@
 const { address: addressApi } = require('../../../services/index');
+const { managementAddress } = require('../../../modules/address-presentation');
 
 const EMPTY_FORM = { id: '', name: '', phone: '', phoneMasked: '', provinceCode: '', cityCode: '', districtCode: '', regionCode: '', regionLabel: '', detail: '', tag: '', isDefault: false };
 const text = value => String(value || '').trim();
-const normalizeAddress = item => ({
-  id: item._id,
-  name: text(item.name) || '收货人',
-  displayName: text(item.name) === '演示用户' ? '收货人' : text(item.name) || '收货人',
-  phoneMasked: text(item.phoneMasked),
-  provinceCode: text(item.provinceCode),
-  cityCode: text(item.cityCode),
-  districtCode: text(item.districtCode),
-  regionCode: text(item.regionCode),
-  regionLabel: [item.provinceCode, item.cityCode, item.districtCode].map(text).filter(Boolean).join(' ') || text(item.regionCode),
-  detail: text(item.detail),
-  displayDetail: text(item.detail) === '梦食鲜演示收货点（非客户地址）' ? '已保存的收货地址' : text(item.detail),
-  tag: text(item.tag),
-  displayTag: text(item.tag) === '演示' ? '' : text(item.tag),
-  isDefault: item.isDefault === true
-});
 
 Page({
   data: {
     status: 'loading', errorText: '', rows: [], selectMode: false,
-    formVisible: false, form: { ...EMPTY_FORM }, saving: false, actionBusyId: ''
+    formVisible: false, form: { ...EMPTY_FORM }, saving: false, actionBusyId: '', importWarningText: ''
   },
   onLoad(options = {}) {
     this.setData({ selectMode: String(options.select || '') === '1' });
     return this.loadAddresses();
   },
   async loadAddresses() {
+    const requestToken = (this._addressListRequestSeq || 0) + 1;
+    this._addressListRequestSeq = requestToken;
     this.setData({ status: 'loading', errorText: '' });
     const result = await addressApi.list();
+    if (requestToken !== this._addressListRequestSeq) return;
     if (!result || !result.ok || !result.data || !Array.isArray(result.data.rows)) {
       return this.setData({ status: 'error', errorText: result && result.error && result.error.message || '收货地址暂时无法加载，请稍后重试' });
     }
-    this.setData({ status: 'ready', rows: result.data.rows.map(normalizeAddress) });
+    this.setData({ status: 'ready', rows: result.data.rows.map(managementAddress) });
   },
   retry() { return this.loadAddresses(); },
-  openNew() { this.setData({ formVisible: true, form: { ...EMPTY_FORM, isDefault: !this.data.rows.length } }); },
+  openNew() { this.setData({ formVisible: true, form: { ...EMPTY_FORM, isDefault: !this.data.rows.length }, importWarningText: '' }); },
   openEdit(event) {
     const current = this.data.rows.find((item) => item.id === event.currentTarget.dataset.id);
     if (!current) return;
-    this.setData({ formVisible: true, form: { ...EMPTY_FORM, ...current, phone: '' } });
+    this.setData({ formVisible: true, form: { ...EMPTY_FORM, ...current, phone: '' }, importWarningText: '' });
   },
   closeForm() {
     if (this.data.saving) return;
-    this.setData({ formVisible: false, form: { ...EMPTY_FORM } });
+    this.setData({ formVisible: false, form: { ...EMPTY_FORM }, importWarningText: '' });
   },
   updateField(event) {
     const field = event.currentTarget.dataset.field;
     if (!field) return;
-    this.setData({ form: { ...this.data.form, [field]: event.detail.value } });
+    this.setData({ form: { ...this.data.form, [field]: event.detail.value }, importWarningText: '' });
   },
   toggleDefault(event) {
     this.setData({ form: { ...this.data.form, isDefault: Boolean(event.detail.value && event.detail.value.length) } });
@@ -58,10 +46,10 @@ Page({
   chooseRegion(event) {
     const names = Array.isArray(event.detail && event.detail.value) ? event.detail.value.map(text) : [];
     const codes = Array.isArray(event.detail && event.detail.code) ? event.detail.code.map(text) : [];
-    const provinceCode = codes[0] || names[0] || '';
-    const cityCode = codes[1] || names[1] || '';
-    const districtCode = codes[2] || names[2] || '';
-    const regionCode = districtCode || cityCode || [names[1], names[2]].filter(Boolean).join('/');
+    const provinceCode = codes[0] || '';
+    const cityCode = codes[1] || '';
+    const districtCode = codes[2] || '';
+    const regionCode = districtCode || cityCode || '';
     this.setData({ form: { ...this.data.form, provinceCode, cityCode, districtCode, regionCode, regionLabel: names.join(' ') } });
   },
   importWechatAddress() {
@@ -69,8 +57,9 @@ Page({
     wx.chooseAddress({
       success: (picked) => {
         const regionLabel = [picked.provinceName, picked.cityName, picked.countyName].map(text).filter(Boolean).join(' ');
-        const regionCode = [picked.cityName, picked.countyName].map(text).filter(Boolean).join('/');
-        this.setData({ formVisible: true, form: { ...this.data.form, name: text(picked.userName), phone: text(picked.telNumber).replace(/\s/g, ''), provinceCode: text(picked.provinceName), cityCode: text(picked.cityName), districtCode: text(picked.countyName), regionCode, regionLabel, detail: text(picked.detailInfo), isDefault: this.data.form.id ? this.data.form.isDefault : !this.data.rows.length } });
+        const phone = text(picked.telNumber).replace(/\s/g, '');
+        const warnings = [!text(picked.userName) ? '收货人' : '', !/^1[3-9]\d{9}$/.test(phone) ? '有效的 11 位手机号' : '', '省市区编码', !text(picked.detailInfo) ? '详细地址' : ''].filter(Boolean);
+        this.setData({ formVisible: true, importWarningText: `请补充${warnings.join('、')}`, form: { ...this.data.form, name: text(picked.userName), phone, provinceCode: '', cityCode: '', districtCode: '', regionCode: '', regionLabel, detail: text(picked.detailInfo), isDefault: this.data.form.id ? this.data.form.isDefault : !this.data.rows.length } });
       },
       fail: (error) => {
         if (/cancel/i.test(String(error && error.errMsg || ''))) return;
@@ -130,12 +119,9 @@ Page({
     if (!this.data.selectMode) return;
     const current = this.data.rows.find((item) => item.id === event.currentTarget.dataset.id);
     if (!current || this.data.actionBusyId) return;
-    if (current.isDefault) return wx.navigateBack();
-    this.setData({ actionBusyId: current.id });
-    addressApi.setDefault(current.id).then((result) => {
-      if (!result || !result.ok) return wx.showToast({ title: result && result.error && result.error.message || '地址选择失败', icon: 'none' });
-      wx.navigateBack();
-    }).finally(() => this.setData({ actionBusyId: '' }));
+    const eventChannel = typeof this.getOpenerEventChannel === 'function' ? this.getOpenerEventChannel() : null;
+    if (eventChannel && typeof eventChannel.emit === 'function') eventChannel.emit('addressSelected', current);
+    wx.navigateBack();
   },
   back() {
     if (this.data.formVisible) return this.closeForm();

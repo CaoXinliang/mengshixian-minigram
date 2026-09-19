@@ -19,9 +19,12 @@ const services = {
     topupIntent: async () => ({ ok: true, data: {} })
   },
   membership: {
-    pointsAccount: spy('membership.pointsAccount', async () => ({ ok: true, data: { account: { balance: 12, lifetimeEarned: 20 } } })),
+    pointsAccount: spy('membership.pointsAccount', async () => ({ ok: true, data: {
+      account: { balance: 12, lifetimeEarned: 20 }, businessDate: '2040-01-01', signedToday: false,
+      signInRule: { code: 'daily_sign_in', status: 'unavailable', rewardPoints: null, version: null, unavailableReason: '正式规则暂未配置' }
+    } })),
     profile: spy('membership.profile', async () => ({ ok: true, data: { profile: {}, level: { name: '普通会员', benefits: [] } } })),
-    pointsLedger: spy('membership.pointsLedger', async () => ({ ok: true, data: { rows: [
+    pointsLedgerAll: spy('membership.pointsLedgerAll', async () => ({ ok: true, data: { rows: [
       { _id: 'p1', action: 'daily_sign_in', change: 1 },
       { _id: 'p2', action: 'order_reward', change: 2 },
       { _id: 'p3', action: 'refund_reversal', change: -1 },
@@ -40,6 +43,13 @@ const services = {
     eligible: spy('reviews.eligible', async () => ({ ok: true, data: { rows: [{ orderId: 'order-internal-12345678', orderNo: 'LONG-ORDER-12345678', orderItemId: 'i1', skuId: 's1', productNameSnapshot: '鱼丸' }] } })),
     mine: spy('reviews.mine', async () => ({ ok: true, data: { rows: [{ _id: 'r1', content: '很好', rating: 5 }] } })),
     create: async () => ({ ok: true, data: {} }), uploadMedia: async () => ({ ok: true, data: {} })
+  },
+  favorites: {
+    listAll: spy('favorites.listAll', async () => ({ ok: true, data: { rows: [{
+      _id: 'favorite-1', skuId: 'sku-1', productId: 'product-1', productNameSnapshot: '鱼丸', specSnapshot: '500克', packageUnitSnapshot: '袋',
+      mediaSnapshot: '', purchasable: true, unavailableReason: '', createdAt: '2040-01-01T00:00:00.000Z', updatedAt: '2040-01-01T00:00:00.000Z'
+    }] } })),
+    remove: async () => ({ ok: true, data: { id: 'favorite-1', removed: true } })
   }
 };
 
@@ -48,8 +58,8 @@ Module._load = function (request, parent, isMain) {
   return originalLoad.call(this, request, parent, isMain);
 };
 global.Page = definition => definitions.push(definition);
-global.wx = { navigateBack() {}, showToast() {}, showModal() {}, chooseMedia() {}, getFileSystemManager() { return { readFile() {} }; } };
-const pageNames = ['stored-value', 'points', 'invoices', 'reviews'];
+global.wx = { getStorageSync() {}, setStorageSync() {}, removeStorageSync() {}, navigateBack() {}, showToast() {}, showModal() {}, chooseMedia() {}, getFileSystemManager() { return { readFile() {} }; } };
+const pageNames = ['stored-value', 'points', 'invoices', 'reviews', 'favorites'];
 try {
   for (const name of pageNames) require(path.resolve(__dirname, `../miniapp/package-member/pages/${name}/index.js`));
 } finally {
@@ -65,9 +75,10 @@ function makePage(definition) {
 }
 const cases = [
   { name: 'stored-value', calls: ['storedValue.account', 'storedValue.ledger'], cleared: { account: null, ledger: [], amount: '', intent: null } },
-  { name: 'points', calls: ['membership.pointsAccount', 'membership.profile', 'membership.pointsLedger'], cleared: { account: null, profile: null, ledger: [] } },
+  { name: 'points', calls: ['membership.pointsAccount', 'membership.profile', 'membership.pointsLedgerAll'], cleared: { account: null, profile: null, ledger: [] } },
   { name: 'invoices', calls: ['invoices.titles', 'invoices.list', 'orders.list'], cleared: { titles: [], records: [], orders: [], invoiceEmail: '', formVisible: false } },
-  { name: 'reviews', calls: ['reviews.eligible', 'reviews.mine'], cleared: { orders: [], mine: [], current: null, content: '', media: [] } }
+  { name: 'reviews', calls: ['reviews.eligible', 'reviews.mine'], cleared: { orders: [], mine: [], current: null, content: '', media: [] } },
+  { name: 'favorites', calls: ['favorites.listAll'], cleared: { rows: [], busyId: '' } }
 ];
 const count = names => names.reduce((total, name) => total + Number(calls[name] || 0), 0);
 

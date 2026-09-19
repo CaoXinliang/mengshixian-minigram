@@ -19,7 +19,18 @@ Page({
   }, retry() { return this.load(); },
   inputSearch(event) { const query = String(event.detail.value || '').trim().toLowerCase(); this.setData({ query, rows: this.data.rows.map(row => ({ ...row, visible: !query || `${row.name} ${row.spec}`.toLowerCase().includes(query) })) }); },
   toggle(event) { const id = event.currentTarget.dataset.id; this.setData({ rows: this.data.rows.map(row => row.id === id ? { ...row, selected: !row.selected } : row), submitError: '' }); },
-  quantity(event) { const id = event.currentTarget.dataset.id; const direction = Number(event.currentTarget.dataset.direction || 0); this.setData({ rows: this.data.rows.map(row => row.id === id ? { ...row, selected: true, quantity: Math.max(firstQuantity(row), Math.min(999, row.quantity + (direction < 0 ? -row.orderMultiple : row.orderMultiple))) } : row) }); },
+  quantity(event) {
+    const id = event.currentTarget.dataset.id;
+    const detail = event.detail || {};
+    if (detail.valid === false) return this.setData({ submitError: detail.message || '请输入有效数量' });
+    const direction = Number(detail.delta === undefined ? event.currentTarget.dataset.direction || 0 : detail.delta);
+    this.setData({ rows: this.data.rows.map(row => {
+      if (row.id !== id) return row;
+      const directQuantity = detail.source === 'input' && detail.valid === true ? Number(detail.quantity) : NaN;
+      const quantity = Number.isSafeInteger(directQuantity) ? directQuantity : Math.max(firstQuantity(row), Math.min(999, row.quantity + (direction < 0 ? -row.orderMultiple : row.orderMultiple)));
+      return { ...row, selected: true, quantity };
+    }), submitError: '' });
+  },
   description(event) { this.setData({ description: String(event.detail.value || '').slice(0, 500), submitError: '' }); },
   async submit() {
     if (this.data.submitLocked) return; const items = this.data.rows.filter(row => row.selected).map(row => ({ skuId: row.skuId, quantity: row.quantity }));
